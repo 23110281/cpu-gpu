@@ -54,6 +54,7 @@
 #include <ctime>
 #include <pthread.h>
 #include <atomic>
+#include <mutex>
 #include <unistd.h>
 #include "bf16_cvt.h"
 
@@ -681,14 +682,38 @@ barrier_out:
 /* cuSPARSELt on sm_80 (A100): BF16 inputs must use BF16 output with
  * CUSPARSE_ORDER_COL for C/D.  FP32 output with COL-major C returns
  * CUSPARSE_STATUS_NOT_SUPPORTED (10) on this driver/cuSPARSELt version.
- * Any hardware faults during execution are contained by cudaDeviceReset()
- * in the async-error handler below.                                      */
+ *
+ * A device that raises an async (context-level) CUDA fault during the
+ * timed matmul loop is NOT reset here.  cudaDeviceReset() mid-function,
+ * followed by the teardown calls below that reference handles/pointers
+ * from the just-destroyed context, is undefined behaviour -- that pattern
+ * previously caused unrecoverable corruption of the whole node requiring a
+ * physical power cycle.  A context in the sticky-error state left behind by
+ * an async fault safely rejects further API calls on its own; the device
+ * is instead marked poisoned (below) and skipped for the rest of this
+ * process's sparse jobs.                                                  */
 static inline cudaDataType sparse_out_type(prec_t p) {
     return p == PREC_BF16 ? CUDA_R_16BF : out_type(p);
 }
 static inline size_t sparse_out_bytes(prec_t p) {
     return p == PREC_BF16 ? 2 : out_bytes(p);
 }
+
+/* Sparse-engine device poisoning: an async (context-level) CUDA fault during
+ * one sparse job leaves that physical GPU's driver-visible state unconfirmed
+ * safe for reuse.  Rather than blindly re-entering it on the next
+ * back-to-back sparse job (the pattern observed to corrupt the node), skip
+ * that device for the remainder of this process. Indexed by physical device
+ * id, matches cfg_t.gpus[8] / job_t.dev range. */
+static std::atomic<int> g_sparse_dev_poisoned[8] = {};
+
+/* cuSPARSELt (unlike core cuBLAS/cuSPARSE) is young enough that its
+ * process-wide first-touch behaviour on cusparseLtInit()/descriptor/plan
+ * creation is not something this codebase can assume is safe to race across
+ * threads. spmm_worker() runs one thread per GPU concurrently; this mutex
+ * serializes only the one-time per-job setup (init through compress), never
+ * the timed matmul loop, so it does not affect measured throughput.        */
+static std::mutex g_cusparselt_setup_mutex;
 
 /* -- sparse SpMM worker ---------------------------------------------------- */
 static void *spmm_worker(void *arg) {
@@ -717,6 +742,16 @@ static void *spmm_worker(void *arg) {
     size_t ev = in_bytes(j->prec);
     pthread_t smp_th;
 
+    if (j->dev >= 0 && j->dev < 8 &&
+        g_sparse_dev_poisoned[j->dev].load(std::memory_order_relaxed)) {
+        fprintf(stderr,
+            "[dev %d] skipping sparse job: device was marked unsafe after an "
+            "async CUDA fault earlier this run. Restart the process (and check "
+            "driver/GPU health) before running sparse on this device again.\n",
+            j->dev);
+        j->rc = -1; goto sout;
+    }
+
     if (j->prec == PREC_FP64) {
         fprintf(stderr, "[dev %d] FP64 is not supported for structured sparsity on Tensor Cores (cuSPARSELt).\n", j->dev);
         j->rc = -1; goto sout;
@@ -724,9 +759,6 @@ static void *spmm_worker(void *arg) {
 
     if (cudaSetDevice(j->dev) != cudaSuccess) { j->rc = -1; goto sout; }
     CUDA_CHECK_J(cudaStreamCreate(&st), sout);
-
-    SPARSE_CHECK_J(cusparseLtInit(&handle), sout);
-    handle_inited = 1;
 
     CUDA_CHECK_J(cudaMalloc(&dA, (size_t)S*S    *ev), sout);
     CUDA_CHECK_J(cudaMalloc(&dB, (size_t)S*ncols*ev), sout);
@@ -747,46 +779,59 @@ static void *spmm_worker(void *arg) {
         cudaEventDestroy(e_h2d0); cudaEventDestroy(e_h2d1);
     }
 
-    SPARSE_CHECK_J(cusparseLtStructuredDescriptorInit(&handle, &matA, S, S, S, 16,
-        cuda_type(j->prec), CUSPARSE_ORDER_ROW, CUSPARSELT_SPARSITY_50_PERCENT), sout);
-    descA_inited = 1;
+    {
+        /* Serialize cusparseLt's one-time per-job setup (init through
+         * compress) across the per-GPU worker threads. Released
+         * automatically (RAII) on every exit path, including the
+         * SPARSE_CHECK_J/CUDA_CHECK_J `goto sout` error jumps below. Scope
+         * ends before the warmup loop, so the timed region is never
+         * serialized. */
+        std::lock_guard<std::mutex> setup_lock(g_cusparselt_setup_mutex);
 
-    SPARSE_CHECK_J(cusparseLtDenseDescriptorInit(&handle, &matB, S, ncols, S, 16,
-        cuda_type(j->prec), CUSPARSE_ORDER_COL), sout);
-    descB_inited = 1;
+        SPARSE_CHECK_J(cusparseLtInit(&handle), sout);
+        handle_inited = 1;
 
-    SPARSE_CHECK_J(cusparseLtDenseDescriptorInit(&handle, &matC, S, ncols, S, 16,
-        sparse_out_type(j->prec), CUSPARSE_ORDER_COL), sout);
-    descC_inited = 1;
+        SPARSE_CHECK_J(cusparseLtStructuredDescriptorInit(&handle, &matA, S, S, S, 16,
+            cuda_type(j->prec), CUSPARSE_ORDER_ROW, CUSPARSELT_SPARSITY_50_PERCENT), sout);
+        descA_inited = 1;
 
-    SPARSE_CHECK_J(cusparseLtMatmulDescriptorInit(&handle, &matmul,
-        CUSPARSE_OPERATION_NON_TRANSPOSE, CUSPARSE_OPERATION_NON_TRANSPOSE,
-        &matA, &matB, &matC, &matC, CUSPARSE_COMPUTE_32F), sout);
+        SPARSE_CHECK_J(cusparseLtDenseDescriptorInit(&handle, &matB, S, ncols, S, 16,
+            cuda_type(j->prec), CUSPARSE_ORDER_COL), sout);
+        descB_inited = 1;
 
-    SPARSE_CHECK_J(cusparseLtMatmulAlgSelectionInit(&handle, &alg_sel, &matmul,
-        CUSPARSELT_MATMUL_ALG_DEFAULT), sout);
+        SPARSE_CHECK_J(cusparseLtDenseDescriptorInit(&handle, &matC, S, ncols, S, 16,
+            sparse_out_type(j->prec), CUSPARSE_ORDER_COL), sout);
+        descC_inited = 1;
 
-    SPARSE_CHECK_J(cusparseLtMatmulPlanInit(&handle, &plan, &matmul, &alg_sel), sout);
-    plan_inited = 1;
+        SPARSE_CHECK_J(cusparseLtMatmulDescriptorInit(&handle, &matmul,
+            CUSPARSE_OPERATION_NON_TRANSPOSE, CUSPARSE_OPERATION_NON_TRANSPOSE,
+            &matA, &matB, &matC, &matC, CUSPARSE_COMPUTE_32F), sout);
 
-    SPARSE_CHECK_J(cusparseLtSpMMAPrune(&handle, &matmul, dA, dA,
-        CUSPARSELT_PRUNE_SPMMA_TILE, st), sout);
+        SPARSE_CHECK_J(cusparseLtMatmulAlgSelectionInit(&handle, &alg_sel, &matmul,
+            CUSPARSELT_MATMUL_ALG_DEFAULT), sout);
 
-    size_t compressed_size, compressed_buf_size;
-    SPARSE_CHECK_J(cusparseLtSpMMACompressedSize(&handle, &plan,
-        &compressed_size, &compressed_buf_size), sout);
-    CUDA_CHECK_J(cudaMalloc(&dA_compressed, compressed_size), sout);
-    if (compressed_buf_size) {
-        CUDA_CHECK_J(cudaMalloc(&dA_compress_buf, compressed_buf_size), sout);
-    }
+        SPARSE_CHECK_J(cusparseLtMatmulPlanInit(&handle, &plan, &matmul, &alg_sel), sout);
+        plan_inited = 1;
 
-    SPARSE_CHECK_J(cusparseLtSpMMACompress(&handle, &plan, dA,
-        dA_compressed, dA_compress_buf, st), sout);
+        SPARSE_CHECK_J(cusparseLtSpMMAPrune(&handle, &matmul, dA, dA,
+            CUSPARSELT_PRUNE_SPMMA_TILE, st), sout);
 
-    size_t workspace_size;
-    SPARSE_CHECK_J(cusparseLtMatmulGetWorkspace(&handle, &plan, &workspace_size), sout);
-    if (workspace_size) {
-        CUDA_CHECK_J(cudaMalloc(&d_workspace, workspace_size), sout);
+        size_t compressed_size, compressed_buf_size;
+        SPARSE_CHECK_J(cusparseLtSpMMACompressedSize(&handle, &plan,
+            &compressed_size, &compressed_buf_size), sout);
+        CUDA_CHECK_J(cudaMalloc(&dA_compressed, compressed_size), sout);
+        if (compressed_buf_size) {
+            CUDA_CHECK_J(cudaMalloc(&dA_compress_buf, compressed_buf_size), sout);
+        }
+
+        SPARSE_CHECK_J(cusparseLtSpMMACompress(&handle, &plan, dA,
+            dA_compressed, dA_compress_buf, st), sout);
+
+        size_t workspace_size;
+        SPARSE_CHECK_J(cusparseLtMatmulGetWorkspace(&handle, &plan, &workspace_size), sout);
+        if (workspace_size) {
+            CUDA_CHECK_J(cudaMalloc(&d_workspace, workspace_size), sout);
+        }
     }
 
     {
@@ -825,31 +870,39 @@ static void *spmm_worker(void *arg) {
         }
         cudaEventRecord(e1, st);
         cudaEventSynchronize(e1);
+
+        /* Stop the NVML sampler before inspecting/handling any fault below --
+         * it must not still be touching this device while we decide the
+         * device's fate. */
+        if (smp_started) {
+            j->smp.stop.store(1, std::memory_order_relaxed);
+            pthread_join(smp_th, NULL);
+            smp_started = 0;
+        }
+
         /* Check for asynchronous CUDA errors that cusparseLt may not surface
-         * as a return-code (e.g. context-level device errors). An uncaught
-         * async error leaves batch_ms==0 -> inf TFLOPS and corrupts the
-         * CUDA context for all subsequent calls on this device.           */
+         * as a return-code (e.g. context-level device errors). Do NOT call
+         * cudaDeviceReset() here: resetting mid-function and then continuing
+         * to call cudaFree/cudaStreamDestroy/cusparseLt*Destroy below against
+         * handles from the just-destroyed context is undefined behaviour, and
+         * was the actual cause of unrecoverable node corruption previously
+         * observed with this benchmark. A sticky-error context safely rejects
+         * further API calls on its own; just mark the device poisoned so the
+         * next back-to-back sparse job on it is skipped instead of blindly
+         * re-entering unconfirmed-safe state.                              */
         {
             cudaError_t aerr = cudaGetLastError();
             if (aerr != cudaSuccess) {
                 fprintf(stderr, "[dev %d] async CUDA error after cusparseLt loop: %s\n",
                         j->dev, cudaGetErrorString(aerr));
                 loop_err = 1;
-                /* Reset the device context so the corruption does not
-                 * propagate to subsequent runs (cudaMallocHost, etc.).
-                 * All handles/streams allocated on this device are now
-                 * invalid; the sout cleanup will silently fail them.   */
-                cudaDeviceReset();
+                if (j->dev >= 0 && j->dev < 8)
+                    g_sparse_dev_poisoned[j->dev].store(1, std::memory_order_relaxed);
             }
         }
         j->batch_ms = (double)event_ms(e0, e1);
         cudaEventDestroy(e0); cudaEventDestroy(e1);
 
-        if (smp_started) {
-            j->smp.stop.store(1, std::memory_order_relaxed);
-            pthread_join(smp_th, NULL);
-            smp_started = 0;
-        }
         if (loop_err) { j->rc = -1; goto sout; }
     }
 

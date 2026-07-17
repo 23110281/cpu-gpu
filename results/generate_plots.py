@@ -22,23 +22,37 @@ def set_style():
         'grid.linestyle': '--'
     })
 
-def load_data(filepath):
-    df = pd.read_csv(filepath)
-    df['density'] = df['density'].astype(float)
-    df = df[(df['density'] == 1.0) & (df['mode'].isin(['split', 'replicas'])) & (df['status'] == 'ok')].copy()
-    
+def _add_derived_columns(df):
     # Calculate time percentages with division-by-zero protection
     df['total_tracked_time'] = df['compute_ms'] + df['h2d_ms'] + df['d2h_ms']
     df['total_tracked_time'] = df['total_tracked_time'].replace(0, np.nan)
-    
+
     df['pct_compute'] = df['compute_ms'] / df['total_tracked_time'] * 100
     df['pct_h2d'] = df['h2d_ms'] / df['total_tracked_time'] * 100
     df['pct_d2h'] = df['d2h_ms'] / df['total_tracked_time'] * 100
-    
+
     # Calculate Total Node Power and Energy Efficiency with division-by-zero protection
     df['total_power_w'] = df['power_w_avg'] * df['gpus']
     df['tflops_per_watt'] = df['eff_tflops'] / df['total_power_w'].replace(0, np.nan)
     return df
+
+def load_data(filepath):
+    df = pd.read_csv(filepath)
+    df['density'] = df['density'].astype(float)
+    # status is "ok", or "ok/val" / "ok/HIERR" when --validate was passed -- match all of them,
+    # not just the bare "ok" (a plain == 'ok' silently drops every validated row).
+    ok = df['status'].astype(str).str.startswith('ok')
+    df = df[(df['density'] == 1.0) & (df['mode'].isin(['split', 'replicas'])) & ok].copy()
+    return _add_derived_columns(df)
+
+def load_sparse_data(filepath):
+    """Like load_data(), but for cuSPARSELt structured-sparsity (engine=='sparse') rows.
+    Sparse jobs always report density=0.5 (fixed by the 2:4 hardware pruning, independent
+    of --density), so density isn't a meaningful filter here the way it is for dense."""
+    df = pd.read_csv(filepath)
+    ok = df['status'].astype(str).str.startswith('ok')
+    df = df[(df['engine'] == 'sparse') & ok].copy()
+    return _add_derived_columns(df)
 
 def plot_heatmap(df, out_dir, metric, title_prefix, filename_prefix):
     """Plot Heatmap for a given metric across all modes and precisions"""
@@ -72,7 +86,7 @@ def plot_heatmap(df, out_dir, metric, title_prefix, filename_prefix):
     plt.savefig(os.path.join(out_dir, f'{filename_prefix}.png'), dpi=300, bbox_inches='tight')
     plt.close()
 
-def plot_compute_vs_effective(df, out_dir):
+def plot_compute_vs_effective(df, out_dir, suffix=''):
     """Plot B: Compute vs Effective TFLOPS (Line plot)"""
     modes = df['mode'].unique()
     
@@ -111,11 +125,11 @@ def plot_compute_vs_effective(df, out_dir):
                 ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=10)
                 
         plt.tight_layout(rect=[0, 0, 1, 0.95])
-        # plt.savefig(os.path.join(out_dir, f'fig2_compute_vs_effective_{mode}.pdf'), bbox_inches='tight')
-        plt.savefig(os.path.join(out_dir, f'fig2_compute_vs_effective_{mode}.png'), dpi=300, bbox_inches='tight')
+        # plt.savefig(os.path.join(out_dir, f'fig2_compute_vs_effective_{mode}{suffix}.pdf'), bbox_inches='tight')
+        plt.savefig(os.path.join(out_dir, f'fig2_compute_vs_effective_{mode}{suffix}.png'), dpi=300, bbox_inches='tight')
         plt.close()
 
-def plot_power_and_utilization(df, out_dir):
+def plot_power_and_utilization(df, out_dir, suffix=''):
     """Plot C: Power, Utilization, and Efficiency over M"""
     modes = df['mode'].unique()
     
@@ -179,11 +193,11 @@ def plot_power_and_utilization(df, out_dir):
                 ax_util.legend(title='GPUs', bbox_to_anchor=(1.05, 1), loc='upper left')
                 
         plt.tight_layout(rect=[0, 0, 1, 0.95])
-        # plt.savefig(os.path.join(out_dir, f'fig3_power_util_eff_{mode}.pdf'), bbox_inches='tight')
-        plt.savefig(os.path.join(out_dir, f'fig3_power_util_eff_{mode}.png'), dpi=300, bbox_inches='tight')
+        # plt.savefig(os.path.join(out_dir, f'fig3_power_util_eff_{mode}{suffix}.pdf'), bbox_inches='tight')
+        plt.savefig(os.path.join(out_dir, f'fig3_power_util_eff_{mode}{suffix}.png'), dpi=300, bbox_inches='tight')
         plt.close()
 
-def plot_timing_distribution(df, out_dir):
+def plot_timing_distribution(df, out_dir, suffix=''):
     """Plot D: 100% Stacked Bar for Time Breakdown (All GPUs)"""
     modes = df['mode'].unique()
     all_gpus = sorted(df['gpus'].unique())
@@ -228,11 +242,11 @@ def plot_timing_distribution(df, out_dir):
                     ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.15), ncol=1)
                     
         plt.tight_layout(rect=[0, 0, 1, 0.95])
-        # plt.savefig(os.path.join(out_dir, f'fig4_time_distribution_{mode}.pdf'), bbox_inches='tight')
-        plt.savefig(os.path.join(out_dir, f'fig4_time_distribution_{mode}.png'), dpi=300, bbox_inches='tight')
+        # plt.savefig(os.path.join(out_dir, f'fig4_time_distribution_{mode}{suffix}.pdf'), bbox_inches='tight')
+        plt.savefig(os.path.join(out_dir, f'fig4_time_distribution_{mode}{suffix}.png'), dpi=300, bbox_inches='tight')
         plt.close()
 
-def plot_bandwidth(df, out_dir):
+def plot_bandwidth(df, out_dir, suffix=''):
     """Plot E: Bandwidth Scaling"""
     modes = df['mode'].unique()
     
@@ -273,21 +287,22 @@ def plot_bandwidth(df, out_dir):
                 ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=10)
 
         plt.tight_layout(rect=[0, 0, 1, 0.95])
-        # plt.savefig(os.path.join(out_dir, f'fig5_bandwidth_{mode}.pdf'), bbox_inches='tight')
-        plt.savefig(os.path.join(out_dir, f'fig5_bandwidth_{mode}.png'), dpi=300, bbox_inches='tight')
+        # plt.savefig(os.path.join(out_dir, f'fig5_bandwidth_{mode}{suffix}.pdf'), bbox_inches='tight')
+        plt.savefig(os.path.join(out_dir, f'fig5_bandwidth_{mode}{suffix}.png'), dpi=300, bbox_inches='tight')
         plt.close()
 
 def main():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     
-    csv_files = [f for f in os.listdir(base_dir) if f.endswith('.csv') and 'sweep' in f]
+    csv_files = [f for f in os.listdir(base_dir)
+                 if f.endswith('.csv') and 'sweep' in f and 'gemv' not in f]
     if not csv_files:
         print("No CSV files found.")
         return
-    
+
     csv_files.sort(reverse=True)
     csv_file = os.path.join(base_dir, csv_files[0])
-    out_dir = os.path.join(base_dir, 'plots')
+    out_dir = os.path.join(base_dir, 'plots', 'gemm')
     
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
@@ -314,8 +329,34 @@ def main():
     
     print("Generating Plot 5: Bandwidth...")
     plot_bandwidth(df, out_dir)
-    
-    print(f"All plots generated in {out_dir}")
+
+    print(f"All dense plots generated in {out_dir}")
+
+    sparse_df = load_sparse_data(csv_file)
+    if sparse_df.empty:
+        print("No sparse (engine=sparse) rows in this CSV -- skipping sparse plots.")
+    else:
+        print(f"Loaded {len(sparse_df)} sparse rows -- generating sparse plots...")
+
+        print("Generating Plot 1a (sparse): Heatmap of Effective TFLOPS...")
+        plot_heatmap(sparse_df, out_dir, 'eff_tflops', 'Sparse Effective TFLOPS', 'fig1a_eff_tflops_heatmap_sparse')
+
+        print("Generating Plot 1b (sparse): Heatmap of Absolute TFLOPS...")
+        plot_heatmap(sparse_df, out_dir, 'agg_tflops', 'Sparse Absolute/Compute TFLOPS', 'fig1b_abs_tflops_heatmap_sparse')
+
+        print("Generating Plot 2 (sparse): Compute vs Effective Perf...")
+        plot_compute_vs_effective(sparse_df, out_dir, suffix='_sparse')
+
+        print("Generating Plot 3 (sparse): Power and Utilization...")
+        plot_power_and_utilization(sparse_df, out_dir, suffix='_sparse')
+
+        print("Generating Plot 4 (sparse): Timing Distribution...")
+        plot_timing_distribution(sparse_df, out_dir, suffix='_sparse')
+
+        print("Generating Plot 5 (sparse): Bandwidth...")
+        plot_bandwidth(sparse_df, out_dir, suffix='_sparse')
+
+        print(f"All sparse plots generated in {out_dir}")
 
 if __name__ == '__main__':
     main()

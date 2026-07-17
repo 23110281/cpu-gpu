@@ -32,11 +32,17 @@ LDLIBS  := -lcublas -lcublasLt -lcusparse -lcudart -lnvidia-ml -lpthread -lm -fo
 # ── nvcc / CUDA C++17 (default) ──────────────────────────────────────────────
 # sm_80 = A100 SXM4; extend with -gencode arch=compute_90,code=sm_90 for H100.
 # -Xcompiler passes flags to the host compiler (gcc) through nvcc.
+#
+# CUSPARSELT_DIR: the cuda-repo apt packages (libcusparselt0-dev-cuda-12) do
+# NOT install into $(CUDA_HOME)/include|lib64 like the rest of the toolkit --
+# they land under a versioned /usr/include|lib path. Override if yours differs.
+CUSPARSELT_INC ?= /usr/include/libcusparseLt/12
+CUSPARSELT_LIB ?= /usr/lib/x86_64-linux-gnu/libcusparseLt/12
 NVCC_FLAGS   := -std=c++17 -O3 -arch=sm_80 \
                 -Xcompiler "-Wall -Wextra -fopenmp -Wno-deprecated-declarations" \
-                -I src -I $(CUDA_HOME)/include
-NVCC_LDFLAGS := -L $(CUDA_HOME)/lib64 -L $(CUDA_HOME)/lib64/stubs \
-                -Xlinker -rpath,$(CUDA_HOME)/lib64
+                -I src -I $(CUDA_HOME)/include -I $(CUSPARSELT_INC)
+NVCC_LDFLAGS := -L $(CUDA_HOME)/lib64 -L $(CUDA_HOME)/lib64/stubs -L $(CUSPARSELT_LIB) \
+                -Xlinker -rpath,$(CUDA_HOME)/lib64 -Xlinker -rpath,$(CUSPARSELT_LIB)
 NVCC_LDLIBS  := -lcublas -lcublasLt -lcusparse -lcusparseLt -lnvidia-ml -lpthread -lm \
                 -Xcompiler -fopenmp
 
@@ -55,7 +61,7 @@ BIN_GCC := bin/gpu_gemm_bench_gcc
 SRC_GCC := src/gpu_gemm_bench.c
 HDR_GCC := src/bf16_cvt.h
 
-.PHONY: all bench_gcc both run run_gcc sweep sweep_gcc clean
+.PHONY: all bench_gcc both run run_gcc sweep sweep_gcc gemv run_gemv sweep_gemv clean
 all: $(BIN)
 
 both: $(BIN) $(BIN_GCC)
@@ -82,6 +88,25 @@ sweep: $(BIN)
 
 sweep_gcc: $(BIN_GCC)
 	./scripts/run_sweep_gcc.sh
+
+# ── GEMV/SpMV benchmark (dense cuBLAS gemv + sparse cuSPARSE SpMV) ─────────
+# No cuSPARSELt dependency -- regular cuSPARSE only, see src/gpu_gemv_bench.cu
+# header comment for why.
+GEMV_BIN := bin/gpu_gemv_bench
+GEMV_SRC := src/gpu_gemv_bench.cu
+GEMV_LDLIBS := -lcublas -lcublasLt -lcusparse -lnvidia-ml -lpthread -lm
+
+gemv: $(GEMV_BIN)
+$(GEMV_BIN): $(GEMV_SRC) src/gemv_host.h src/bf16_cvt.h
+	@mkdir -p bin
+	$(NVCC) $(NVCC_FLAGS) $(NVCC_LDFLAGS) -o $@ $(GEMV_SRC) $(GEMV_LDLIBS)
+	@echo "built $@"
+
+run_gemv: $(GEMV_BIN)
+	./$(GEMV_BIN) --sizes 256,512,1024,2048,4096 --gpus 1 --validate --iters 20
+
+sweep_gemv: $(GEMV_BIN)
+	./scripts/run_sweep_gemv.sh
 
 clean:
 	rm -rf bin

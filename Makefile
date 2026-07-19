@@ -61,8 +61,8 @@ BIN_GCC := bin/gpu_gemm_bench_gcc
 SRC_GCC := src/gpu_gemm_bench.c
 HDR_GCC := src/bf16_cvt.h
 
-.PHONY: all bench_gcc both run run_gcc sweep sweep_gcc gemv run_gemv sweep_gemv clean
-all: $(BIN)
+.PHONY: all bench_gcc both run run_gcc sweep sweep_gcc gemv run_gemv sweep_gemv saxpy run_saxpy sweep_saxpy spgemm run_spgemm sweep_spgemm clean
+all: $(BIN) gemv saxpy spgemm
 
 both: $(BIN) $(BIN_GCC)
 
@@ -107,6 +107,40 @@ run_gemv: $(GEMV_BIN)
 
 sweep_gemv: $(GEMV_BIN)
 	./scripts/run_sweep_gemv.sh
+
+# ── SAXPY benchmark (cuBLAS Level-1 AXPY) ──────────────────────────────────
+SAXPY_BIN := bin/gpu_saxpy_bench
+SAXPY_SRC := src/gpu_saxpy_bench.cu
+SAXPY_LDLIBS := -lcublas -lnvidia-ml -lpthread -lm
+
+saxpy: $(SAXPY_BIN)
+$(SAXPY_BIN): $(SAXPY_SRC) src/bf16_cvt.h
+	@mkdir -p bin
+	$(NVCC) $(NVCC_FLAGS) $(NVCC_LDFLAGS) -o $@ $(SAXPY_SRC) $(SAXPY_LDLIBS)
+	@echo "built $@"
+
+run_saxpy: $(SAXPY_BIN)
+	./$(SAXPY_BIN) --sizes 33554432,67108864,134217728 --gpus 1 --validate --iters 20
+
+sweep_saxpy: $(SAXPY_BIN)
+	./scripts/run_sweep_saxpy.sh
+
+# ── SpGEMM benchmark (cuSPARSE Generic API) ────────────────────────────────
+SPGEMM_BIN := bin/gpu_spgemm_bench
+SPGEMM_SRC := src/gpu_spgemm_bench.cu
+SPGEMM_LDLIBS := -lcusparse -lnvidia-ml -lpthread -lm
+
+spgemm: $(SPGEMM_BIN)
+$(SPGEMM_BIN): $(SPGEMM_SRC) src/gemv_host.h src/bf16_cvt.h
+	@mkdir -p bin
+	$(NVCC) $(NVCC_FLAGS) $(NVCC_LDFLAGS) -o $@ $(SPGEMM_SRC) $(SPGEMM_LDLIBS)
+	@echo "built $@"
+
+run_spgemm: $(SPGEMM_BIN)
+	./$(SPGEMM_BIN) --sizes 1024,2048,4096 --gpus 1 --validate --iters 10
+
+sweep_spgemm: $(SPGEMM_BIN)
+	./scripts/run_sweep_spgemm.sh
 
 clean:
 	rm -rf bin

@@ -1282,7 +1282,7 @@ static void run_config(const cfg_t *c, FILE *csv, const char *host, int cudart,
             "%.0f,%u,%.0f,%.1f,%.1f,%u,%s,"
             "%.1f,"
             "%.3f,%d,%d,%.3g,"
-            "%.3f,%.3f,%.3f,%.3f,%.1f,%.1f,%.2f,%.1f,"
+            "%.3f,%.3f,%.3f,%.3f,%.1f,%.1f,%.3f,%.1f,"
             "%s,%.4g,%ld,ok\n",
             c->tag,ts,host,cudart,mode_s,pn,G,S,S,S,c->iters,c->warmup,
             agg_tflops,per_gpu,pct,wall*1000.0,
@@ -1459,7 +1459,12 @@ int main(int argc, char **argv) {
                  * flag and CSR generation are irrelevant. Run once per
                  * (prec, gpu-count) combination, passing NULL for CSR args.
                  * display_density / display_nnz are overridden to 0.5/S²/2
-                 * inside run_config regardless.                              */
+                 * inside run_config regardless.
+                 *
+                 * NOTE: cuSPARSELt prunes every A to 2:4 (50%) via PRUNE_SPMMA_TILE.
+                 * The --density flag sets the INPUT initialization density only.
+                 * All hardware computations run at 50% density regardless of this value.
+                 * See paper footnote: "GEMM sparse density column records input density." */
                 for (int pi = 0; pi < c.n_precs; pi++)
                     for (int gi = 0; gi < c.n_gpus; gi++) {
                         int G = c.gpus[gi]; if (G > ndev) continue;

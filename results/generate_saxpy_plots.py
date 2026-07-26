@@ -27,9 +27,10 @@ def plot_gbps_heatmap(df, out_dir):
     """Heatmap: rows=mode, cols=precision, cells=agg_gbps by (N, gpus)."""
     modes = df['mode'].unique()
     precisions = df['precision'].unique()
+    sizes = df['N'].unique()
     
     fig, axes = plt.subplots(len(modes), len(precisions), 
-                             figsize=(6 * len(precisions), 5 * len(modes)))
+                             figsize=(max(5, 0.7 * len(sizes)) * len(precisions), 5 * len(modes)))
     if len(modes) == 1 and len(precisions) == 1: axes = np.array([[axes]])
     elif len(modes) == 1: axes = np.array([axes])
     elif len(precisions) == 1: axes = np.array([[ax] for ax in axes])
@@ -45,7 +46,7 @@ def plot_gbps_heatmap(df, out_dir):
                 continue
             
             pivot = sub.pivot_table(index='gpus', columns='N', values='agg_gbps', aggfunc='mean')
-            sns.heatmap(pivot, annot=True, fmt=".0f", cmap="viridis", ax=ax, cbar_kws={'label': 'GB/s'})
+            sns.heatmap(pivot, annot=True, fmt=".0f", cmap="mako", ax=ax, cbar_kws={'label': 'GB/s'})
             ax.set_title(f'{mode.capitalize()} | {prec.upper()}')
             ax.set_ylabel('GPUs' if j == 0 else '')
             ax.set_xlabel('Vector Size (N)' if i == len(modes)-1 else '')
@@ -56,6 +57,7 @@ def plot_gbps_heatmap(df, out_dir):
 
 def plot_gbps_vs_size(df, out_dir):
     """Line plot: achieved GB/s vs vector size, one line per gpu count."""
+    # INTENTIONAL EXCEPTION: fp32 and fp64 are plotted on the same axes to show they converge to the same bandwidth ceiling.
     modes = df['mode'].unique()
     for mode in modes:
         mode_precisions = sorted(df[df['mode'] == mode]['precision'].unique())
@@ -171,7 +173,7 @@ def plot_bandwidth(df, out_dir):
             sub = df[(df['mode'] == mode) & (df['precision'] == prec)]
             if sub.empty: continue
             
-            gpu_palette = sns.color_palette("Set2", len(sub['gpus'].unique()))
+            gpu_palette = sns.color_palette("Set1", len(sub['gpus'].unique()))
             for k, gpus in enumerate(sorted(sub['gpus'].unique())):
                 g_df = sub[sub['gpus'] == gpus].sort_values('N')
                 color = gpu_palette[k]
@@ -196,6 +198,57 @@ def plot_bandwidth(df, out_dir):
 
         plt.tight_layout(rect=[0, 0, 1, 0.95])
         plt.savefig(os.path.join(out_dir, f'fig4_pcie_bandwidth_{mode}.png'), dpi=300, bbox_inches='tight')
+        plt.close()
+
+def plot_time_distribution(df, out_dir):
+    """Stacked bar chart for H2D/Compute/D2H percentages."""
+    modes = df['mode'].unique()
+    all_gpus = sorted(df['gpus'].unique())
+    
+    colors = sns.color_palette("muted")
+    c_comp, c_h2d, c_d2h = colors[2], colors[0], colors[3]
+    
+    for mode in modes:
+        mode_precisions = sorted(df[df['mode'] == mode]['precision'].unique())
+        fig, axes = plt.subplots(len(all_gpus), len(mode_precisions), figsize=(6 * len(mode_precisions), 4 * len(all_gpus)))
+        fig.suptitle(f'SAXPY Time Distribution Percentage vs Vector Size ({mode.capitalize()})', y=0.98)
+        
+        if len(all_gpus) == 1 and len(mode_precisions) == 1: axes = np.array([[axes]])
+        elif len(all_gpus) == 1: axes = np.array([axes])
+        elif len(mode_precisions) == 1: axes = np.array([[ax] for ax in axes])
+            
+        for i, gpus in enumerate(all_gpus):
+            for j, prec in enumerate(mode_precisions):
+                ax = axes[i, j]
+                prec_df = df[(df['mode'] == mode) & (df['precision'] == prec) & (df['gpus'] == gpus)].sort_values('N')
+                
+                if prec_df.empty:
+                    ax.set_visible(False)
+                    continue
+                
+                total_time = prec_df['compute_ms'] + prec_df['h2d_ms'] + prec_df['d2h_ms']
+                
+                x = prec_df['N'].astype(str)
+                y1 = (prec_df['compute_ms'] / total_time) * 100
+                y2 = (prec_df['h2d_ms'] / total_time) * 100
+                y3 = (prec_df['d2h_ms'] / total_time) * 100
+                
+                ax.bar(x, y1, color=c_comp, label='Compute' if i==0 and j==0 else "")
+                ax.bar(x, y2, bottom=y1, color=c_h2d, label='Host-to-Device' if i==0 and j==0 else "")
+                ax.bar(x, y3, bottom=y1+y2, color=c_d2h, label='Device-to-Host' if i==0 and j==0 else "")
+                
+                ax.set_title(f'{gpus} GPUs | {prec.upper()}')
+                ax.set_ylim(0, 100)
+                ax.tick_params(axis='x', rotation=45, labelbottom=True)
+                
+                if j == 0: ax.set_ylabel('% of Total Time')
+                if i == len(all_gpus) - 1: ax.set_xlabel('Vector Size (N)')
+                
+                if i == 0 and j == 0:
+                    ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.15), ncol=1)
+                    
+        plt.tight_layout(rect=[0, 0, 1, 0.95])
+        plt.savefig(os.path.join(out_dir, f'fig5_time_distribution_{mode}.png'), dpi=300, bbox_inches='tight')
         plt.close()
 
 def main():
@@ -232,6 +285,7 @@ def main():
     plot_gbps_vs_size(df, out_dir)
     plot_power_util(df, out_dir)
     plot_bandwidth(df, out_dir)
+    plot_time_distribution(df, out_dir)
     
     print(f"SAXPY plots written to {out_dir}")
 

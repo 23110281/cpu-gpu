@@ -56,6 +56,7 @@
 #include <atomic>
 #include <mutex>
 #include <unistd.h>
+#include <sys/mman.h>
 #include "bf16_cvt.h"
 
 /* -- error-checking macros ------------------------------------------------- */
@@ -307,8 +308,9 @@ typedef struct {
     /* PINNED host operands (full A and B in fp32) */
     const float *hA_pin;
     const float *hB_pin;
-    const void  *hA_nat;
-    const void  *hB_nat;
+    void  *hA_nat;
+    void  *hB_nat;
+    void  *hC_pin;
     const void  *hVals_nat;
     int      nvml_on, validate, valid_max, measure_xfer;
     pthread_barrier_t *bar;
@@ -635,7 +637,8 @@ static void *gpu_worker(void *arg) {
 
     if (j->measure_xfer || (j->validate && S <= j->valid_max)) {
         size_t cbytes = (size_t)S * ncols * out_bytes(j->prec);
-        if (cudaMallocHost(&hC_pin, cbytes) == cudaSuccess) {
+        hC_pin = j->hC_pin;
+        if (hC_pin) {
             cudaEventRecord(e_d2h0, st);
             cudaMemcpyAsync(hC_pin, dC, cbytes, cudaMemcpyDeviceToHost, st);
             cudaEventRecord(e_d2h1, st);
@@ -643,7 +646,6 @@ static void *gpu_worker(void *arg) {
             j->d2h_ms = (double)event_ms(e_d2h0, e_d2h1);
             if (j->validate && S <= j->valid_max)
                 j->max_rel_err = validate_slice(j, hC_pin);
-            cudaFreeHost(hC_pin); hC_pin = NULL;
         }
     }
 
@@ -1041,7 +1043,8 @@ static void run_config(const cfg_t *c, FILE *csv, const char *host, int cudart,
                        long cap, int nvml_ready, long S, prec_t p, int G,
                        engine_t engine, double density, long nnz,
                        const float *hA_pin, const float *hB_pin,
-                       const int *hRow, const int *hCol, const float *hVals)
+                       const int *hRow, const int *hCol, const float *hVals,
+                       void *pre_hA_nat, void *pre_hB_nat, void *pre_hC_pin_pool)
 {
     long ts = (long)time(NULL);
     const char *mode_s = (c->mode == MODE_SPLIT) ? "split" : "replicas";
@@ -1081,11 +1084,8 @@ static void run_config(const cfg_t *c, FILE *csv, const char *host, int cudart,
         hB_nat = (void*)hB_pin;
         hVals_nat = (void*)hVals;
     } else {
-        if (hA_pin) {
-            if (cudaMallocHost(&hA_nat, (size_t)S * S * eb) != cudaSuccess) {
-                fprintf(stderr, "Host OOM for pre-converted hA_nat\n");
-                return;
-            }
+        if (hA_pin && pre_hA_nat) {
+            hA_nat = pre_hA_nat;
             if (p == PREC_FP64) {
                 #pragma omp parallel for schedule(static)
                 for (size_t i = 0; i < (size_t)S*S; i++) ((double*)hA_nat)[i] = (double)hA_pin[i];
@@ -1094,12 +1094,8 @@ static void run_config(const cfg_t *c, FILE *csv, const char *host, int cudart,
                 for (size_t i = 0; i < (size_t)S*S; i++) ((uint16_t*)hA_nat)[i] = f32_to_bf16(hA_pin[i]);
             }
         }
-        if (hB_pin) {
-            if (cudaMallocHost(&hB_nat, (size_t)S * S * eb) != cudaSuccess) {
-                fprintf(stderr, "Host OOM for pre-converted hB_nat\n");
-                if (hA_nat) cudaFreeHost(hA_nat);
-                return;
-            }
+        if (hB_pin && pre_hB_nat) {
+            hB_nat = pre_hB_nat;
             if (p == PREC_FP64) {
                 #pragma omp parallel for schedule(static)
                 for (size_t i = 0; i < (size_t)S*S; i++) ((double*)hB_nat)[i] = (double)hB_pin[i];
@@ -1109,10 +1105,9 @@ static void run_config(const cfg_t *c, FILE *csv, const char *host, int cudart,
             }
         }
         if (hVals) {
+            // Unchanged for now, sparse uses hVals
             if (cudaMallocHost(&hVals_nat, (size_t)nnz * eb) != cudaSuccess) {
                 fprintf(stderr, "Host OOM for pre-converted hVals_nat\n");
-                if (hA_nat) cudaFreeHost(hA_nat);
-                if (hB_nat) cudaFreeHost(hB_nat);
                 return;
             }
             if (p == PREC_FP64) {
@@ -1147,7 +1142,8 @@ static void run_config(const cfg_t *c, FILE *csv, const char *host, int cudart,
         job[g].warmup  = c->warmup; job[g].iters = c->iters;
         job[g].hA_pin  = hA_pin;   job[g].hB_pin = hB_pin;
         job[g].hA_nat  = hA_nat;
-        job[g].hB_nat  = hB_nat ? (const void*)((const char*)hB_nat + job[g].col0 * S * eb) : NULL;
+        job[g].hB_nat  = hB_nat ? (void*)((char*)hB_nat + job[g].col0 * S * eb) : NULL;
+        job[g].hC_pin  = pre_hC_pin_pool ? (void*)((char*)pre_hC_pin_pool + job[g].col0 * S * 8) : NULL;
         job[g].hVals_nat = hVals_nat;
         job[g].nvml_on = nvml_ready;
         job[g].validate    = c->validate;
@@ -1173,8 +1169,6 @@ static void run_config(const cfg_t *c, FILE *csv, const char *host, int cudart,
     pthread_barrier_destroy(&bar);
 
     if (p != PREC_FP32) {
-        if (hA_nat)     cudaFreeHost(hA_nat);
-        if (hB_nat)     cudaFreeHost(hB_nat);
         if (hVals_nat)  cudaFreeHost(hVals_nat);
     }
 
@@ -1385,7 +1379,17 @@ int main(int argc, char **argv) {
     if (c.nvml_on && nvmlInit_v2() == NVML_SUCCESS) nvml_ready = 1;
     else if (c.nvml_on) fprintf(stderr,"warning: nvmlInit failed; telemetry off\n");
 
-    char host[128]; gethostname(host, sizeof host);
+    char host[128] = "Unknown";
+    struct cudaDeviceProp prop;
+    if (cudaGetDeviceProperties(&prop, 0) == cudaSuccess) {
+        int i = 0;
+        for (; prop.name[i] && i < 127; i++) {
+            host[i] = (prop.name[i] == ' ') ? '_' : prop.name[i];
+        }
+        host[i] = '\0';
+    } else {
+        gethostname(host, sizeof(host));
+    }
     int cudart = 0; cudaRuntimeGetVersion(&cudart);
 
     FILE *csv = NULL; int new_file = 1;
@@ -1427,6 +1431,7 @@ int main(int argc, char **argv) {
         if (cudaMallocHost((void**)&hB_pin, (size_t)S*S*sizeof(float)) != cudaSuccess) {
             fprintf(stderr, "pinned host OOM (B) at S=%ld\n", S); continue;
         }
+        madvise(hB_pin, (size_t)S*S*sizeof(float), MADV_NOHUGEPAGE);
         fill_rand(hB_pin, (size_t)S*S, 2);
 
         float *hA_pin = NULL;
@@ -1434,11 +1439,21 @@ int main(int argc, char **argv) {
             fprintf(stderr, "pinned host OOM (A) at S=%ld\n", S);
             cudaFreeHost(hB_pin); continue;
         }
+        madvise(hA_pin, (size_t)S*S*sizeof(float), MADV_NOHUGEPAGE);
         fill_rand(hA_pin, (size_t)S*S, 1);
         if (c.fill_sparse) {
             sparsify_inplace(hA_pin, (size_t)S*S, c.fill_density, 11);
             sparsify_inplace(hB_pin, (size_t)S*S, c.fill_density, 22);
         }
+
+        void *pre_hA_nat = NULL, *pre_hB_nat = NULL, *pre_hC_pin_pool = NULL;
+        if (cudaMallocHost(&pre_hA_nat, (size_t)S*S*8) == cudaSuccess && pre_hA_nat)
+            madvise(pre_hA_nat, (size_t)S*S*8, MADV_NOHUGEPAGE);
+        if (cudaMallocHost(&pre_hB_nat, (size_t)S*S*8) == cudaSuccess && pre_hB_nat)
+            madvise(pre_hB_nat, (size_t)S*S*8, MADV_NOHUGEPAGE);
+        if (cudaMallocHost(&pre_hC_pin_pool, (size_t)S*S*8) == cudaSuccess && pre_hC_pin_pool)
+            madvise(pre_hC_pin_pool, (size_t)S*S*8, MADV_NOHUGEPAGE);
+
 
         for (int ei = 0; ei < c.n_engines; ei++) {
             engine_t eng = c.engines[ei];
@@ -1451,7 +1466,8 @@ int main(int argc, char **argv) {
                         run_config(&c, csv, host, cudart, cap, nvml_ready,
                                    S, c.precs[pi], G,
                                    ENG_DENSE, dens, approx_nnz,
-                                   hA_pin, hB_pin, NULL, NULL, NULL);
+                                   hA_pin, hB_pin, NULL, NULL, NULL,
+                                   pre_hA_nat, pre_hB_nat, pre_hC_pin_pool);
                     }
             } else {
                 /* Structured 2:4 sparsity (cuSPARSELt): density is always
@@ -1471,12 +1487,16 @@ int main(int argc, char **argv) {
                         run_config(&c, csv, host, cudart, cap, nvml_ready,
                                    S, c.precs[pi], G,
                                    ENG_SPARSE, 0.5, (long)S*(long)S/2,
-                                   hA_pin, hB_pin, NULL, NULL, NULL);
+                                   hA_pin, hB_pin, NULL, NULL, NULL,
+                                   pre_hA_nat, pre_hB_nat, pre_hC_pin_pool);
                     }
             }
         }
         cudaFreeHost(hA_pin);  /* NULL-safe */
         cudaFreeHost(hB_pin);
+        cudaFreeHost(pre_hA_nat);
+        cudaFreeHost(pre_hB_nat);
+        cudaFreeHost(pre_hC_pin_pool);
     }
 
     if (csv) fclose(csv);

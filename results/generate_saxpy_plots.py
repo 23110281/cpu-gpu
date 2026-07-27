@@ -1,3 +1,6 @@
+import os
+import gpu_specs
+import glob
 #!/usr/bin/env python3
 """
 generate_saxpy_plots.py
@@ -8,6 +11,7 @@ Matches formatting conventions of other repo plotting scripts.
 
 import sys
 import os
+import gpu_specs
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -55,7 +59,7 @@ def plot_gbps_heatmap(df, out_dir):
     plt.savefig(os.path.join(out_dir, 'fig1_gbps_heatmap.png'), dpi=300, bbox_inches='tight')
     plt.close()
 
-def plot_gbps_vs_size(df, out_dir):
+def plot_gbps_vs_size(df, out_dir, spec):
     """Line plot: achieved GB/s vs vector size, one line per gpu count."""
     # INTENTIONAL EXCEPTION: fp32 and fp64 are plotted on the same axes to show they converge to the same bandwidth ceiling.
     modes = df['mode'].unique()
@@ -76,8 +80,8 @@ def plot_gbps_vs_size(df, out_dir):
                         label=f'{gpus} GPUs' if j == 0 else "")
             
             # Theoretical peak for a single A100 GPU
-            ax.axhline(y=1555, color='black', linestyle=':', alpha=0.5,
-                       label='A100 HBM peak (~1555 GB/s/GPU)' if j == 0 else "")
+            ax.axhline(y=spec["memory_bandwidth_gbps"], color='black', linestyle=':', alpha=0.5,
+                       label=f"{spec['name_label']} HBM peak (~{spec['memory_bandwidth_gbps']} GB/s/GPU)" if j == 0 else "")
             
             ax.set_xscale('log', base=2)
             ax.set_xticks(sorted(sub['N'].unique()))
@@ -145,7 +149,7 @@ def plot_power_util(df, out_dir):
         plt.savefig(os.path.join(out_dir, f'fig3_power_util_{mode}.png'), dpi=300, bbox_inches='tight')
         plt.close()
 
-def plot_bandwidth(df, out_dir):
+def plot_bandwidth(df, out_dir, spec):
     """Plot PCIe Bandwidth Scaling for SAXPY transfers"""
     modes = df['mode'].unique()
     
@@ -183,7 +187,7 @@ def plot_bandwidth(df, out_dir):
                 ax.plot(g_df['N'], g_df['d2h_gbps'], linestyle='--', marker='v', color=color, 
                         label=f'{gpus} GPUs (D2H)' if j==0 else "")
                 
-            ax.axhline(y=24, color='black', linestyle=':', alpha=0.5, label='PCIe Gen4 (~24 GB/s)' if j==0 else "")
+            ax.axhline(y=spec["pcie_bandwidth_gbps"], color='black', linestyle=':', alpha=0.5, label=f"PCIe Gen4 (~{spec['pcie_bandwidth_gbps']} GB/s)" if j==0 else "")
             
             ax.set_xscale('log', base=2)
             ax.set_xticks(sorted(sub['N'].unique()))
@@ -253,41 +257,27 @@ def plot_time_distribution(df, out_dir):
 
 def main():
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    if len(sys.argv) >= 2:
-        csv_file = sys.argv[1]
-    else:
-        csv_files = [f for f in os.listdir(base_dir) if f.endswith('.csv') and 'sweep_saxpy' in f]
-        if not csv_files:
-            print("No sweep_saxpy CSV files found in", base_dir)
-            sys.exit(1)
-        csv_files.sort(reverse=True)
-        csv_file = os.path.join(base_dir, csv_files[0])
-
-    print(f"Loading SAXPY data from {csv_file}...")
-    try:
-        df = pd.read_csv(csv_file)
-    except FileNotFoundError:
-        print(f"File {csv_file} not found.")
-        sys.exit(1)
-
-    df = df[df["status"].astype(str).str.startswith("ok")]
-
-    if df.empty:
-        print("No valid 'ok' data in CSV to plot.")
-        sys.exit(1)
+    csv_pattern = os.path.join(base_dir, 'data', '*', 'sweep_saxpy*.csv')
+    csv_files = glob.glob(csv_pattern)
+    if not csv_files:
+        return
         
-    out_dir = os.path.join(base_dir, 'plots', 'saxpy')
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
-
     set_style()
-    plot_gbps_heatmap(df, out_dir)
-    plot_gbps_vs_size(df, out_dir)
-    plot_power_util(df, out_dir)
-    plot_bandwidth(df, out_dir)
-    plot_time_distribution(df, out_dir)
-    
-    print(f"SAXPY plots written to {out_dir}")
+    for csv_file in csv_files:
+        gpu_name = os.path.basename(os.path.dirname(csv_file))
+        out_dir = os.path.join(base_dir, 'plots', gpu_name, 'saxpy')
+        os.makedirs(out_dir, exist_ok=True)
+        spec = gpu_specs.get_gpu_spec(gpu_name)
+        
+        print(f"Loading SAXPY data from {csv_file}...")
+        df = pd.read_csv(csv_file, engine='python', skipinitialspace=True)
+        df = df[df["status"].astype(str).str.startswith("ok")]
+        if not df.empty:
+            plot_gbps_heatmap(df, out_dir)
+            plot_gbps_vs_size(df, out_dir, spec)
+            plot_power_util(df, out_dir)
+            plot_bandwidth(df, out_dir, spec)
+            plot_time_distribution(df, out_dir)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

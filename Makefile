@@ -38,6 +38,16 @@ LDLIBS  := -lcublas -lcublasLt -lcusparse -lcudart -lnvidia-ml -lpthread -lm -fo
 # they land under a versioned /usr/include|lib path. Override if yours differs.
 CUSPARSELT_INC ?= /usr/include/libcusparseLt/12
 CUSPARSELT_LIB ?= /usr/lib/x86_64-linux-gnu/libcusparseLt/12
+
+# Singularity override: download and use local cuSPARSELt
+ifeq ($(HOST),SINGULARITY)
+CUSPARSELT_DIR  := $(CURDIR)/third_party/cusparselt/libcusparse_lt-linux-x86_64-0.8.1.1_cuda12-archive
+CUSPARSELT_INC  := $(CUSPARSELT_DIR)/include
+CUSPARSELT_LIB  := $(CUSPARSELT_DIR)/lib
+CUSPARSELT_DEPS := $(CUSPARSELT_INC)/cusparseLt.h
+else
+CUSPARSELT_DEPS :=
+endif
 NVCC_FLAGS   := -std=c++17 -O3 -arch=sm_80 \
                 -Xcompiler "-Wall -Wextra -fopenmp -Wno-deprecated-declarations" \
                 -I src -I $(CUDA_HOME)/include -I $(CUSPARSELT_INC)
@@ -61,15 +71,22 @@ BIN_GCC := bin/gpu_gemm_bench_gcc
 SRC_GCC := src/gpu_gemm_bench.c
 HDR_GCC := src/bf16_cvt.h
 
-.PHONY: all bench_gcc both run run_gcc sweep sweep_gcc gemv run_gemv sweep_gemv saxpy run_saxpy sweep_saxpy spgemm run_spgemm sweep_spgemm clean
+.PHONY: all bench_gcc both run run_gcc sweep sweep_gcc gemv run_gemv sweep_gemv saxpy run_saxpy sweep_saxpy spgemm run_spgemm sweep_spgemm venv plots clean
 all: $(BIN) gemv saxpy spgemm
 
 both: $(BIN) $(BIN_GCC)
 
-$(BIN): $(SRC)
+$(BIN): $(SRC) $(CUSPARSELT_DEPS)
 	@mkdir -p bin
 	$(NVCC) $(NVCC_FLAGS) $(NVCC_LDFLAGS) -o $@ $(SRC) $(NVCC_LDLIBS)
 	@echo "built $@"
+
+# Auto-download cuSPARSELt when on Singularity
+$(CUSPARSELT_DIR)/include/cusparseLt.h:
+	@mkdir -p third_party/cusparselt
+	@echo "Downloading cuSPARSELt to third_party/cusparselt..."
+	curl -sSL -o third_party/cusparselt/cusparselt.tar.xz https://developer.download.nvidia.com/compute/cusparselt/redist/libcusparse_lt/linux-x86_64/libcusparse_lt-linux-x86_64-0.8.1.1_cuda12-archive.tar.xz
+	tar -xf third_party/cusparselt/cusparselt.tar.xz -C third_party/cusparselt/
 
 bench_gcc: $(BIN_GCC)
 $(BIN_GCC): $(SRC_GCC) $(HDR_GCC)
@@ -141,6 +158,18 @@ run_spgemm: $(SPGEMM_BIN)
 
 sweep_spgemm: $(SPGEMM_BIN)
 	./scripts/run_sweep_spgemm.sh
+
+# ── Python Environment and Plotting ──────────────────────────────────────────
+venv: requirements.txt
+	@if [ ! -d ".venv" ]; then uv venv .venv; fi
+	uv pip install --python .venv/bin/python -r requirements.txt
+
+plots: venv
+	.venv/bin/python results/generate_plots.py
+	.venv/bin/python results/generate_gemv_plots.py
+	.venv/bin/python results/generate_saxpy_plots.py
+	.venv/bin/python results/generate_spgemm_plots.py
+
 
 clean:
 	rm -rf bin

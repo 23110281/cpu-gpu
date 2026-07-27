@@ -977,7 +977,17 @@ int main(int argc, char **argv) {
     if (c.nvml_on && nvmlInit_v2()==NVML_SUCCESS) nvml_ready=1;
     else if (c.nvml_on) fprintf(stderr,"warning: nvmlInit failed; telemetry off\n");
 
-    char host[128]; gethostname(host,sizeof host);
+    char host[128] = "Unknown";
+    struct cudaDeviceProp prop;
+    if (cudaGetDeviceProperties(&prop, 0) == cudaSuccess) {
+        int i = 0;
+        for (; prop.name[i] && i < 127; i++) {
+            host[i] = (prop.name[i] == ' ') ? '_' : prop.name[i];
+        }
+        host[i] = '\0';
+    } else {
+        gethostname(host, sizeof(host));
+    }
     int cudart=0; cudaRuntimeGetVersion(&cudart);
 
     FILE *csv=NULL; int new_file=1;

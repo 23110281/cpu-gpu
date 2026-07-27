@@ -1,10 +1,14 @@
+import os
+import gpu_specs
+import glob
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import os
+import gpu_specs
 import matplotlib.ticker as ticker
-
+import squarify
 # Professional aesthetics
 def set_style():
     sns.set_theme(style="whitegrid", context="paper")
@@ -242,11 +246,10 @@ def plot_timing_distribution(df, out_dir, suffix=''):
                     ax.legend(loc='upper left', bbox_to_anchor=(1.0, 1.15), ncol=1)
                     
         plt.tight_layout(rect=[0, 0, 1, 0.95])
-        # plt.savefig(os.path.join(out_dir, f'fig4_time_distribution_{mode}{suffix}.pdf'), bbox_inches='tight')
         plt.savefig(os.path.join(out_dir, f'fig4_time_distribution_{mode}{suffix}.png'), dpi=300, bbox_inches='tight')
         plt.close()
 
-def plot_bandwidth(df, out_dir, suffix=''):
+def plot_bandwidth(df, out_dir, spec, suffix=''):
     """Plot E: Bandwidth Scaling"""
     modes = df['mode'].unique()
     
@@ -273,7 +276,7 @@ def plot_bandwidth(df, out_dir, suffix=''):
                 ax.plot(g_df['M'], g_df['d2h_gbps'], linestyle='--', marker='v', color=color, 
                         label=f'{gpus} GPUs (D2H)' if j==0 else "")
                 
-            ax.axhline(y=24, color='black', linestyle=':', alpha=0.5, label='PCIe Gen4 (~24 GB/s)' if j==0 else "")
+                ax.axhline(y=spec["pcie_bandwidth_gbps"] * gpus, color=color, linestyle=':', alpha=0.5, label=f"PCIe Peak ({gpus}x)" if j==0 else "")
             
             ax.set_xscale('log', base=2)
             ax.set_xticks(sorted(sub['M'].unique()))
@@ -291,72 +294,88 @@ def plot_bandwidth(df, out_dir, suffix=''):
         plt.savefig(os.path.join(out_dir, f'fig5_bandwidth_{mode}{suffix}.png'), dpi=300, bbox_inches='tight')
         plt.close()
 
+def plot_global_treemap(df, out_dir, suffix=''):
+    """Plot: Global Hierarchical Treemap for Total Execution Time"""
+    if df.empty or 'squarify' not in globals():
+        return
+        
+    modes = df['mode'].unique()
+    for mode in modes:
+        mode_df = df[df['mode'] == mode]
+        if mode_df.empty: continue
+        
+        group = mode_df.groupby(['precision', 'M'])['wall_ms'].sum().reset_index()
+        group = group[group['wall_ms'] > 0].sort_values('wall_ms', ascending=False)
+        
+        if group.empty: continue
+        
+        total_ms = group['wall_ms'].sum()
+        
+        # Combine items that are less than 0.5% into "Other" to prevent empty rendering artifacts in squarify
+        threshold = total_ms * 0.005
+        large = group[group['wall_ms'] >= threshold].copy()
+        small = group[group['wall_ms'] < threshold]
+        
+        if not small.empty:
+            other_ms = small['wall_ms'].sum()
+            other_row = pd.DataFrame([{'precision': 'Other', 'M': 'Various', 'wall_ms': other_ms}])
+            large = pd.concat([large, other_row], ignore_index=True)
+            
+            
+        group = large.sort_values(by=['precision', 'wall_ms'], ascending=[True, False])
+        group['pct'] = group['wall_ms'] / total_ms * 100
+        
+        labels = group.apply(lambda row: f"{row['precision'].upper()}{' S='+str(row['M']) if row['M'] != 'Various' else ''}\n{row['pct']:.1f}% ({row['wall_ms']/1000:.1f}s)", axis=1)
+        sizes = group['wall_ms']
+        
+        palette = sns.color_palette("Set2", len(group['precision'].unique()))
+        color_map = {prec: palette[i] for i, prec in enumerate(group['precision'].unique())}
+        colors = [color_map[prec] for prec in group['precision']]
+        
+        fig, ax = plt.subplots(figsize=(12, 8))
+        squarify.plot(sizes=sizes, label=labels, color=colors, alpha=0.8, ax=ax)
+        
+        ax.set_title(f"Total Sweep Execution Time Breakdown ({mode.capitalize()}) - Total: {total_ms/1000/60:.1f} min", fontsize=16)
+        plt.axis('off')
+        
+        plt.tight_layout()
+        plt.savefig(os.path.join(out_dir, f'fig7_global_treemap_{mode}{suffix}.png'), dpi=300, bbox_inches='tight')
+        plt.close()
+
 def main():
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    
-    csv_files = [f for f in os.listdir(base_dir)
-                 if f.endswith('.csv') and 'sweep' in f and 'gemv' not in f]
+    csv_pattern = os.path.join(base_dir, 'data', '*', 'sweep_20*.csv')
+    csv_files = glob.glob(csv_pattern)
     if not csv_files:
-        print("No CSV files found.")
         return
-
-    csv_files.sort(reverse=True)
-    csv_file = os.path.join(base_dir, csv_files[0])
-    out_dir = os.path.join(base_dir, 'plots', 'gemm')
-    
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
         
-    print(f"Loading data from {csv_file}...")
-    df = load_data(csv_file)
-    
     set_style()
-    
-    print("Generating Plot 1a: Heatmap of Effective TFLOPS...")
-    plot_heatmap(df, out_dir, 'eff_tflops', 'Effective TFLOPS', 'fig1a_eff_tflops_heatmap')
-    
-    print("Generating Plot 1b: Heatmap of Absolute TFLOPS...")
-    plot_heatmap(df, out_dir, 'agg_tflops', 'Absolute/Compute TFLOPS', 'fig1b_abs_tflops_heatmap')
-    
-    print("Generating Plot 2: Compute vs Effective Perf...")
-    plot_compute_vs_effective(df, out_dir)
-    
-    print("Generating Plot 3: Power and Utilization...")
-    plot_power_and_utilization(df, out_dir)
-    
-    print("Generating Plot 4: Timing Distribution...")
-    plot_timing_distribution(df, out_dir)
-    
-    print("Generating Plot 5: Bandwidth...")
-    plot_bandwidth(df, out_dir)
-
-    print(f"All dense plots generated in {out_dir}")
-
-    sparse_df = load_sparse_data(csv_file)
-    if sparse_df.empty:
-        print("No sparse (engine=sparse) rows in this CSV -- skipping sparse plots.")
-    else:
-        print(f"Loaded {len(sparse_df)} sparse rows -- generating sparse plots...")
-
-        print("Generating Plot 1a (sparse): Heatmap of Effective TFLOPS...")
-        plot_heatmap(sparse_df, out_dir, 'eff_tflops', 'Sparse Effective TFLOPS', 'fig1a_eff_tflops_heatmap_sparse')
-
-        print("Generating Plot 1b (sparse): Heatmap of Absolute TFLOPS...")
-        plot_heatmap(sparse_df, out_dir, 'agg_tflops', 'Sparse Absolute/Compute TFLOPS', 'fig1b_abs_tflops_heatmap_sparse')
-
-        print("Generating Plot 2 (sparse): Compute vs Effective Perf...")
-        plot_compute_vs_effective(sparse_df, out_dir, suffix='_sparse')
-
-        print("Generating Plot 3 (sparse): Power and Utilization...")
-        plot_power_and_utilization(sparse_df, out_dir, suffix='_sparse')
-
-        print("Generating Plot 4 (sparse): Timing Distribution...")
-        plot_timing_distribution(sparse_df, out_dir, suffix='_sparse')
-
-        print("Generating Plot 5 (sparse): Bandwidth...")
-        plot_bandwidth(sparse_df, out_dir, suffix='_sparse')
-
-        print(f"All sparse plots generated in {out_dir}")
+    for csv_file in csv_files:
+        gpu_name = os.path.basename(os.path.dirname(csv_file))
+        out_dir = os.path.join(base_dir, 'plots', gpu_name, 'gemm')
+        os.makedirs(out_dir, exist_ok=True)
+        spec = gpu_specs.get_gpu_spec(gpu_name)
+        
+        print(f"Loading data from {csv_file}...")
+        df = load_data(csv_file)
+        plot_heatmap(df, out_dir, 'eff_tflops', 'Effective TFLOPS', 'fig1a_eff_tflops_heatmap')
+        plot_heatmap(df, out_dir, 'agg_tflops', 'Absolute/Compute TFLOPS', 'fig1b_abs_tflops_heatmap')
+        plot_compute_vs_effective(df, out_dir)
+        plot_power_and_utilization(df, out_dir)
+        plot_timing_distribution(df, out_dir)
+        plot_bandwidth(df, out_dir, spec)
+        plot_global_treemap(df, out_dir)
+        print(f"All dense plots generated in {out_dir}")
+        sparse_df = load_sparse_data(csv_file)
+        if not sparse_df.empty:
+            plot_heatmap(sparse_df, out_dir, 'eff_tflops', 'Sparse Effective TFLOPS', 'fig1a_eff_tflops_heatmap_sparse')
+            plot_heatmap(sparse_df, out_dir, 'agg_tflops', 'Sparse Absolute/Compute TFLOPS', 'fig1b_abs_tflops_heatmap_sparse')
+            plot_compute_vs_effective(sparse_df, out_dir, suffix='_sparse')
+            plot_power_and_utilization(sparse_df, out_dir, suffix='_sparse')
+            plot_timing_distribution(sparse_df, out_dir, suffix='_sparse')
+            plot_bandwidth(sparse_df, out_dir, spec, suffix='_sparse')
+            plot_global_treemap(sparse_df, out_dir, suffix='_sparse')
+            print(f"All sparse plots generated in {out_dir}")
 
 if __name__ == '__main__':
     main()

@@ -1,8 +1,12 @@
+import os
+import gpu_specs
+import glob
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import os
+import gpu_specs
 import matplotlib.ticker as ticker
 
 def set_style():
@@ -87,7 +91,7 @@ def plot_tflops_heatmap(df, out_dir, filename_prefix):
     plt.savefig(os.path.join(out_dir, f'{filename_prefix}.png'), dpi=300, bbox_inches='tight')
     plt.close()
 
-def plot_gbps_vs_size(df, out_dir, suffix=''):
+def plot_gbps_vs_size(df, out_dir, spec, suffix=''):
     """Line plot: achieved GB/s and % of peak vs matrix size, one line per gpu count."""
     if df.empty:
         return
@@ -108,8 +112,8 @@ def plot_gbps_vs_size(df, out_dir, suffix=''):
                 g_df = sub[sub['gpus'] == gpus].sort_values('S')
                 ax.plot(g_df['S'], g_df['agg_gbps'], marker='o', color=gpu_palette[k],
                         label=f'{gpus} GPUs' if j == 0 else "")
-            ax.axhline(y=1555, color='black', linestyle=':', alpha=0.5,
-                       label='A100-SXM4-40GB HBM peak (~1555 GB/s)' if j == 0 else "")
+            ax.axhline(y=spec["memory_bandwidth_gbps"], color='black', linestyle=':', alpha=0.5,
+                       label=f"{spec['name_label']} HBM peak (~{spec['memory_bandwidth_gbps']} GB/s)" if j == 0 else "")
             ax.set_xscale('log', base=2)
             ax.set_xticks(sorted(sub['S'].unique()))
             ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
@@ -161,38 +165,32 @@ def plot_power_util(df, out_dir, suffix=''):
 
 def main():
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    csv_files = [f for f in os.listdir(base_dir) if f.endswith('.csv') and 'sweep_gemv' in f]
+    csv_pattern = os.path.join(base_dir, 'data', '*', 'sweep_gemv*.csv')
+    csv_files = glob.glob(csv_pattern)
     if not csv_files:
-        print("No sweep_gemv CSV files found.")
         return
-    csv_files.sort(reverse=True)
-    csv_file = os.path.join(base_dir, csv_files[0])
-    out_dir = os.path.join(base_dir, 'plots', 'gemv')
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
-
+        
     set_style()
-    print(f"Loading dense GEMV data from {csv_file}...")
-    ddf = load_gemv_data(csv_file, engine="dense")
-    if ddf.empty:
-        print("No dense rows found.")
-    else:
-        plot_gbps_heatmap(ddf, out_dir, 'fig1_gbps_heatmap')
-        plot_gbps_vs_size(ddf, out_dir)
-        plot_power_util(ddf, out_dir)
-        plot_tflops_heatmap(ddf, out_dir, 'fig4_tflops_heatmap')
-        print(f"Dense GEMV plots written to {out_dir}")
-
-    print(f"Loading sparse SpMV data from {csv_file}...")
-    sdf = load_gemv_data(csv_file, engine="sparse")
-    if sdf.empty:
-        print("No sparse rows found -- skipping sparse plots.")
-    else:
-        plot_gbps_heatmap(sdf, out_dir, 'fig1_gbps_heatmap_sparse')
-        plot_gbps_vs_size(sdf, out_dir, suffix='_sparse')
-        plot_power_util(sdf, out_dir, suffix='_sparse')
-        plot_tflops_heatmap(sdf, out_dir, 'fig4_tflops_heatmap_sparse')
-        print(f"Sparse SpMV plots written to {out_dir}")
+    for csv_file in csv_files:
+        gpu_name = os.path.basename(os.path.dirname(csv_file))
+        out_dir = os.path.join(base_dir, 'plots', gpu_name, 'gemv')
+        os.makedirs(out_dir, exist_ok=True)
+        spec = gpu_specs.get_gpu_spec(gpu_name)
+        
+        print(f"Loading dense GEMV data from {csv_file}...")
+        ddf = load_gemv_data(csv_file, engine="dense")
+        if not ddf.empty:
+            plot_gbps_heatmap(ddf, out_dir, 'fig1_gbps_heatmap')
+            plot_gbps_vs_size(ddf, out_dir, spec)
+            plot_power_util(ddf, out_dir)
+            plot_tflops_heatmap(ddf, out_dir, 'fig4_tflops_heatmap')
+        print(f"Loading sparse SpMV data from {csv_file}...")
+        sdf = load_gemv_data(csv_file, engine="sparse")
+        if not sdf.empty:
+            plot_gbps_heatmap(sdf, out_dir, 'fig1_gbps_heatmap_sparse')
+            plot_gbps_vs_size(sdf, out_dir, spec, suffix='_sparse')
+            plot_power_util(sdf, out_dir, suffix='_sparse')
+            plot_tflops_heatmap(sdf, out_dir, 'fig4_tflops_heatmap_sparse')
 
 if __name__ == '__main__':
     main()

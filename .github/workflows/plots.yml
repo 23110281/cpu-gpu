@@ -1,0 +1,38 @@
+name: Regenerate plots
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'results/data/**.csv'
+      - 'results/generate_plots.py'
+      - 'results/generate_gemv_plots.py'
+      - 'results/generate_saxpy_plots.py'
+      - 'results/generate_spgemm_plots.py'
+      - 'results/gpu_specs.py'
+      - 'requirements.txt'
+  workflow_dispatch: {}
+
+jobs:
+  plots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Generate plots
+        run: make plots
+
+      - name: Publish to plots branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: results/plots
+          publish_branch: plots
+          force_orphan: true

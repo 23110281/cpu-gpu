@@ -174,3 +174,4 @@ plots: venv
 
 clean:
 	rm -rf bin
+# Trigger CI

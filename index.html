@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CPU-GPU Benchmarks - Plots Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --surface: #1e293b;
+            --surface-hover: #334155;
+            --primary: #3b82f6;
+            --primary-glow: rgba(59, 130, 246, 0.5);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+        }
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            min-height: 100vh;
+        }
+        /* Sidebar */
+        aside {
+            width: 280px;
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border-right: 1px solid var(--border);
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin: 0;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .nav-section {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .nav-title {
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .nav-item {
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            color: var(--text-muted);
+            border: 1px solid transparent;
+        }
+        .nav-item:hover {
+            background: var(--surface-hover);
+            color: var(--text-main);
+        }
+        .nav-item.active {
+            background: var(--surface);
+            color: var(--primary);
+            border-color: var(--primary);
+            box-shadow: 0 0 15px var(--primary-glow);
+        }
+        /* Main Content */
+        main {
+            flex: 1;
+            padding: 2rem 3rem;
+            overflow-y: auto;
+        }
+        .header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .header h2 {
+            font-size: 2rem;
+            margin: 0 0 0.5rem 0;
+        }
+        .header p {
+            color: var(--text-muted);
+            margin: 0;
+        }
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 2rem;
+        }
+        .card {
+            background: var(--surface);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            border-color: var(--text-muted);
+        }
+        .card-img {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+            border-bottom: 1px solid var(--border);
+            background: #000;
+            cursor: pointer;
+        }
+        .card-title {
+            padding: 1rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-align: center;
+            color: var(--text-main);
+            word-break: break-all;
+        }
+        /* Modal */
+        #modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        #modal.visible {
+            display: flex;
+            opacity: 1;
+        }
+        #modal img {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 8px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+        }
+    </style>
+</head>
+<body>
+    <aside>
+        <h1>Benchmarks</h1>
+        
+        <div class="nav-section" id="gpu-nav">
+            <div class="nav-title">Hardware (GPU)</div>
+            <!-- Populated by JS -->
+        </div>
+
+        <div class="nav-section" id="bench-nav">
+            <div class="nav-title">Benchmark Type</div>
+            <!-- Populated by JS -->
+        </div>
+    </aside>
+
+    <main>
+        <div class="header">
+            <h2 id="view-title">Select a GPU and Benchmark</h2>
+            <p id="view-subtitle">Browse generated performance plots</p>
+        </div>
+        
+        <div class="gallery" id="gallery">
+            <!-- Populated by JS -->
+        </div>
+    </main>
+
+    <div id="modal" onclick="closeModal()">
+        <img id="modal-img" src="" alt="Full size plot">
+    </div>
+
+    <script>
+        const tree = {"NVIDIA_A100": {"gemm": ["fig1a_eff_tflops_heatmap.png", "fig1a_eff_tflops_heatmap_sparse.png", "fig1b_abs_tflops_heatmap.png", "fig1b_abs_tflops_heatmap_sparse.png", "fig2_compute_vs_effective_replicas.png", "fig2_compute_vs_effective_split.png", "fig2_compute_vs_effective_split_sparse.png", "fig3_power_util_eff_replicas.png", "fig3_power_util_eff_split.png", "fig3_power_util_eff_split_sparse.png", "fig4_time_distribution_replicas.png", "fig4_time_distribution_split.png", "fig4_time_distribution_split_sparse.png", "fig5_bandwidth_replicas.png", "fig5_bandwidth_split.png", "fig5_bandwidth_split_sparse.png", "fig7_global_treemap_replicas.png", "fig7_global_treemap_split.png", "fig7_global_treemap_split_sparse.png"], "gemv": ["fig1_gbps_heatmap.png", "fig1_gbps_heatmap_sparse.png", "fig2_gbps_vs_size_replicas.png", "fig2_gbps_vs_size_split.png", "fig2_gbps_vs_size_split_sparse.png", "fig3_power_util_replicas.png", "fig3_power_util_split.png", "fig3_power_util_split_sparse.png", "fig4_tflops_heatmap.png", "fig4_tflops_heatmap_sparse.png"]}, "NVIDIA_A30": {"gemm": ["fig1a_eff_tflops_heatmap.png", "fig1b_abs_tflops_heatmap.png", "fig2_compute_vs_effective_split.png", "fig3_power_util_eff_split.png", "fig4_time_distribution_split.png", "fig5_bandwidth_split.png", "fig7_global_treemap_split.png"], "gemv": ["fig1_gbps_heatmap.png", "fig1_gbps_heatmap_sparse.png", "fig2_gbps_vs_size_replicas.png", "fig2_gbps_vs_size_split.png", "fig2_gbps_vs_size_split_sparse.png", "fig3_power_util_replicas.png", "fig3_power_util_split.png", "fig3_power_util_split_sparse.png", "fig4_tflops_heatmap.png", "fig4_tflops_heatmap_sparse.png"], "saxpy": ["fig1_gbps_heatmap.png", "fig2_gbps_vs_size_replicas.png", "fig2_gbps_vs_size_split.png", "fig3_power_util_replicas.png", "fig3_power_util_split.png", "fig4_pcie_bandwidth_replicas.png", "fig4_pcie_bandwidth_split.png", "fig5_time_distribution_replicas.png", "fig5_time_distribution_split.png"], "spgemm": ["fig0_status_heatmap_replicas.png", "fig0_status_heatmap_split.png", "fig0b_density_frontier_replicas.png", "fig0b_density_frontier_split.png", "fig1_tflops_vs_density_replicas.png", "fig1_tflops_vs_density_split.png", "fig2_tflops_vs_size_replicas.png", "fig2_tflops_vs_size_split.png", "fig3_time_distribution_replicas.png", "fig3_time_distribution_split.png", "fig4_comp_eff_vs_density_replicas.png", "fig4_comp_eff_vs_density_split.png", "fig5_gbps_vs_size_replicas.png", "fig5_gbps_vs_size_split.png", "fig6_power_util_replicas.png", "fig6_power_util_split.png"]}, "NVIDIA_L40S": {"gemm": ["fig1a_eff_tflops_heatmap.png", "fig1a_eff_tflops_heatmap_sparse.png", "fig1b_abs_tflops_heatmap.png", "fig1b_abs_tflops_heatmap_sparse.png", "fig2_compute_vs_effective_replicas.png", "fig2_compute_vs_effective_split.png", "fig2_compute_vs_effective_split_sparse.png", "fig3_power_util_eff_replicas.png", "fig3_power_util_eff_split.png", "fig3_power_util_eff_split_sparse.png", "fig4_time_distribution_replicas.png", "fig4_time_distribution_split.png", "fig4_time_distribution_split_sparse.png", "fig5_bandwidth_replicas.png", "fig5_bandwidth_split.png", "fig5_bandwidth_split_sparse.png", "fig7_global_treemap_replicas.png", "fig7_global_treemap_split.png", "fig7_global_treemap_split_sparse.png"], "gemv": ["fig1_gbps_heatmap.png", "fig1_gbps_heatmap_sparse.png", "fig2_gbps_vs_size_replicas.png", "fig2_gbps_vs_size_split.png", "fig2_gbps_vs_size_split_sparse.png", "fig3_power_util_replicas.png", "fig3_power_util_split.png", "fig3_power_util_split_sparse.png", "fig4_tflops_heatmap.png", "fig4_tflops_heatmap_sparse.png"], "saxpy": ["fig1_gbps_heatmap.png", "fig2_gbps_vs_size_replicas.png", "fig2_gbps_vs_size_split.png", "fig3_power_util_replicas.png", "fig3_power_util_split.png", "fig4_pcie_bandwidth_replicas.png", "fig4_pcie_bandwidth_split.png", "fig5_time_distribution_replicas.png", "fig5_time_distribution_split.png"], "spgemm": ["fig0_status_heatmap_replicas.png", "fig0_status_heatmap_split.png", "fig0b_density_frontier_replicas.png", "fig0b_density_frontier_split.png", "fig1_tflops_vs_density_replicas.png", "fig1_tflops_vs_density_split.png", "fig2_tflops_vs_size_replicas.png", "fig2_tflops_vs_size_split.png", "fig3_time_distribution_replicas.png", "fig3_time_distribution_split.png", "fig4_comp_eff_vs_density_replicas.png", "fig4_comp_eff_vs_density_split.png", "fig5_gbps_vs_size_replicas.png", "fig5_gbps_vs_size_split.png", "fig6_power_util_replicas.png", "fig6_power_util_split.png"]}, "Tesla_P100-PCIE-12GB": {"gemm": ["fig1a_eff_tflops_heatmap.png", "fig1b_abs_tflops_heatmap.png", "fig2_compute_vs_effective_replicas.png", "fig2_compute_vs_effective_split.png", "fig3_power_util_eff_replicas.png", "fig3_power_util_eff_split.png", "fig4_time_distribution_replicas.png", "fig4_time_distribution_split.png", "fig5_bandwidth_replicas.png", "fig5_bandwidth_split.png", "fig7_global_treemap_replicas.png", "fig7_global_treemap_split.png"], "gemv": ["fig1_gbps_heatmap.png", "fig1_gbps_heatmap_sparse.png", "fig2_gbps_vs_size_replicas.png", "fig2_gbps_vs_size_split.png", "fig2_gbps_vs_size_split_sparse.png", "fig3_power_util_replicas.png", "fig3_power_util_split.png", "fig3_power_util_split_sparse.png", "fig4_tflops_heatmap.png", "fig4_tflops_heatmap_sparse.png"], "saxpy": ["fig1_gbps_heatmap.png", "fig2_gbps_vs_size_replicas.png", "fig2_gbps_vs_size_split.png", "fig3_power_util_replicas.png", "fig3_power_util_split.png", "fig4_pcie_bandwidth_replicas.png", "fig4_pcie_bandwidth_split.png", "fig5_time_distribution_replicas.png", "fig5_time_distribution_split.png"], "spgemm": ["fig0_status_heatmap_replicas.png", "fig0_status_heatmap_split.png", "fig0b_density_frontier_replicas.png", "fig0b_density_frontier_split.png", "fig1_tflops_vs_density_replicas.png", "fig1_tflops_vs_density_split.png", "fig2_tflops_vs_size_replicas.png", "fig2_tflops_vs_size_split.png", "fig3_time_distribution_replicas.png", "fig3_time_distribution_split.png", "fig4_comp_eff_vs_density_replicas.png", "fig4_comp_eff_vs_density_split.png", "fig5_gbps_vs_size_replicas.png", "fig5_gbps_vs_size_split.png", "fig6_power_util_replicas.png", "fig6_power_util_split.png"]}, "Tesla_V100-SXM2-16GB": {"gemm": ["fig1a_eff_tflops_heatmap.png", "fig1b_abs_tflops_heatmap.png", "fig2_compute_vs_effective_replicas.png", "fig2_compute_vs_effective_split.png", "fig3_power_util_eff_replicas.png", "fig3_power_util_eff_split.png", "fig4_time_distribution_replicas.png", "fig4_time_distribution_split.png", "fig5_bandwidth_replicas.png", "fig5_bandwidth_split.png", "fig7_global_treemap_replicas.png", "fig7_global_treemap_split.png"], "gemv": ["fig1_gbps_heatmap.png", "fig1_gbps_heatmap_sparse.png", "fig2_gbps_vs_size_replicas.png", "fig2_gbps_vs_size_split.png", "fig2_gbps_vs_size_split_sparse.png", "fig3_power_util_replicas.png", "fig3_power_util_split.png", "fig3_power_util_split_sparse.png", "fig4_tflops_heatmap.png", "fig4_tflops_heatmap_sparse.png"], "saxpy": ["fig1_gbps_heatmap.png", "fig2_gbps_vs_size_replicas.png", "fig2_gbps_vs_size_split.png", "fig3_power_util_replicas.png", "fig3_power_util_split.png", "fig4_pcie_bandwidth_replicas.png", "fig4_pcie_bandwidth_split.png", "fig5_time_distribution_replicas.png", "fig5_time_distribution_split.png"], "spgemm": ["fig0_status_heatmap_replicas.png", "fig0_status_heatmap_split.png", "fig0b_density_frontier_replicas.png", "fig0b_density_frontier_split.png", "fig1_tflops_vs_density_replicas.png", "fig1_tflops_vs_density_split.png", "fig2_tflops_vs_size_replicas.png", "fig2_tflops_vs_size_split.png", "fig3_time_distribution_replicas.png", "fig3_time_distribution_split.png", "fig4_comp_eff_vs_density_replicas.png", "fig4_comp_eff_vs_density_split.png", "fig5_gbps_vs_size_replicas.png", "fig5_gbps_vs_size_split.png", "fig6_power_util_replicas.png", "fig6_power_util_split.png"]}};
+        let currentGpu = Object.keys(tree)[0];
+        let currentBench = 'gemm';
+
+        function renderNav() {
+            const gpuNav = document.getElementById('gpu-nav');
+            gpuNav.innerHTML = '<div class="nav-title">Hardware (GPU)</div>';
+            Object.keys(tree).forEach(gpu => {
+                const el = document.createElement('div');
+                el.className = 'nav-item' + (gpu === currentGpu ? ' active' : '');
+                el.innerText = gpu.replace(/_/g, ' ');
+                el.onclick = () => { currentGpu = gpu; updateView(); };
+                gpuNav.appendChild(el);
+            });
+
+            const benchNav = document.getElementById('bench-nav');
+            benchNav.innerHTML = '<div class="nav-title">Benchmark Type</div>';
+            const benches = ['gemm', 'gemv', 'saxpy', 'spgemm'];
+            benches.forEach(bench => {
+                const el = document.createElement('div');
+                el.className = 'nav-item' + (bench === currentBench ? ' active' : '');
+                el.innerText = bench.toUpperCase();
+                el.onclick = () => { currentBench = bench; updateView(); };
+                benchNav.appendChild(el);
+            });
+        }
+
+        function updateView() {
+            renderNav();
+            const gallery = document.getElementById('gallery');
+            const title = document.getElementById('view-title');
+            gallery.innerHTML = '';
+            
+            title.innerText = currentGpu.replace(/_/g, ' ') + ' - ' + currentBench.toUpperCase();
+
+            const plots = tree[currentGpu]?.[currentBench] || [];
+            
+            if (plots.length === 0) {
+                gallery.innerHTML = '<p style="color: var(--text-muted);">No plots available for this selection.</p>';
+                return;
+            }
+
+            plots.forEach(plot => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                
+                const imgPath = `${currentGpu}/${currentBench}/${plot}`;
+                
+                card.innerHTML = `
+                    <img class="card-img" src="${imgPath}" alt="${plot}" loading="lazy" onclick="openModal('${imgPath}')">
+                    <div class="card-title">${plot.replace('.png', '').replace(/_/g, ' ')}</div>
+                `;
+                gallery.appendChild(card);
+            });
+        }
+
+        function openModal(src) {
+            const modal = document.getElementById('modal');
+            const img = document.getElementById('modal-img');
+            img.src = src;
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('visible'), 10);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('modal');
+            modal.classList.remove('visible');
+            setTimeout(() => modal.style.display = 'none', 300);
+        }
+
+        // Init
+        updateView();
+    </script>
+</body>
+</html>

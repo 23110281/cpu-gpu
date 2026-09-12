@@ -9,6 +9,9 @@ on:
       - 'results/generate_gemv_plots.py'
       - 'results/generate_saxpy_plots.py'
       - 'results/generate_spgemm_plots.py'
+      - 'results/generate_index.py'
+      - 'results/index.html'
+      - 'Makefile'
       - 'results/gpu_specs.py'
       - 'requirements.txt'
   workflow_dispatch: {}

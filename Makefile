@@ -169,6 +169,7 @@ plots: venv
 	SOURCE_DATE_EPOCH=0 .venv/bin/python results/generate_gemv_plots.py
 	SOURCE_DATE_EPOCH=0 .venv/bin/python results/generate_saxpy_plots.py
 	SOURCE_DATE_EPOCH=0 .venv/bin/python results/generate_spgemm_plots.py
+	.venv/bin/python results/generate_index.py
 
 
 clean:

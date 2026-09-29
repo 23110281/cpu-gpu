@@ -24,23 +24,23 @@ if plots_dir.exists():
 
 gpu_limits = {
     "NVIDIA_A100": {
-        "compute": {"sms": 108, "fp32_cores_per_sm": 64, "fp64_cores_per_sm": 32, "boost_mhz": 1410},
+        "compute": {"sms": 108, "fp32_cores_per_sm": 64, "fp64_cores_per_sm": 32, "tc_per_sm": 4, "tc_flops_per_clock": 512, "boost_mhz": 1410},
         "memory": {"bus_width_bits": 5120, "speed_gbps": 2.43}
     },
     "NVIDIA_L40S": {
-        "compute": {"sms": 142, "fp32_cores_per_sm": 128, "fp64_cores_per_sm": 2, "boost_mhz": 2520},
+        "compute": {"sms": 142, "fp32_cores_per_sm": 128, "fp64_cores_per_sm": 2, "tc_per_sm": 4, "tc_flops_per_clock": 512, "boost_mhz": 2520},
         "memory": {"bus_width_bits": 384, "speed_gbps": 18.0}
     },
     "NVIDIA_A30": {
-        "compute": {"sms": 56, "fp32_cores_per_sm": 64, "fp64_cores_per_sm": 32, "boost_mhz": 1440},
+        "compute": {"sms": 56, "fp32_cores_per_sm": 64, "fp64_cores_per_sm": 32, "tc_per_sm": 4, "tc_flops_per_clock": 512, "boost_mhz": 1440},
         "memory": {"bus_width_bits": 3072, "speed_gbps": 2.43}
     },
     "Tesla_V100-SXM2-16GB": {
-        "compute": {"sms": 80, "fp32_cores_per_sm": 64, "fp64_cores_per_sm": 32, "boost_mhz": 1530},
+        "compute": {"sms": 80, "fp32_cores_per_sm": 64, "fp64_cores_per_sm": 32, "tc_per_sm": 8, "tc_flops_per_clock": 128, "boost_mhz": 1530},
         "memory": {"bus_width_bits": 4096, "speed_gbps": 1.75}
     },
     "Tesla_P100-PCIE-12GB": {
-        "compute": {"sms": 56, "fp32_cores_per_sm": 64, "fp64_cores_per_sm": 32, "boost_mhz": 1300},
+        "compute": {"sms": 56, "fp32_cores_per_sm": 64, "fp64_cores_per_sm": 32, "tc_per_sm": 0, "tc_flops_per_clock": 0, "boost_mhz": 1300},
         "memory": {"bus_width_bits": 3072, "speed_gbps": 1.43}
     }
 }

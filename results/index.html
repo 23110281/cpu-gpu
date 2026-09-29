@@ -230,13 +230,20 @@
                 const fp64_cores = c.sms * c.fp64_cores_per_sm;
                 const fp32_tflops = (fp32_cores * 2 * c.boost_mhz / 1000000).toFixed(1);
                 const fp64_tflops = (fp64_cores * 2 * c.boost_mhz / 1000000).toFixed(1);
+                const tc_tflops = c.tc_per_sm ? ((c.sms * c.tc_per_sm * c.tc_flops_per_clock * c.boost_mhz) / 1000000).toFixed(1) : ((fp32_cores * 4 * c.boost_mhz) / 1000000).toFixed(1);
+                const tc_name = c.tc_per_sm ? 'Tensor Core' : 'FP16';
+                const tc_formula = c.tc_per_sm ? `${c.sms} SMs &times; ${c.tc_per_sm} TC/SM &times; ${c.tc_flops_per_clock} Ops/Clk &times; ${c.boost_mhz} MHz / 10^6` : `${c.sms} SMs &times; ${c.fp32_cores_per_sm} cores &times; 4 (2x FP32 FMA) &times; ${c.boost_mhz} MHz / 10^6`;
+                
                 const mem_bw = Math.round((m.bus_width_bits * m.speed_gbps) / 8);
                 
-                let html = `<strong>Theoretical Hardware Limits (Manually Derived)</strong><br><br>`;
+                let html = `<strong>Theoretical Hardware Limits (Manually Derived for a SINGLE GPU)</strong><br>`;
+                html += `<span style="color: #fbbf24; font-size: 0.8rem;">*Note: For multi-GPU plots (Replicas/Split), multiply these limits by the number of active GPUs.</span><br><br>`;
+                
                 if (currentBench === 'gemm') {
-                    html += `<span style="color: #94a3b8;">// Compute Peak Formula: SMs * Cores_per_SM * 2 (FMA) * Boost_Clock_MHz / 1,000,000 = TFLOPS</span><br>`;
-                    html += `<strong>FP32:</strong> ${c.sms} SMs &times; ${c.fp32_cores_per_sm} cores &times; 2 &times; ${c.boost_mhz} MHz / 10^6 = <strong><span style="color: #60a5fa;">${fp32_tflops} TFLOPS</span></strong><br>`;
-                    html += `<strong>FP64:</strong> ${c.sms} SMs &times; ${c.fp64_cores_per_sm} cores &times; 2 &times; ${c.boost_mhz} MHz / 10^6 = <strong><span style="color: #60a5fa;">${fp64_tflops} TFLOPS</span></strong>`;
+                    html += `<span style="color: #94a3b8;">// Compute Peak Formula: SMs * Cores * Ops/Clk * Boost_Clock_MHz / 1,000,000 = TFLOPS</span><br>`;
+                    html += `<strong>BF16/FP16 (${tc_name}):</strong> ${tc_formula} = <strong><span style="color: #34d399;">${tc_tflops} TFLOPS</span></strong><br>`;
+                    html += `<strong>FP32:</strong> ${c.sms} SMs &times; ${c.fp32_cores_per_sm} cores &times; 2 (FMA) &times; ${c.boost_mhz} MHz / 10^6 = <strong><span style="color: #60a5fa;">${fp32_tflops} TFLOPS</span></strong><br>`;
+                    html += `<strong>FP64:</strong> ${c.sms} SMs &times; ${c.fp64_cores_per_sm} cores &times; 2 (FMA) &times; ${c.boost_mhz} MHz / 10^6 = <strong><span style="color: #60a5fa;">${fp64_tflops} TFLOPS</span></strong>`;
                 } else if (currentBench === 'gemv' || currentBench === 'saxpy') {
                     html += `<span style="color: #94a3b8;">// Memory Bandwidth Formula: Bus_Width_bits * Effective_Speed_Gbps / 8 = GB/s</span><br>`;
                     html += `<strong>HBM/GDDR:</strong> ${m.bus_width_bits}-bit &times; ${m.speed_gbps.toFixed(2)} Gbps / 8 = <strong><span style="color: #a78bfa;">${mem_bw} GB/s</span></strong>`;

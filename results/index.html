@@ -236,9 +236,11 @@
                 
                 const mem_bw = Math.round((m.bus_width_bits * m.speed_gbps) / 8);
                 
-                let html = `<strong>Theoretical Hardware Limits (Manually Derived for a SINGLE GPU)</strong><br>`;
-                html += `<span style="color: #fbbf24; font-size: 0.8rem;">*Note: For multi-GPU plots (Replicas/Split), multiply these limits by the number of active GPUs.</span><br><br>`;
+                let html = `<div style="display: flex; gap: 2rem;">`;
                 
+                // 1x GPU Column
+                html += `<div>`;
+                html += `<strong>Theoretical Limits (1x GPU)</strong><br><br>`;
                 if (currentBench === 'gemm') {
                     html += `<span style="color: #94a3b8;">// Compute Peak Formula: SMs * Cores * Ops/Clk * Boost_Clock_MHz / 1,000,000 = TFLOPS</span><br>`;
                     html += `<strong>BF16/FP16 (${tc_name}):</strong> ${tc_formula} = <strong><span style="color: #34d399;">${tc_tflops} TFLOPS</span></strong><br>`;
@@ -249,11 +251,33 @@
                     html += `<strong>HBM/GDDR:</strong> ${m.bus_width_bits}-bit &times; ${m.speed_gbps.toFixed(2)} Gbps / 8 = <strong><span style="color: #a78bfa;">${mem_bw} GB/s</span></strong>`;
                 } else {
                     // spgemm (both)
-                    html += `<span style="color: #94a3b8;">// Compute Peak Formula: SMs * Cores_per_SM * 2 (FMA) * Boost_Clock_MHz / 1,000,000 = TFLOPS</span><br>`;
-                    html += `<strong>FP64:</strong> ${c.sms} SMs &times; ${c.fp64_cores_per_sm} cores &times; 2 &times; ${c.boost_mhz} MHz / 10^6 = <strong><span style="color: #60a5fa;">${fp64_tflops} TFLOPS</span></strong><br><br>`;
+                    html += `<span style="color: #94a3b8;">// Compute Peak Formula: SMs * Cores * Ops/Clk * Boost_Clock_MHz / 1,000,000 = TFLOPS</span><br>`;
+                    html += `<strong>FP64:</strong> ${c.sms} SMs &times; ${c.fp64_cores_per_sm} cores &times; 2 (FMA) &times; ${c.boost_mhz} MHz / 10^6 = <strong><span style="color: #60a5fa;">${fp64_tflops} TFLOPS</span></strong><br><br>`;
                     html += `<span style="color: #94a3b8;">// Memory Bandwidth Formula: Bus_Width_bits * Effective_Speed_Gbps / 8 = GB/s</span><br>`;
                     html += `<strong>HBM/GDDR:</strong> ${m.bus_width_bits}-bit &times; ${m.speed_gbps.toFixed(2)} Gbps / 8 = <strong><span style="color: #a78bfa;">${mem_bw} GB/s</span></strong>`;
                 }
+                html += `</div>`;
+                
+                // 4x GPU Column
+                html += `<div style="border-left: 1px solid var(--border); padding-left: 2rem;">`;
+                html += `<strong>Multi-GPU Limits (4x GPUs for Split/Replicas)</strong><br><br>`;
+                if (currentBench === 'gemm') {
+                    html += `<span style="color: #94a3b8;">// 1x GPU TFLOPS &times; 4 GPUs</span><br>`;
+                    html += `<strong>BF16/FP16 (${tc_name}):</strong> ${tc_tflops} &times; 4 = <strong><span style="color: #34d399;">${(tc_tflops * 4).toFixed(1)} TFLOPS</span></strong><br>`;
+                    html += `<strong>FP32:</strong> ${fp32_tflops} &times; 4 = <strong><span style="color: #60a5fa;">${(fp32_tflops * 4).toFixed(1)} TFLOPS</span></strong><br>`;
+                    html += `<strong>FP64:</strong> ${fp64_tflops} &times; 4 = <strong><span style="color: #60a5fa;">${(fp64_tflops * 4).toFixed(1)} TFLOPS</span></strong>`;
+                } else if (currentBench === 'gemv' || currentBench === 'saxpy') {
+                    html += `<span style="color: #94a3b8;">// 1x GPU GB/s &times; 4 GPUs</span><br>`;
+                    html += `<strong>HBM/GDDR:</strong> ${mem_bw} &times; 4 = <strong><span style="color: #a78bfa;">${mem_bw * 4} GB/s</span></strong>`;
+                } else {
+                    // spgemm
+                    html += `<span style="color: #94a3b8;">// 1x GPU TFLOPS &times; 4 GPUs</span><br>`;
+                    html += `<strong>FP64:</strong> ${fp64_tflops} &times; 4 = <strong><span style="color: #60a5fa;">${(fp64_tflops * 4).toFixed(1)} TFLOPS</span></strong><br><br>`;
+                    html += `<span style="color: #94a3b8;">// 1x GPU GB/s &times; 4 GPUs</span><br>`;
+                    html += `<strong>HBM/GDDR:</strong> ${mem_bw} &times; 4 = <strong><span style="color: #a78bfa;">${mem_bw * 4} GB/s</span></strong>`;
+                }
+                html += `</div>`;
+                html += `</div>`;
                 limitsPanel.innerHTML = html;
                 limitsPanel.style.display = 'block';
             } else {

@@ -14,6 +14,7 @@ on:
       - 'Makefile'
       - 'results/gpu_specs.py'
       - 'requirements.txt'
+      - '.github/workflows/plots.yml'
   workflow_dispatch: {}
 
 jobs:

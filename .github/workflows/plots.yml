@@ -24,6 +24,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Checkout existing plots
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          ref: plots
+          path: results/plots
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -33,6 +40,9 @@ jobs:
 
       - name: Generate Plots or UI
         run: |
+          # Remove .git from the checked-out plots folder to prevent deployment conflicts
+          rm -rf results/plots/.git
+          
           if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -qE '\.csv|results/generate_.*_plots\.py|gpu_specs\.py|requirements\.txt|Makefile'; then
             echo "Data or scripts changed. Running full plot generation..."
             make plots

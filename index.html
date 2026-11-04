@@ -269,6 +269,84 @@
             border-radius: 8px;
             box-shadow: 0 0 40px rgba(0,0,0,0.9);
         }
+        /* ── Workload status / TODO view ─────────────────────────────── */
+        :root {
+            --ok: #34d399; --ok-bg: rgba(52, 211, 153, 0.12);
+            --warn: #fbbf24; --warn-bg: rgba(251, 191, 36, 0.12);
+            --todo: #f87171; --todo-bg: rgba(248, 113, 113, 0.10);
+            --part: #a78bfa; --part-bg: rgba(167, 139, 250, 0.12);
+        }
+        .nav-subtitle {
+            font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em;
+            color: var(--text-muted); opacity: 0.75; margin: 0.5rem 0 0.1rem 0.5rem;
+        }
+        .nav-item.status-item { color: var(--text-main); }
+        .nav-item .count-pill {
+            float: right; font-size: 0.68rem; padding: 0 0.45rem; border-radius: 999px;
+            background: var(--todo-bg); color: var(--todo); font-weight: 700;
+        }
+        [hidden] { display: none !important; }
+        .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+        .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.1rem; }
+        .tile .k { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700; }
+        .tile .v { font-size: 1.6rem; font-weight: 800; margin-top: 0.25rem; font-variant-numeric: tabular-nums; }
+        .tile .s { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.2rem; }
+        .toolbar { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 1rem; }
+        .chip {
+            font: inherit; font-size: 0.78rem; font-weight: 600; color: var(--text-muted);
+            background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
+            padding: 0.35rem 0.8rem; cursor: pointer;
+        }
+        .chip:hover { color: var(--text-main); border-color: #64748b; }
+        .chip.on { color: var(--primary); border-color: var(--primary); box-shadow: 0 0 10px var(--primary-glow); }
+        .legend { display: flex; flex-wrap: wrap; gap: 1rem; font-size: 0.78rem; color: var(--text-muted); margin-left: auto; }
+        .legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
+        .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 2rem; }
+        table.status { width: 100%; border-collapse: collapse; font-size: 0.82rem; min-width: 980px; }
+        table.status th, table.status td { padding: 0.55rem 0.6rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+        table.status thead th { background: rgba(15, 23, 42, 0.95); color: var(--text-muted); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; position: sticky; top: 0; }
+        table.status thead th.side-cpu { color: #38bdf8; }
+        table.status thead th.side-gpu { color: #34d399; }
+        table.status th.dev { text-align: center; white-space: nowrap; }
+        tr.group td { background: rgba(56, 189, 248, 0.06); color: var(--primary); font-weight: 700; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; }
+        tr.group td small { color: var(--text-muted); font-weight: 500; text-transform: none; letter-spacing: 0; margin-left: 0.5rem; }
+        tr.wl { cursor: pointer; }
+        tr.wl:hover td { background: rgba(51, 65, 85, 0.35); }
+        tr.wl td.name { min-width: 200px; }
+        tr.wl td.name b { color: var(--text-main); }
+        table.status td.cell, table.status th.dev { min-width: 64px; }
+        tr.wl td.name .meta { color: var(--text-muted); font-size: 0.72rem; margin-top: 0.1rem; }
+        .tag { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; padding: 0 0.35rem; margin-right: 0.2rem; border-radius: 4px; background: rgba(148, 163, 184, 0.15); color: #cbd5e1; }
+        .badge { display: inline-block; font-size: 0.7rem; font-weight: 700; padding: 0.12rem 0.5rem; border-radius: 999px; white-space: nowrap; }
+        .b-done { color: var(--ok); background: var(--ok-bg); }
+        .b-partial { color: var(--part); background: var(--part-bg); }
+        .b-todo { color: var(--todo); background: var(--todo-bg); }
+        .b-broken { color: var(--warn); background: var(--warn-bg); }
+        td.cell { text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .c-collected { color: var(--ok); }
+        .c-invalid { color: var(--warn); }
+        .c-missing { color: var(--todo); opacity: 0.8; font-weight: 600; font-size: 0.72rem; }
+        .dot { width: 0.6rem; height: 0.6rem; border-radius: 50%; display: inline-block; }
+        tr.detail td { background: rgba(5, 11, 20, 0.6); padding: 0.9rem 1.2rem 1.1rem; }
+        tr.detail .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; }
+        tr.detail h4 { margin: 0 0 0.4rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+        tr.detail p { margin: 0 0 0.6rem; color: #cbd5e1; font-family: 'JetBrains Mono', monospace; font-size: 0.76rem; line-height: 1.5; }
+        ul.todo { margin: 0; padding: 0; list-style: none; }
+        ul.todo li { padding: 0.22rem 0 0.22rem 1.4rem; position: relative; color: #e2e8f0; line-height: 1.45; }
+        ul.todo li::before { content: ""; position: absolute; left: 0.1rem; top: 0.5rem; width: 0.65rem; height: 0.65rem; border: 1.5px solid var(--todo); border-radius: 3px; }
+        .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem 1.3rem; margin-bottom: 1.5rem; }
+        .panel h3 { margin: 0 0 0.6rem; font-size: 0.95rem; }
+        .panel .muted { color: var(--text-muted); font-size: 0.85rem; line-height: 1.55; }
+        .two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.5rem; }
+        dl.dropped { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 1rem; font-size: 0.83rem; }
+        dl.dropped dt { font-weight: 600; color: var(--text-main); }
+        dl.dropped dd { margin: 0; color: var(--text-muted); }
+        @media (max-width: 760px) {
+            body { flex-direction: column; height: auto; overflow: auto; }
+            aside { width: 100%; min-width: 0; height: auto; }
+            main { height: auto; padding: 1.25rem 1rem; }
+            .gallery { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
@@ -278,6 +356,11 @@
             <div class="subtitle">CPU-GPU Empirical Characterization</div>
         </div>
         
+        <div class="nav-section" id="status-nav">
+            <div class="nav-title">Project Status</div>
+            <!-- Populated by JS -->
+        </div>
+
         <div class="nav-section" id="gpu-nav">
             <div class="nav-title">Hardware Architecture</div>
             <!-- Populated by JS -->
@@ -298,6 +381,10 @@
             <div id="hardware-limits" class="hardware-panel" style="display: none;"></div>
         </div>
         
+        <div id="status-view" hidden>
+            <!-- Populated by JS (renderStatus) -->
+        </div>
+
         <div class="gallery" id="gallery">
             <!-- Populated by JS -->
         </div>
@@ -308,9 +395,13 @@
     </div>
 
     <script>
-        const tree = {"NVIDIA_A100": {"gemm": ["fig1a_eff_tflops_heatmap.png", "fig1a_eff_tflops_heatmap_sparse.png", "fig1b_abs_tflops_heatmap.png", "fig1b_abs_tflops_heatmap_sparse.png", "fig2_compute_vs_effective_replicas.png", "fig2_compute_vs_effective_split.png", "fig2_compute_vs_effective_split_sparse.png", "fig3_power_util_eff_replicas.png", "fig3_power_util_eff_split.png", "fig3_power_util_eff_split_sparse.png", "fig4_time_distribution_replicas.png", "fig4_time_distribution_split.png", "fig4_time_distribution_split_sparse.png", "fig5_bandwidth_replicas.png", "fig5_bandwidth_split.png", "fig5_bandwidth_split_sparse.png", "fig7_global_treemap_replicas.png", "fig7_global_treemap_split.png", "fig7_global_treemap_split_sparse.png"], "gemv": ["fig1_gbps_heatmap.png", "fig1_gbps_heatmap_sparse.png", "fig2_gbps_vs_size_replicas.png", "fig2_gbps_vs_size_split.png", "fig2_gbps_vs_size_split_sparse.png", "fig3_power_util_replicas.png", "fig3_power_util_split.png", "fig3_power_util_split_sparse.png", "fig4_tflops_heatmap.png", "fig4_tflops_heatmap_sparse.png"]}, "NVIDIA_A30": {"gemm": ["fig1a_eff_tflops_heatmap.png", "fig1b_abs_tflops_heatmap.png", "fig2_compute_vs_effective_split.png", "fig3_power_util_eff_split.png", "fig4_time_distribution_split.png", "fig5_bandwidth_split.png", "fig7_global_treemap_split.png"], "gemv": ["fig1_gbps_heatmap.png", "fig1_gbps_heatmap_sparse.png", "fig2_gbps_vs_size_replicas.png", "fig2_gbps_vs_size_split.png", "fig2_gbps_vs_size_split_sparse.png", "fig3_power_util_replicas.png", "fig3_power_util_split.png", "fig3_power_util_split_sparse.png", "fig4_tflops_heatmap.png", "fig4_tflops_heatmap_sparse.png"], "saxpy": ["fig1_gbps_heatmap.png", "fig2_gbps_vs_size_replicas.png", "fig2_gbps_vs_size_split.png", "fig3_power_util_replicas.png", "fig3_power_util_split.png", "fig4_pcie_bandwidth_replicas.png", "fig4_pcie_bandwidth_split.png", "fig5_time_distribution_replicas.png", "fig5_time_distribution_split.png"], "spgemm": ["fig0_status_heatmap_replicas.png", "fig0_status_heatmap_split.png", "fig0b_density_frontier_replicas.png", "fig0b_density_frontier_split.png", "fig1_tflops_vs_density_replicas.png", "fig1_tflops_vs_density_split.png", "fig2_tflops_vs_size_replicas.png", "fig2_tflops_vs_size_split.png", "fig3_time_distribution_replicas.png", "fig3_time_distribution_split.png", "fig4_comp_eff_vs_density_replicas.png", "fig4_comp_eff_vs_density_split.png", "fig5_gbps_vs_size_replicas.png", "fig5_gbps_vs_size_split.png", "fig6_power_util_replicas.png", "fig6_power_util_split.png"]}, "NVIDIA_GH200_480GB": {"aes_128_ctr": ["fig1_throughput_vs_size.png", "fig2_time_breakdown.png", "fig3_speedup_vs_cpu.png"], "conv2d": ["fig1_throughput_vs_size.png", "fig2_time_breakdown.png", "fig3_speedup_vs_cpu.png"], "cpu_gpu_c2c_bandwidth": ["fig1_c2c_bandwidth_landscape.png"], "cpu_gpu_cooperative_partitioning": ["fig1_workload_partitioning_curves.png"], "cpu_gpu_grace_scaling": ["fig1_grace_72core_stream_scaling.png"], "cpu_gpu_power_energy": ["fig1_10hz_telemetry_power_clock.png"], "cpu_gpu_residency_crossover": ["fig1_cross_workload_gpu_vs_cpu_speedup.png"], "cpu_gpu_uvm_cliff": ["fig1_96gb_capacity_cliff.png"], "cub_histogram": ["fig1_throughput_vs_size.png", "fig2_time_breakdown.png", "fig3_speedup_vs_cpu.png"], "cub_radix_sort": ["fig1_throughput_vs_size.png", "fig2_time_breakdown.png", "fig3_speedup_vs_cpu.png"], "cufft_1d": ["fig1_throughput_vs_size.png", "fig2_time_breakdown.png", "fig3_speedup_vs_cpu.png"], "cufft_2d": ["fig1_throughput_vs_size.png", "fig2_time_breakdown.png", "fig3_speedup_vs_cpu.png"], "gemm": ["fig1_throughput_vs_size.png", "fig1a_eff_tflops_heatmap.png", "fig1a_eff_tflops_heatmap_sparse.png", "fig1b_abs_tflops_heatmap.png", "fig1b_abs_tflops_heatmap_sparse.png", "fig2_compute_vs_effective_replicas.png", "fig2_compute_vs_effective_split.png", "fig2_compute_vs_effective_split_sparse.png", "fig2_time_breakdown.png", "fig3_power_util_eff_replicas.png", "fig3_power_util_eff_split.png", "fig3_power_util_eff_split_sparse.png", "fig3_speedup_vs_cpu.png", "fig4_time_distribution_replicas.png", "fig4_time_distribution_split.png", "fig4_time_distribution_split_sparse.png", "fig5_bandwidth_replicas.png", "fig5_bandwidth_split.png", "fig5_bandwidth_split_sparse.png", "fig7_global_treemap_replicas.png", "fig7_global_treemap_split.png", "fig7_global_treemap_split_sparse.png"], "gemv": ["fig1_gbps_heatmap.png", "fig1_gbps_heatmap_sparse.png", "fig1_throughput_vs_size.png", "fig2_gbps_vs_size_replicas.png", "fig2_gbps_vs_size_split.png", "fig2_gbps_vs_size_split_sparse.png", "fig2_time_breakdown.png", "fig3_power_util_replicas.png", "fig3_power_util_split.png", "fig3_power_util_split_sparse.png", "fig3_speedup_vs_cpu.png", "fig4_tflops_heatmap.png", "fig4_tflops_heatmap_sparse.png"], "llama32_embedding": ["fig1_throughput_vs_size.png", "fig2_time_breakdown.png", "fig3_speedup_vs_cpu.png"], "llama32_lmhead_topk": ["fig1_throughput_vs_size.png", "fig2_time_breakdown.png", "fig3_speedup_vs_cpu.png"], "llama32_qkv_proj": ["fig1_throughput_vs_size.png", "fig2_time_breakdown.png", "fig3_speedup_vs_cpu.png"], "llama32_rmsnorm": ["fig1_throughput_vs_size.png", "fig2_time_breakdown.png", "fig3_speedup_vs_cpu.png"], "llama32_rope": ["fig1_throughput_vs_size.png", "fig2_time_breakdown.png", "fig3_speedup_vs_cpu.png"], "llama32_sdpa_attention": ["fig1_throughput_vs_size.png", "fig2_time_breakdown.png", "fig3_speedup_vs_cpu.png"], "llama32_swiglu_ffn": ["fig1_throughput_vs_size.png", "fig2_time_breakdown.png", "fig3_speedup_vs_cpu.png"], "llama3_kv_cache_offload": ["fig1_throughput_vs_size.png", "fig2_time_breakdown.png", "fig3_speedup_vs_cpu.png"], "montecarlo": ["fig1_throughput_vs_size.png", "fig2_time_breakdown.png", "fig3_speedup_vs_cpu.png"], "rmsnorm": ["fig1_throughput_vs_size.png", "fig2_time_breakdown.png", "fig3_speedup_vs_cpu.png"], "saxpy": ["fig1_gbps_heatmap.png", "fig1_throughput_vs_size.png", "fig2_gbps_vs_size_replicas.png", "fig2_gbps_vs_size_split.png", "fig2_time_breakdown.png", "fig3_power_util_replicas.png", "fig3_power_util_split.png", "fig3_speedup_vs_cpu.png", "fig4_pcie_bandwidth_replicas.png", "fig4_pcie_bandwidth_split.png", "fig5_time_distribution_replicas.png", "fig5_time_distribution_split.png"], "spgemm": ["fig0_status_heatmap_replicas.png", "fig0_status_heatmap_split.png", "fig0b_density_frontier_replicas.png", "fig0b_density_frontier_split.png", "fig1_tflops_vs_density_replicas.png", "fig1_tflops_vs_density_split.png", "fig1_throughput_vs_size.png", "fig2_tflops_vs_size_replicas.png", "fig2_tflops_vs_size_split.png", "fig2_time_breakdown.png", "fig3_speedup_vs_cpu.png", "fig3_time_distribution_replicas.png", "fig3_time_distribution_split.png", "fig4_comp_eff_vs_density_replicas.png", "fig4_comp_eff_vs_density_split.png", "fig5_gbps_vs_size_replicas.png", "fig5_gbps_vs_size_split.png", "fig6_power_util_replicas.png", "fig6_power_util_split.png"], "spmv": ["fig1_throughput_vs_size.png", "fig2_time_breakdown.png", "fig3_speedup_vs_cpu.png"], "thrust_search": ["fig1_throughput_vs_size.png", "fig2_time_breakdown.png", "fig3_speedup_vs_cpu.png"]}, "NVIDIA_L40S": {"gemm": ["fig1a_eff_tflops_heatmap.png", "fig1a_eff_tflops_heatmap_sparse.png", "fig1b_abs_tflops_heatmap.png", "fig1b_abs_tflops_heatmap_sparse.png", "fig2_compute_vs_effective_replicas.png", "fig2_compute_vs_effective_split.png", "fig2_compute_vs_effective_split_sparse.png", "fig3_power_util_eff_replicas.png", "fig3_power_util_eff_split.png", "fig3_power_util_eff_split_sparse.png", "fig4_time_distribution_replicas.png", "fig4_time_distribution_split.png", "fig4_time_distribution_split_sparse.png", "fig5_bandwidth_replicas.png", "fig5_bandwidth_split.png", "fig5_bandwidth_split_sparse.png", "fig7_global_treemap_replicas.png", "fig7_global_treemap_split.png", "fig7_global_treemap_split_sparse.png"], "gemv": ["fig1_gbps_heatmap.png", "fig1_gbps_heatmap_sparse.png", "fig2_gbps_vs_size_replicas.png", "fig2_gbps_vs_size_split.png", "fig2_gbps_vs_size_split_sparse.png", "fig3_power_util_replicas.png", "fig3_power_util_split.png", "fig3_power_util_split_sparse.png", "fig4_tflops_heatmap.png", "fig4_tflops_heatmap_sparse.png"], "saxpy": ["fig1_gbps_heatmap.png", "fig2_gbps_vs_size_replicas.png", "fig2_gbps_vs_size_split.png", "fig3_power_util_replicas.png", "fig3_power_util_split.png", "fig4_pcie_bandwidth_replicas.png", "fig4_pcie_bandwidth_split.png", "fig5_time_distribution_replicas.png", "fig5_time_distribution_split.png"], "spgemm": ["fig0_status_heatmap_replicas.png", "fig0_status_heatmap_split.png", "fig0b_density_frontier_replicas.png", "fig0b_density_frontier_split.png", "fig1_tflops_vs_density_replicas.png", "fig1_tflops_vs_density_split.png", "fig2_tflops_vs_size_replicas.png", "fig2_tflops_vs_size_split.png", "fig3_time_distribution_replicas.png", "fig3_time_distribution_split.png", "fig4_comp_eff_vs_density_replicas.png", "fig4_comp_eff_vs_density_split.png", "fig5_gbps_vs_size_replicas.png", "fig5_gbps_vs_size_split.png", "fig6_power_util_replicas.png", "fig6_power_util_split.png"]}, "Tesla_P100-PCIE-12GB": {"gemm": ["fig1a_eff_tflops_heatmap.png", "fig1b_abs_tflops_heatmap.png", "fig2_compute_vs_effective_replicas.png", "fig2_compute_vs_effective_split.png", "fig3_power_util_eff_replicas.png", "fig3_power_util_eff_split.png", "fig4_time_distribution_replicas.png", "fig4_time_distribution_split.png", "fig5_bandwidth_replicas.png", "fig5_bandwidth_split.png", "fig7_global_treemap_replicas.png", "fig7_global_treemap_split.png"], "gemv": ["fig1_gbps_heatmap.png", "fig1_gbps_heatmap_sparse.png", "fig2_gbps_vs_size_replicas.png", "fig2_gbps_vs_size_split.png", "fig2_gbps_vs_size_split_sparse.png", "fig3_power_util_replicas.png", "fig3_power_util_split.png", "fig3_power_util_split_sparse.png", "fig4_tflops_heatmap.png", "fig4_tflops_heatmap_sparse.png"], "saxpy": ["fig1_gbps_heatmap.png", "fig2_gbps_vs_size_replicas.png", "fig2_gbps_vs_size_split.png", "fig3_power_util_replicas.png", "fig3_power_util_split.png", "fig4_pcie_bandwidth_replicas.png", "fig4_pcie_bandwidth_split.png", "fig5_time_distribution_replicas.png", "fig5_time_distribution_split.png"], "spgemm": ["fig0_status_heatmap_replicas.png", "fig0_status_heatmap_split.png", "fig0b_density_frontier_replicas.png", "fig0b_density_frontier_split.png", "fig1_tflops_vs_density_replicas.png", "fig1_tflops_vs_density_split.png", "fig2_tflops_vs_size_replicas.png", "fig2_tflops_vs_size_split.png", "fig3_time_distribution_replicas.png", "fig3_time_distribution_split.png", "fig4_comp_eff_vs_density_replicas.png", "fig4_comp_eff_vs_density_split.png", "fig5_gbps_vs_size_replicas.png", "fig5_gbps_vs_size_split.png", "fig6_power_util_replicas.png", "fig6_power_util_split.png"]}, "Tesla_V100-SXM2-16GB": {"gemm": ["fig1a_eff_tflops_heatmap.png", "fig1b_abs_tflops_heatmap.png", "fig2_compute_vs_effective_replicas.png", "fig2_compute_vs_effective_split.png", "fig3_power_util_eff_replicas.png", "fig3_power_util_eff_split.png", "fig4_time_distribution_replicas.png", "fig4_time_distribution_split.png", "fig5_bandwidth_replicas.png", "fig5_bandwidth_split.png", "fig7_global_treemap_replicas.png", "fig7_global_treemap_split.png"], "gemv": ["fig1_gbps_heatmap.png", "fig1_gbps_heatmap_sparse.png", "fig2_gbps_vs_size_replicas.png", "fig2_gbps_vs_size_split.png", "fig2_gbps_vs_size_split_sparse.png", "fig3_power_util_replicas.png", "fig3_power_util_split.png", "fig3_power_util_split_sparse.png", "fig4_tflops_heatmap.png", "fig4_tflops_heatmap_sparse.png"], "saxpy": ["fig1_gbps_heatmap.png", "fig2_gbps_vs_size_replicas.png", "fig2_gbps_vs_size_split.png", "fig3_power_util_replicas.png", "fig3_power_util_split.png", "fig4_pcie_bandwidth_replicas.png", "fig4_pcie_bandwidth_split.png", "fig5_time_distribution_replicas.png", "fig5_time_distribution_split.png"], "spgemm": ["fig0_status_heatmap_replicas.png", "fig0_status_heatmap_split.png", "fig0b_density_frontier_replicas.png", "fig0b_density_frontier_split.png", "fig1_tflops_vs_density_replicas.png", "fig1_tflops_vs_density_split.png", "fig2_tflops_vs_size_replicas.png", "fig2_tflops_vs_size_split.png", "fig3_time_distribution_replicas.png", "fig3_time_distribution_split.png", "fig4_comp_eff_vs_density_replicas.png", "fig4_comp_eff_vs_density_split.png", "fig5_gbps_vs_size_replicas.png", "fig5_gbps_vs_size_split.png", "fig6_power_util_replicas.png", "fig6_power_util_split.png"]}};
-        const gpuLimits = {"NVIDIA_GH200_480GB": {"compute": {"sms": 132, "fp32_cores_per_sm": 128, "fp64_cores_per_sm": 64, "tc_per_sm": 4, "tc_flops_per_clock": 948, "boost_mhz": 1980}, "memory": {"bus_width_bits": 6144, "speed_gbps": 5.238}}, "NVIDIA_A100": {"compute": {"sms": 108, "fp32_cores_per_sm": 64, "fp64_cores_per_sm": 32, "tc_per_sm": 4, "tc_flops_per_clock": 512, "boost_mhz": 1410}, "memory": {"bus_width_bits": 5120, "speed_gbps": 2.43}}, "NVIDIA_L40S": {"compute": {"sms": 142, "fp32_cores_per_sm": 128, "fp64_cores_per_sm": 2, "tc_per_sm": 4, "tc_flops_per_clock": 512, "boost_mhz": 2520}, "memory": {"bus_width_bits": 384, "speed_gbps": 18.0}}, "NVIDIA_A30": {"compute": {"sms": 56, "fp32_cores_per_sm": 64, "fp64_cores_per_sm": 32, "tc_per_sm": 4, "tc_flops_per_clock": 512, "boost_mhz": 1440}, "memory": {"bus_width_bits": 3072, "speed_gbps": 2.43}}, "Tesla_V100-SXM2-16GB": {"compute": {"sms": 80, "fp32_cores_per_sm": 64, "fp64_cores_per_sm": 32, "tc_per_sm": 8, "tc_flops_per_clock": 128, "boost_mhz": 1530}, "memory": {"bus_width_bits": 4096, "speed_gbps": 1.75}}, "Tesla_P100-PCIE-12GB": {"compute": {"sms": 56, "fp32_cores_per_sm": 64, "fp64_cores_per_sm": 32, "tc_per_sm": 0, "tc_flops_per_clock": 0, "boost_mhz": 1300}, "memory": {"bus_width_bits": 3072, "speed_gbps": 1.43}}};
-        
+        const tree = {"AMD_C6525_100G":{"gemm":["fig1_gemm_tflops_vs_size.png","fig2_gemm_tflops_by_threads.png","fig3_gemm_thread_scaling.png","fig4_gemm_speedup.png","fig5_gemm_heatmap.png","fig6_gemm_power_vs_size.png","fig7_gemm_energy_efficiency.png","fig8_gemm_fp32_vs_fp64_ratio.png","fig9_gemm_freq_temp.png"],"gemv":["fig1_gemv_dense_bandwidth_vs_size.png","fig2_gemv_dense_vs_sparse.png","fig3_gemv_thread_scaling.png","fig4_spmv_density_scaling.png","fig5_gemv_heatmap.png","fig6_gemv_power_vs_size.png","fig7_gemv_energy_efficiency.png","fig8_gemv_freq_temp.png"],"saxpy":["fig1_saxpy_bandwidth_vs_n.png","fig2_saxpy_bandwidth_by_threads.png","fig3_saxpy_thread_scaling.png","fig4_saxpy_speedup.png","fig5_saxpy_heatmap.png","fig6_saxpy_power_vs_n.png","fig7_saxpy_energy_efficiency.png","fig8_saxpy_fp32_vs_fp64_convergence.png","fig9_saxpy_freq_temp.png"],"spgemm":["fig1_spgemm_gflops_vs_size.png","fig2_spgemm_bandwidth_vs_size.png","fig3_spgemm_thread_scaling.png","fig4_spgemm_speedup.png","fig5_spgemm_density_impact.png","fig6_spgemm_heatmap.png","fig7_spgemm_power_efficiency.png","fig8_spgemm_freq_temp.png"]},"INTEL_C220G5":{"gemm":["fig1_gemm_tflops_vs_size.png","fig2_gemm_tflops_by_threads.png","fig3_gemm_thread_scaling.png","fig4_gemm_speedup.png","fig5_gemm_heatmap.png","fig6_gemm_power_vs_size.png","fig7_gemm_energy_efficiency.png","fig8_gemm_fp32_vs_fp64_ratio.png","fig9_gemm_freq_temp.png"],"gemv":["fig1_gemv_dense_bandwidth_vs_size.png","fig2_gemv_dense_vs_sparse.png","fig3_gemv_thread_scaling.png","fig4_spmv_density_scaling.png","fig5_gemv_heatmap.png","fig6_gemv_power_vs_size.png","fig7_gemv_energy_efficiency.png","fig8_gemv_freq_temp.png"],"saxpy":["fig1_saxpy_bandwidth_vs_n.png","fig2_saxpy_bandwidth_by_threads.png","fig3_saxpy_thread_scaling.png","fig4_saxpy_speedup.png","fig5_saxpy_heatmap.png","fig6_saxpy_power_vs_n.png","fig7_saxpy_energy_efficiency.png","fig8_saxpy_fp32_vs_fp64_convergence.png","fig9_saxpy_freq_temp.png"],"spgemm":["fig1_spgemm_gflops_vs_size.png","fig2_spgemm_bandwidth_vs_size.png","fig3_spgemm_thread_scaling.png","fig4_spgemm_speedup.png","fig5_spgemm_density_impact.png","fig6_spgemm_heatmap.png","fig7_spgemm_power_efficiency.png","fig8_spgemm_freq_temp.png"]},"INTEL_C6220":{"gemm":["fig1_gemm_tflops_vs_size.png","fig2_gemm_tflops_by_threads.png","fig3_gemm_thread_scaling.png","fig4_gemm_speedup.png","fig5_gemm_heatmap.png","fig6_gemm_power_vs_size.png","fig7_gemm_energy_efficiency.png","fig8_gemm_fp32_vs_fp64_ratio.png","fig9_gemm_freq_temp.png"],"gemv":["fig1_gemv_dense_bandwidth_vs_size.png","fig2_gemv_dense_vs_sparse.png","fig3_gemv_thread_scaling.png","fig4_spmv_density_scaling.png","fig5_gemv_heatmap.png","fig6_gemv_power_vs_size.png","fig7_gemv_energy_efficiency.png","fig8_gemv_freq_temp.png"],"saxpy":["fig1_saxpy_bandwidth_vs_n.png","fig2_saxpy_bandwidth_by_threads.png","fig3_saxpy_thread_scaling.png","fig4_saxpy_speedup.png","fig5_saxpy_heatmap.png","fig6_saxpy_power_vs_n.png","fig7_saxpy_energy_efficiency.png","fig8_saxpy_fp32_vs_fp64_convergence.png","fig9_saxpy_freq_temp.png"],"spgemm":["fig1_spgemm_gflops_vs_size.png","fig2_spgemm_bandwidth_vs_size.png","fig3_spgemm_thread_scaling.png","fig4_spgemm_speedup.png","fig5_spgemm_density_impact.png","fig6_spgemm_heatmap.png","fig7_spgemm_power_efficiency.png","fig8_spgemm_freq_temp.png"]},"INTEL_C6620":{"gemm":["fig1_gemm_tflops_vs_size.png","fig2_gemm_tflops_by_threads.png","fig3_gemm_thread_scaling.png","fig4_gemm_speedup.png","fig5_gemm_heatmap.png","fig6_gemm_power_vs_size.png","fig7_gemm_energy_efficiency.png","fig8_gemm_fp32_vs_fp64_ratio.png","fig9_gemm_freq_temp.png"],"gemv":["fig1_gemv_dense_bandwidth_vs_size.png","fig2_gemv_dense_vs_sparse.png","fig3_gemv_thread_scaling.png","fig4_spmv_density_scaling.png","fig5_gemv_heatmap.png","fig6_gemv_power_vs_size.png","fig7_gemv_energy_efficiency.png","fig8_gemv_freq_temp.png"],"saxpy":["fig1_saxpy_bandwidth_vs_n.png","fig2_saxpy_bandwidth_by_threads.png","fig3_saxpy_thread_scaling.png","fig4_saxpy_speedup.png","fig5_saxpy_heatmap.png","fig6_saxpy_power_vs_n.png","fig7_saxpy_energy_efficiency.png","fig8_saxpy_fp32_vs_fp64_convergence.png","fig9_saxpy_freq_temp.png"],"spgemm":["fig1_spgemm_gflops_vs_size.png","fig2_spgemm_bandwidth_vs_size.png","fig3_spgemm_thread_scaling.png","fig4_spgemm_speedup.png","fig5_spgemm_density_impact.png","fig6_spgemm_heatmap.png","fig7_spgemm_power_efficiency.png","fig8_spgemm_freq_temp.png"]},"INTEL_M510":{"gemm":["fig1_gemm_tflops_vs_size.png","fig2_gemm_tflops_by_threads.png","fig3_gemm_thread_scaling.png","fig4_gemm_speedup.png","fig5_gemm_heatmap.png","fig6_gemm_power_vs_size.png","fig7_gemm_energy_efficiency.png","fig8_gemm_fp32_vs_fp64_ratio.png","fig9_gemm_freq_temp.png"],"gemv":["fig1_gemv_dense_bandwidth_vs_size.png","fig2_gemv_dense_vs_sparse.png","fig3_gemv_thread_scaling.png","fig4_spmv_density_scaling.png","fig5_gemv_heatmap.png","fig6_gemv_power_vs_size.png","fig7_gemv_energy_efficiency.png","fig8_gemv_freq_temp.png"],"saxpy":["fig1_saxpy_bandwidth_vs_n.png","fig2_saxpy_bandwidth_by_threads.png","fig3_saxpy_thread_scaling.png","fig4_saxpy_speedup.png","fig5_saxpy_heatmap.png","fig6_saxpy_power_vs_n.png","fig7_saxpy_energy_efficiency.png","fig8_saxpy_fp32_vs_fp64_convergence.png","fig9_saxpy_freq_temp.png"],"spgemm":["fig1_spgemm_gflops_vs_size.png","fig2_spgemm_bandwidth_vs_size.png","fig3_spgemm_thread_scaling.png","fig4_spgemm_speedup.png","fig5_spgemm_density_impact.png","fig6_spgemm_heatmap.png","fig7_spgemm_power_efficiency.png","fig8_spgemm_freq_temp.png"]},"NVIDIA_A100":{"gemm":["fig1a_eff_tflops_heatmap.png","fig1a_eff_tflops_heatmap_sparse.png","fig1b_abs_tflops_heatmap.png","fig1b_abs_tflops_heatmap_sparse.png","fig2_compute_vs_effective_replicas.png","fig2_compute_vs_effective_split.png","fig2_compute_vs_effective_split_sparse.png","fig3_power_util_eff_replicas.png","fig3_power_util_eff_split.png","fig3_power_util_eff_split_sparse.png","fig4_time_distribution_replicas.png","fig4_time_distribution_split.png","fig4_time_distribution_split_sparse.png","fig5_bandwidth_replicas.png","fig5_bandwidth_split.png","fig5_bandwidth_split_sparse.png","fig7_global_treemap_replicas.png","fig7_global_treemap_split.png","fig7_global_treemap_split_sparse.png"],"gemv":["fig1_gbps_heatmap.png","fig1_gbps_heatmap_sparse.png","fig2_gbps_vs_size_replicas.png","fig2_gbps_vs_size_split.png","fig2_gbps_vs_size_split_sparse.png","fig3_power_util_replicas.png","fig3_power_util_split.png","fig3_power_util_split_sparse.png","fig4_tflops_heatmap.png","fig4_tflops_heatmap_sparse.png"]},"NVIDIA_A30":{"gemm":["fig1a_eff_tflops_heatmap.png","fig1b_abs_tflops_heatmap.png","fig2_compute_vs_effective_split.png","fig3_power_util_eff_split.png","fig4_time_distribution_split.png","fig5_bandwidth_split.png","fig7_global_treemap_split.png"],"gemv":["fig1_gbps_heatmap.png","fig1_gbps_heatmap_sparse.png","fig2_gbps_vs_size_replicas.png","fig2_gbps_vs_size_split.png","fig2_gbps_vs_size_split_sparse.png","fig3_power_util_replicas.png","fig3_power_util_split.png","fig3_power_util_split_sparse.png","fig4_tflops_heatmap.png","fig4_tflops_heatmap_sparse.png"],"saxpy":["fig1_gbps_heatmap.png","fig2_gbps_vs_size_replicas.png","fig2_gbps_vs_size_split.png","fig3_power_util_replicas.png","fig3_power_util_split.png","fig4_pcie_bandwidth_replicas.png","fig4_pcie_bandwidth_split.png","fig5_time_distribution_replicas.png","fig5_time_distribution_split.png"],"spgemm":["fig0_status_heatmap_replicas.png","fig0_status_heatmap_split.png","fig0b_density_frontier_replicas.png","fig0b_density_frontier_split.png","fig1_tflops_vs_density_replicas.png","fig1_tflops_vs_density_split.png","fig2_tflops_vs_size_replicas.png","fig2_tflops_vs_size_split.png","fig3_time_distribution_replicas.png","fig3_time_distribution_split.png","fig4_comp_eff_vs_density_replicas.png","fig4_comp_eff_vs_density_split.png","fig5_gbps_vs_size_replicas.png","fig5_gbps_vs_size_split.png","fig6_power_util_replicas.png","fig6_power_util_split.png"]},"NVIDIA_GH200_480GB":{"aes_128_ctr":["fig1_throughput_vs_size.png","fig2_time_breakdown.png","fig3_speedup_vs_cpu.png"],"conv2d":["fig1_throughput_vs_size.png","fig2_time_breakdown.png","fig3_speedup_vs_cpu.png"],"cpu_gpu_c2c_bandwidth":["fig1_c2c_bandwidth_landscape.png"],"cpu_gpu_cooperative_partitioning":["fig1_workload_partitioning_curves.png"],"cpu_gpu_grace_scaling":["fig1_grace_72core_stream_scaling.png"],"cpu_gpu_power_energy":["fig1_10hz_telemetry_power_clock.png"],"cpu_gpu_residency_crossover":["fig1_cross_workload_gpu_vs_cpu_speedup.png"],"cpu_gpu_uvm_cliff":["fig1_96gb_capacity_cliff.png"],"cub_histogram":["fig1_throughput_vs_size.png","fig2_time_breakdown.png","fig3_speedup_vs_cpu.png"],"cub_radix_sort":["fig1_throughput_vs_size.png","fig2_time_breakdown.png","fig3_speedup_vs_cpu.png"],"cufft_1d":["fig1_throughput_vs_size.png","fig2_time_breakdown.png","fig3_speedup_vs_cpu.png"],"cufft_2d":["fig1_throughput_vs_size.png","fig2_time_breakdown.png","fig3_speedup_vs_cpu.png"],"gemm":["fig1_throughput_vs_size.png","fig1a_eff_tflops_heatmap.png","fig1a_eff_tflops_heatmap_sparse.png","fig1b_abs_tflops_heatmap.png","fig1b_abs_tflops_heatmap_sparse.png","fig2_compute_vs_effective_replicas.png","fig2_compute_vs_effective_split.png","fig2_compute_vs_effective_split_sparse.png","fig2_time_breakdown.png","fig3_power_util_eff_replicas.png","fig3_power_util_eff_split.png","fig3_power_util_eff_split_sparse.png","fig3_speedup_vs_cpu.png","fig4_time_distribution_replicas.png","fig4_time_distribution_split.png","fig4_time_distribution_split_sparse.png","fig5_bandwidth_replicas.png","fig5_bandwidth_split.png","fig5_bandwidth_split_sparse.png","fig7_global_treemap_replicas.png","fig7_global_treemap_split.png","fig7_global_treemap_split_sparse.png"],"gemv":["fig1_gbps_heatmap.png","fig1_gbps_heatmap_sparse.png","fig1_throughput_vs_size.png","fig2_gbps_vs_size_replicas.png","fig2_gbps_vs_size_split.png","fig2_gbps_vs_size_split_sparse.png","fig2_time_breakdown.png","fig3_power_util_replicas.png","fig3_power_util_split.png","fig3_power_util_split_sparse.png","fig3_speedup_vs_cpu.png","fig4_tflops_heatmap.png","fig4_tflops_heatmap_sparse.png"],"llama32_embedding":["fig1_throughput_vs_size.png","fig2_time_breakdown.png","fig3_speedup_vs_cpu.png"],"llama32_lmhead_topk":["fig1_throughput_vs_size.png","fig2_time_breakdown.png","fig3_speedup_vs_cpu.png"],"llama32_qkv_proj":["fig1_throughput_vs_size.png","fig2_time_breakdown.png","fig3_speedup_vs_cpu.png"],"llama32_rmsnorm":["fig1_throughput_vs_size.png","fig2_time_breakdown.png","fig3_speedup_vs_cpu.png"],"llama32_rope":["fig1_throughput_vs_size.png","fig2_time_breakdown.png","fig3_speedup_vs_cpu.png"],"llama32_sdpa_attention":["fig1_throughput_vs_size.png","fig2_time_breakdown.png","fig3_speedup_vs_cpu.png"],"llama32_swiglu_ffn":["fig1_throughput_vs_size.png","fig2_time_breakdown.png","fig3_speedup_vs_cpu.png"],"llama3_kv_cache_offload":["fig1_throughput_vs_size.png","fig2_time_breakdown.png","fig3_speedup_vs_cpu.png"],"montecarlo":["fig1_throughput_vs_size.png","fig2_time_breakdown.png","fig3_speedup_vs_cpu.png"],"rmsnorm":["fig1_throughput_vs_size.png","fig2_time_breakdown.png","fig3_speedup_vs_cpu.png"],"saxpy":["fig1_gbps_heatmap.png","fig1_throughput_vs_size.png","fig2_gbps_vs_size_replicas.png","fig2_gbps_vs_size_split.png","fig2_time_breakdown.png","fig3_power_util_replicas.png","fig3_power_util_split.png","fig3_speedup_vs_cpu.png","fig4_pcie_bandwidth_replicas.png","fig4_pcie_bandwidth_split.png","fig5_time_distribution_replicas.png","fig5_time_distribution_split.png"],"spgemm":["fig0_status_heatmap_replicas.png","fig0_status_heatmap_split.png","fig0b_density_frontier_replicas.png","fig0b_density_frontier_split.png","fig1_tflops_vs_density_replicas.png","fig1_tflops_vs_density_split.png","fig1_throughput_vs_size.png","fig2_tflops_vs_size_replicas.png","fig2_tflops_vs_size_split.png","fig2_time_breakdown.png","fig3_speedup_vs_cpu.png","fig3_time_distribution_replicas.png","fig3_time_distribution_split.png","fig4_comp_eff_vs_density_replicas.png","fig4_comp_eff_vs_density_split.png","fig5_gbps_vs_size_replicas.png","fig5_gbps_vs_size_split.png","fig6_power_util_replicas.png","fig6_power_util_split.png"],"spmv":["fig1_throughput_vs_size.png","fig2_time_breakdown.png","fig3_speedup_vs_cpu.png"],"thrust_search":["fig1_throughput_vs_size.png","fig2_time_breakdown.png","fig3_speedup_vs_cpu.png"]},"NVIDIA_L40S":{"gemm":["fig1a_eff_tflops_heatmap.png","fig1a_eff_tflops_heatmap_sparse.png","fig1b_abs_tflops_heatmap.png","fig1b_abs_tflops_heatmap_sparse.png","fig2_compute_vs_effective_replicas.png","fig2_compute_vs_effective_split.png","fig2_compute_vs_effective_split_sparse.png","fig3_power_util_eff_replicas.png","fig3_power_util_eff_split.png","fig3_power_util_eff_split_sparse.png","fig4_time_distribution_replicas.png","fig4_time_distribution_split.png","fig4_time_distribution_split_sparse.png","fig5_bandwidth_replicas.png","fig5_bandwidth_split.png","fig5_bandwidth_split_sparse.png","fig7_global_treemap_replicas.png","fig7_global_treemap_split.png","fig7_global_treemap_split_sparse.png"],"gemv":["fig1_gbps_heatmap.png","fig1_gbps_heatmap_sparse.png","fig2_gbps_vs_size_replicas.png","fig2_gbps_vs_size_split.png","fig2_gbps_vs_size_split_sparse.png","fig3_power_util_replicas.png","fig3_power_util_split.png","fig3_power_util_split_sparse.png","fig4_tflops_heatmap.png","fig4_tflops_heatmap_sparse.png"],"saxpy":["fig1_gbps_heatmap.png","fig2_gbps_vs_size_replicas.png","fig2_gbps_vs_size_split.png","fig3_power_util_replicas.png","fig3_power_util_split.png","fig4_pcie_bandwidth_replicas.png","fig4_pcie_bandwidth_split.png","fig5_time_distribution_replicas.png","fig5_time_distribution_split.png"],"spgemm":["fig0_status_heatmap_replicas.png","fig0_status_heatmap_split.png","fig0b_density_frontier_replicas.png","fig0b_density_frontier_split.png","fig1_tflops_vs_density_replicas.png","fig1_tflops_vs_density_split.png","fig2_tflops_vs_size_replicas.png","fig2_tflops_vs_size_split.png","fig3_time_distribution_replicas.png","fig3_time_distribution_split.png","fig4_comp_eff_vs_density_replicas.png","fig4_comp_eff_vs_density_split.png","fig5_gbps_vs_size_replicas.png","fig5_gbps_vs_size_split.png","fig6_power_util_replicas.png","fig6_power_util_split.png"]},"Tesla_P100-PCIE-12GB":{"gemm":["fig1a_eff_tflops_heatmap.png","fig1b_abs_tflops_heatmap.png","fig2_compute_vs_effective_replicas.png","fig2_compute_vs_effective_split.png","fig3_power_util_eff_replicas.png","fig3_power_util_eff_split.png","fig4_time_distribution_replicas.png","fig4_time_distribution_split.png","fig5_bandwidth_replicas.png","fig5_bandwidth_split.png","fig7_global_treemap_replicas.png","fig7_global_treemap_split.png"],"gemv":["fig1_gbps_heatmap.png","fig1_gbps_heatmap_sparse.png","fig2_gbps_vs_size_replicas.png","fig2_gbps_vs_size_split.png","fig2_gbps_vs_size_split_sparse.png","fig3_power_util_replicas.png","fig3_power_util_split.png","fig3_power_util_split_sparse.png","fig4_tflops_heatmap.png","fig4_tflops_heatmap_sparse.png"],"saxpy":["fig1_gbps_heatmap.png","fig2_gbps_vs_size_replicas.png","fig2_gbps_vs_size_split.png","fig3_power_util_replicas.png","fig3_power_util_split.png","fig4_pcie_bandwidth_replicas.png","fig4_pcie_bandwidth_split.png","fig5_time_distribution_replicas.png","fig5_time_distribution_split.png"],"spgemm":["fig0_status_heatmap_replicas.png","fig0_status_heatmap_split.png","fig0b_density_frontier_replicas.png","fig0b_density_frontier_split.png","fig1_tflops_vs_density_replicas.png","fig1_tflops_vs_density_split.png","fig2_tflops_vs_size_replicas.png","fig2_tflops_vs_size_split.png","fig3_time_distribution_replicas.png","fig3_time_distribution_split.png","fig4_comp_eff_vs_density_replicas.png","fig4_comp_eff_vs_density_split.png","fig5_gbps_vs_size_replicas.png","fig5_gbps_vs_size_split.png","fig6_power_util_replicas.png","fig6_power_util_split.png"]},"Tesla_V100-SXM2-16GB":{"gemm":["fig1a_eff_tflops_heatmap.png","fig1b_abs_tflops_heatmap.png","fig2_compute_vs_effective_replicas.png","fig2_compute_vs_effective_split.png","fig3_power_util_eff_replicas.png","fig3_power_util_eff_split.png","fig4_time_distribution_replicas.png","fig4_time_distribution_split.png","fig5_bandwidth_replicas.png","fig5_bandwidth_split.png","fig7_global_treemap_replicas.png","fig7_global_treemap_split.png"],"gemv":["fig1_gbps_heatmap.png","fig1_gbps_heatmap_sparse.png","fig2_gbps_vs_size_replicas.png","fig2_gbps_vs_size_split.png","fig2_gbps_vs_size_split_sparse.png","fig3_power_util_replicas.png","fig3_power_util_split.png","fig3_power_util_split_sparse.png","fig4_tflops_heatmap.png","fig4_tflops_heatmap_sparse.png"],"saxpy":["fig1_gbps_heatmap.png","fig2_gbps_vs_size_replicas.png","fig2_gbps_vs_size_split.png","fig3_power_util_replicas.png","fig3_power_util_split.png","fig4_pcie_bandwidth_replicas.png","fig4_pcie_bandwidth_split.png","fig5_time_distribution_replicas.png","fig5_time_distribution_split.png"],"spgemm":["fig0_status_heatmap_replicas.png","fig0_status_heatmap_split.png","fig0b_density_frontier_replicas.png","fig0b_density_frontier_split.png","fig1_tflops_vs_density_replicas.png","fig1_tflops_vs_density_split.png","fig2_tflops_vs_size_replicas.png","fig2_tflops_vs_size_split.png","fig3_time_distribution_replicas.png","fig3_time_distribution_split.png","fig4_comp_eff_vs_density_replicas.png","fig4_comp_eff_vs_density_split.png","fig5_gbps_vs_size_replicas.png","fig5_gbps_vs_size_split.png","fig6_power_util_replicas.png","fig6_power_util_split.png"]}};
+        const gpuLimits = {"NVIDIA_GH200_480GB":{"compute":{"sms":132,"fp32_cores_per_sm":128,"fp64_cores_per_sm":64,"tc_per_sm":4,"tc_flops_per_clock":948,"boost_mhz":1980},"memory":{"bus_width_bits":6144,"speed_gbps":5.238}},"NVIDIA_A100":{"compute":{"sms":108,"fp32_cores_per_sm":64,"fp64_cores_per_sm":32,"tc_per_sm":4,"tc_flops_per_clock":512,"boost_mhz":1410},"memory":{"bus_width_bits":5120,"speed_gbps":2.43}},"NVIDIA_L40S":{"compute":{"sms":142,"fp32_cores_per_sm":128,"fp64_cores_per_sm":2,"tc_per_sm":4,"tc_flops_per_clock":512,"boost_mhz":2520},"memory":{"bus_width_bits":384,"speed_gbps":18.0}},"NVIDIA_A30":{"compute":{"sms":56,"fp32_cores_per_sm":64,"fp64_cores_per_sm":32,"tc_per_sm":4,"tc_flops_per_clock":512,"boost_mhz":1440},"memory":{"bus_width_bits":3072,"speed_gbps":2.43}},"Tesla_V100-SXM2-16GB":{"compute":{"sms":80,"fp32_cores_per_sm":64,"fp64_cores_per_sm":32,"tc_per_sm":8,"tc_flops_per_clock":128,"boost_mhz":1530},"memory":{"bus_width_bits":4096,"speed_gbps":1.75}},"Tesla_P100-PCIE-12GB":{"compute":{"sms":56,"fp32_cores_per_sm":64,"fp64_cores_per_sm":32,"tc_per_sm":0,"tc_flops_per_clock":0,"boost_mhz":1300},"memory":{"bus_width_bits":3072,"speed_gbps":1.43}}};
+        // Injected by results/generate_index.py: device -> "cpu" | "gpu" (from results/data/<cpu|gpu>/)
+        const deviceClass = {"AMD_C6525_100G":"cpu","INTEL_C220G5":"cpu","INTEL_C6220":"cpu","INTEL_C6620":"cpu","INTEL_M510":"cpu","NVIDIA_A100":"gpu","NVIDIA_A30":"gpu","NVIDIA_GH200_480GB":"gpu","NVIDIA_L40S":"gpu","Tesla_P100-PCIE-12GB":"gpu","Tesla_V100-SXM2-16GB":"gpu"};
+        // Injected by results/generate_index.py from results/workloads.json + CSV coverage scan
+        const workloadStatus = {"plan":"Final suite derived from Lee et al., ISCA'10 ('Debunking the 100X GPU vs CPU myth'): every paper kernel that is primarily compute-, bandwidth- or synchronization-bound, plus LLM inference and cryptography. Each workload gets a tuned CPU and a tuned GPU implementation (fastest well-known library, driven from a PyTorch script in src/torch/), run on the same 6-device core matrix.","devices":{"cpu":[{"id":"INTEL_C6620","label":"Intel Xeon SPR (c6620)","short":"Xeon SPR","core":true},{"id":"AMD_C6525_100G","label":"AMD EPYC (c6525-100g)","short":"EPYC","core":true},{"id":"NVIDIA_GRACE","label":"NVIDIA Grace (GH200)","short":"Grace","core":true,"note":"Grace data lives in results/data/gpu/NVIDIA_GH200_480GB/ (residency_mode=cpu_local rows)"},{"id":"INTEL_M510","label":"Xeon D-1548 (m510)","short":"D-1548","core":false},{"id":"INTEL_C6220","label":"Xeon E5-2650 (c6220)","short":"E5-2650","core":false},{"id":"INTEL_C220G5","label":"Xeon Silver 4114 (c220g5)","short":"Silver 4114","core":false}],"gpu":[{"id":"NVIDIA_A100","label":"A100","short":"A100","core":true},{"id":"NVIDIA_L40S","label":"L40S","short":"L40S","core":true},{"id":"NVIDIA_GH200_480GB","label":"H100 (GH200)","short":"H100","core":true},{"id":"NVIDIA_A30","label":"A30","short":"A30","core":false},{"id":"Tesla_V100-SXM2-16GB","label":"V100","short":"V100","core":false},{"id":"Tesla_P100-PCIE-12GB","label":"P100","short":"P100","core":false}]},"bounds":{"B":{"name":"Bandwidth-bound","expect":"GPU/CPU ratio tracks the peak DRAM bandwidth ratio"},"C":{"name":"Compute-bound","expect":"GPU/CPU ratio tracks the peak FLOP/OP ratio"},"S":{"name":"Synchronization-bound","expect":"Ratio below both the BW and FLOP ratios; the CPU can win"},"A":{"name":"Application (composite)","expect":"Prefill tracks the FLOP ratio, decode the BW ratio"}},"infra_todo":["Unify CSV schema: add bound / field / tags / library / metric_name / metric_value columns to every harness","Replace 4-regime enum in src/gpu/gh200/bench_harness.h and figure labels with bound + tags","Parameterize scripts/gpu/lock_clocks.sh per device (hard-coded to A100 1410 MHz)","Measured STREAM + peak FLOP/OP calibration for all 6 core devices","results/plotting/generate_roofline.py + paper-style Figure 1 (GPU/CPU ratio per workload, geomean) and Table 3","Add lbmpy, pystencils, cupy, pyfftw, opencv, cryptography, llama.cpp, vllm to requirements-bench.txt / node setup scripts"],"dropped":[{"name":"GJK collision detection","why":"GPU win comes from the texture unit (fixed-function); not primarily C/B/S"},{"name":"Ray casting","why":"Gather + oversized working set; not primarily C/B/S"},{"name":"PCA","why":"GEMM (covariance) + GEMV (power iteration); redundant. src/cpu/cpu_pca_bench.c kept but not in suite"},{"name":"k-means","why":"GEMM-like distances + scatter-reduction; covered by GEMM + Histogram. src/cpu/cpu_kmeans_bench.c kept but not in suite"},{"name":"SHA-512","why":"Redundant with SHA-256"},{"name":"Dense GEMV, RMSNorm, RoPE (standalone)","why":"Reported as Llama layer breakdowns (A1), not top-level kernels"}],"system_axis":"GH200 coherence experiments (residency modes, NVLink-C2C, UVM 96 GB cliff, CPU+GPU cooperative split, KV offload) are a system axis applied to SAXPY, SpMV, GEMM, Histogram and Llama decode, not separate workloads.","other_devices":{"cpu":[],"gpu":[]},"workloads":[{"id":"B1","name":"SAXPY","bound":"B","field":"Dense LA / BLAS-1","tags":[],"cpu":{"impl":"done","where":"src/cpu/cpu_saxpy_bench.c (MKL/OpenBLAS), src/torch/torch_saxpy_bench.py"},"gpu":{"impl":"done","where":"src/gpu/gpu_saxpy_bench.cu (cuBLAS axpy)"},"todo":["Run GPU sweep on A100 (no SAXPY CSV yet)","Run torch_saxpy_bench.py (CPU) on core CPUs","Add bound/field/tags columns to CSV schema"],"cells":{"cpu":{"AMD_C6525_100G":{"rows":96,"valid_rows":96,"notes":[],"state":"collected"},"INTEL_C220G5":{"rows":96,"valid_rows":96,"notes":[],"state":"collected"},"INTEL_C6220":{"rows":72,"valid_rows":72,"notes":[],"state":"collected"},"INTEL_C6620":{"rows":96,"valid_rows":96,"notes":[],"state":"collected"},"INTEL_M510":{"rows":60,"valid_rows":60,"notes":[],"state":"collected"},"NVIDIA_GRACE":{"rows":260,"valid_rows":260,"notes":[],"state":"collected"}},"gpu":{"NVIDIA_A30":{"rows":22,"valid_rows":22,"notes":[],"state":"collected"},"NVIDIA_GH200_480GB":{"rows":24,"valid_rows":24,"notes":[],"state":"collected"},"NVIDIA_L40S":{"rows":48,"valid_rows":48,"notes":[],"state":"collected"},"Tesla_P100-PCIE-12GB":{"rows":18,"valid_rows":18,"notes":[],"state":"collected"},"Tesla_V100-SXM2-16GB":{"rows":91,"valid_rows":91,"notes":[],"state":"collected"}}}},{"id":"B2","name":"LBM D3Q19","bound":"B","field":"CFD","tags":["gs"],"cpu":{"impl":"todo","where":"src/torch/torch_lbm_bench.py (lbmpy/pystencils OpenMP+SIMD)"},"gpu":{"impl":"todo","where":"src/torch/torch_lbm_bench.py (lbmpy CUDA target)"},"todo":["Write torch_lbm_bench.py (lbmpy, SoA, fused stream-collide)","Validate mass/momentum conservation","Sweep 64^3-512^3, report MLUPS + GB/s"],"cells":{"cpu":{},"gpu":{}}},{"id":"B3","name":"SpMV (CSR)","bound":"B","field":"Sparse solvers","tags":["gs","cache"],"cpu":{"impl":"done","where":"src/cpu/cpu_gemv_bench.c --engine sparse (MKL sparse)"},"gpu":{"impl":"done","where":"src/gpu/gpu_gemv_bench.cu --engine sparse (cuSPARSE)"},"todo":["Split into torch_spmv_bench.py","Add SuiteSparse matrix set (paper used real matrices)","Grace: check torch CSR >= 60% of STREAM, else ArmPL/NVPL wrapper","Run sparse GEMV sweep on A100"],"cells":{"cpu":{"AMD_C6525_100G":{"rows":192,"valid_rows":192,"notes":[],"state":"collected"},"INTEL_C220G5":{"rows":192,"valid_rows":192,"notes":[],"state":"collected"},"INTEL_C6220":{"rows":144,"valid_rows":144,"notes":[],"state":"collected"},"INTEL_C6620":{"rows":192,"valid_rows":192,"notes":[],"state":"collected"},"INTEL_M510":{"rows":120,"valid_rows":120,"notes":[],"state":"collected"},"NVIDIA_GRACE":{"rows":25,"valid_rows":25,"notes":[],"state":"collected"}},"gpu":{"NVIDIA_A100":{"rows":160,"valid_rows":160,"notes":[],"state":"collected"},"NVIDIA_A30":{"rows":40,"valid_rows":40,"notes":[],"state":"collected"},"NVIDIA_GH200_480GB":{"rows":65,"valid_rows":65,"notes":[],"state":"collected"},"NVIDIA_L40S":{"rows":80,"valid_rows":80,"notes":[],"state":"collected"},"Tesla_P100-PCIE-12GB":{"rows":40,"valid_rows":40,"notes":[],"state":"collected"},"Tesla_V100-SXM2-16GB":{"rows":160,"valid_rows":160,"notes":[],"state":"collected"}}}},{"id":"B4","name":"SpGEMM (CSR)","bound":"B","field":"Graph / sparse","tags":["gs"],"cpu":{"impl":"done","where":"src/cpu/cpu_spgemm_bench.c (MKL mkl_sparse_spmm), src/torch/torch_spgemm_bench.py"},"gpu":{"impl":"done","where":"src/gpu/gpu_spgemm_bench.cu (cuSPARSE SpGEMM)"},"todo":["Run GPU sweep on A100","Add SuiteSparse matrix set"],"cells":{"cpu":{"AMD_C6525_100G":{"rows":192,"valid_rows":192,"notes":[],"state":"collected"},"INTEL_C220G5":{"rows":192,"valid_rows":192,"notes":[],"state":"collected"},"INTEL_C6220":{"rows":144,"valid_rows":144,"notes":[],"state":"collected"},"INTEL_C6620":{"rows":192,"valid_rows":192,"notes":[],"state":"collected"},"INTEL_M510":{"rows":120,"valid_rows":120,"notes":[],"state":"collected"},"NVIDIA_GRACE":{"rows":28,"valid_rows":28,"notes":[],"state":"collected"}},"gpu":{"NVIDIA_A30":{"rows":74,"valid_rows":74,"notes":[],"state":"collected"},"NVIDIA_GH200_480GB":{"rows":76,"valid_rows":76,"notes":[],"state":"collected"},"NVIDIA_L40S":{"rows":154,"valid_rows":154,"notes":[],"state":"collected"},"Tesla_P100-PCIE-12GB":{"rows":64,"valid_rows":64,"notes":[],"state":"collected"},"Tesla_V100-SXM2-16GB":{"rows":288,"valid_rows":288,"notes":[],"state":"collected"}}}},{"id":"C1","name":"GEMM","bound":"C","field":"Dense LA","tags":["ff"],"cpu":{"impl":"done","where":"src/cpu/cpu_gemm_bench.c (MKL/OpenBLAS), src/torch/torch_gemm_bench.py"},"gpu":{"impl":"done","where":"src/gpu/gpu_gemm_bench.cu (cuBLAS / cuSPARSELt)"},"todo":["Run torch_gemm_bench.py on core CPUs (bf16 AMX on SPR)","Pin allow_tf32 per precision for fp32 headline"],"cells":{"cpu":{"AMD_C6525_100G":{"rows":129,"valid_rows":129,"notes":[],"state":"collected"},"INTEL_C220G5":{"rows":86,"valid_rows":86,"notes":[],"state":"collected"},"INTEL_C6220":{"rows":66,"valid_rows":66,"notes":[],"state":"collected"},"INTEL_C6620":{"rows":129,"valid_rows":129,"notes":[],"state":"collected"},"INTEL_M510":{"rows":56,"valid_rows":56,"notes":[],"state":"collected"},"NVIDIA_GRACE":{"rows":46,"valid_rows":46,"notes":[],"state":"collected"}},"gpu":{"NVIDIA_A100":{"rows":363,"valid_rows":363,"notes":[],"state":"collected"},"NVIDIA_A30":{"rows":20,"valid_rows":20,"notes":[],"state":"collected"},"NVIDIA_GH200_480GB":{"rows":63,"valid_rows":63,"notes":[],"state":"collected"},"NVIDIA_L40S":{"rows":123,"valid_rows":123,"notes":[],"state":"collected"},"Tesla_P100-PCIE-12GB":{"rows":49,"valid_rows":49,"notes":[],"state":"collected"},"Tesla_V100-SXM2-16GB":{"rows":282,"valid_rows":282,"notes":[],"state":"collected"}}}},{"id":"C2","name":"Monte Carlo option pricing (fp64)","bound":"C","field":"Finance","tags":["tx"],"cpu":{"impl":"partial","where":"src/cpu/cpu_montecarlo_bench.c (real GBM path MC, never run); torch_montecarlo_bench.py todo"},"gpu":{"impl":"partial","where":"src/gpu/gh200/gpu_c2c_compute_bench.cu computes closed-form Black-Scholes, not path MC"},"todo":["Run cpu_montecarlo_bench sweep on core CPUs","Write torch_montecarlo_bench.py (torch.compile fused Philox + exp + payoff)","Replace GH200 closed-form Black-Scholes with path-simulation MC","Validate vs Black-Scholes closed form"],"cells":{"cpu":{"NVIDIA_GRACE":{"rows":10,"valid_rows":0,"notes":["closed-form Black-Scholes, not Monte Carlo paths"],"state":"invalid"}},"gpu":{"NVIDIA_GH200_480GB":{"rows":10,"valid_rows":0,"notes":["closed-form Black-Scholes, not Monte Carlo paths"],"state":"invalid"}}}},{"id":"C3","name":"2D Convolution","bound":"C","field":"Image","tags":["cache"],"cpu":{"impl":"partial","where":"GH200 cpu_local path only; torch_conv_bench.py (oneDNN) todo"},"gpu":{"impl":"partial","where":"src/gpu/gh200/gpu_c2c_fft_bench.cu conv2d (GH200 only); torch_conv_bench.py (cuDNN) todo"},"todo":["Write torch_conv_bench.py (F.conv2d: oneDNN / cuDNN)","Image-filter shapes 3/5/7, grayscale + RGB depthwise","Run on x86 CPUs, A100, L40S"],"cells":{"cpu":{"NVIDIA_GRACE":{"rows":5,"valid_rows":5,"notes":[],"state":"collected"}},"gpu":{"NVIDIA_GH200_480GB":{"rows":5,"valid_rows":5,"notes":[],"state":"collected"}}}},{"id":"C4","name":"FFT 1D/2D","bound":"C","field":"Signal","tags":["cache"],"cpu":{"impl":"partial","where":"FFTW3 path in src/gpu/gh200/gpu_c2c_fft_bench.cu (Grace only); torch_fft_bench.py todo"},"gpu":{"impl":"partial","where":"cuFFT in src/gpu/gh200/gpu_c2c_fft_bench.cu (GH200 only)"},"todo":["Write torch_fft_bench.py (torch.fft vs pyFFTW on CPU, cuFFT on GPU)","Run on x86 CPUs, A100, L40S"],"cells":{"cpu":{"NVIDIA_GRACE":{"rows":8,"valid_rows":8,"notes":[],"state":"collected"}},"gpu":{"NVIDIA_GH200_480GB":{"rows":8,"valid_rows":8,"notes":[],"state":"collected"}}}},{"id":"C5","name":"Bilateral filter","bound":"C","field":"Image","tags":["tx","ff"],"cpu":{"impl":"todo","where":"src/torch/torch_bilateral_bench.py (OpenCV cv2.bilateralFilter)"},"gpu":{"impl":"todo","where":"src/torch/torch_bilateral_bench.py (OpenCV CUDA; torch.compile fallback)"},"todo":["Write torch_bilateral_bench.py","Precise vs fast exp toggle (isolates SFU effect)","Validate CPU vs GPU output (PSNR)"],"cells":{"cpu":{},"gpu":{}}},{"id":"C6","name":"Radix sort (key-value)","bound":"C","field":"Database","tags":["gs","cache","int"],"cpu":{"impl":"partial","where":"OpenMP merge sort in src/gpu/gh200/gpu_c2c_divergence_bench.cu (Grace only); torch_sort_bench.py todo"},"gpu":{"impl":"partial","where":"CUB DeviceRadixSort in gpu_c2c_divergence_bench.cu (GH200 only)"},"todo":["Write torch_sort_bench.py (torch.sort vs numpy x86-simd-sort / VQSort)","uint32 keys + int32 values, uniform + skewed","Run on x86 CPUs, A100, L40S"],"cells":{"cpu":{"NVIDIA_GRACE":{"rows":11,"valid_rows":11,"notes":[],"state":"collected"}},"gpu":{"NVIDIA_GH200_480GB":{"rows":11,"valid_rows":11,"notes":[],"state":"collected"}}}},{"id":"C7","name":"Index search","bound":"C","field":"Database","tags":["gs","cache"],"cpu":{"impl":"partial","where":"Grace cpu_local path in gpu_c2c_irregular_bench.cu; torch_search_bench.py todo"},"gpu":{"impl":"partial","where":"thrust::lower_bound (GH200 only); Eytzinger variant in protocol_benchmark_suite.cu"},"todo":["Write torch_search_bench.py (torch.searchsorted)","Sweep tree size from L2-resident to 10x LLC (C to B crossover)","Run on x86 CPUs, A100, L40S"],"cells":{"cpu":{"NVIDIA_GRACE":{"rows":6,"valid_rows":6,"notes":[],"state":"collected"}},"gpu":{"NVIDIA_GH200_480GB":{"rows":4,"valid_rows":4,"notes":[],"state":"collected"}}}},{"id":"C8","name":"AES-128-CTR","bound":"C","field":"Security","tags":["ff","int"],"cpu":{"impl":"broken","where":"Grace path in gpu_c2c_divergence_bench.cu runs 1 AESE/AESMC round, not 10"},"gpu":{"impl":"broken","where":"gpu_aes_ctr_kernel is a byte XOR (memcpy); gpu_aes_coop_kernel is rotate/XOR"},"todo":["Write torch_aes_bench.py: CPU via 'cryptography' (OpenSSL AES-NI/VAES/ARMv8-CE) + hw-crypto-disabled variant","Write real FIPS-197 T-table GPU kernel (load_inline / CuPy RawKernel)","Validate with NIST SP 800-38A CTR vectors","Discard existing AES results"],"cells":{"cpu":{"NVIDIA_GRACE":{"rows":9,"valid_rows":0,"notes":["not real AES (1 round)"],"state":"invalid"}},"gpu":{"NVIDIA_GH200_480GB":{"rows":7,"valid_rows":0,"notes":["kernel is a byte XOR, not AES"],"state":"invalid"}}}},{"id":"C9","name":"SHA-256 multi-buffer","bound":"C","field":"Security","tags":["ff","int"],"cpu":{"impl":"partial","where":"src/cpu/cpu_cryptography_bench.c (pure C, never run); torch_sha256_bench.py (hashlib/OpenSSL SHA-NI) todo"},"gpu":{"impl":"todo","where":"custom one-message-per-thread kernel (no well-known GPU library)"},"todo":["Run cpu_cryptography_bench on core CPUs","Write torch_sha256_bench.py (hashlib thread pool)","Write GPU SHA-256 kernel, validate digests vs hashlib"],"cells":{"cpu":{},"gpu":{}}},{"id":"S1","name":"Histogram","bound":"S","field":"Image / analytics","tags":["gs"],"cpu":{"impl":"partial","where":"Grace cpu_local path in gpu_c2c_divergence_bench.cu; torch_hist_bench.py todo"},"gpu":{"impl":"partial","where":"CUB histogram + cluster-DSM variant (GH200 only)"},"todo":["Write torch_hist_bench.py (torch.histc vs CuPy/CUB HistogramEven)","256 / 64K bins x uniform / Zipf skew","Thread-count sweep to expose reduction scaling","Run on x86 CPUs, A100, L40S"],"cells":{"cpu":{"NVIDIA_GRACE":{"rows":16,"valid_rows":16,"notes":[],"state":"collected"}},"gpu":{"NVIDIA_GH200_480GB":{"rows":16,"valid_rows":16,"notes":[],"state":"collected"}}}},{"id":"S2","name":"Constraint solver (batched PGS)","bound":"S","field":"Game physics","tags":["gs"],"cpu":{"impl":"todo","where":"src/torch/torch_solver_bench.py (graph-colored batches, torch.compile)"},"gpu":{"impl":"todo","where":"src/torch/torch_solver_bench.py (kernel-per-batch, CUDA Graphs)"},"todo":["Write torch_solver_bench.py","Sweep constraints per batch (task granularity)","Report us per barrier; validate residual decreases"],"cells":{"cpu":{},"gpu":{}}},{"id":"A1","name":"Llama-3 inference","bound":"A","field":"LLM / AI","tags":["ff","gs"],"cpu":{"impl":"partial","where":"src/torch/bench_llama32_layers.py (cpu_local on Grace only); llama.cpp e2e todo"},"gpu":{"impl":"partial","where":"src/torch/bench_llama32_layers.py (GH200 only); llama.cpp CUDA / vLLM e2e todo"},"todo":["Add --device cpu path to bench_llama32_layers.py for x86 CPUs","Add llama_e2e_bench.sh (llama.cpp llama-bench pp512/tg128) on all 6 devices","vLLM reference on GPUs","Run per-layer sweep on A100, L40S"],"cells":{"cpu":{"NVIDIA_GRACE":{"rows":506,"valid_rows":506,"notes":[],"state":"collected"}},"gpu":{"NVIDIA_GH200_480GB":{"rows":506,"valid_rows":506,"notes":[],"state":"collected"}}}}]};
+
         // Structured Taxonomy
         const taxonomy = {
             "Dense Linear Algebra": ["gemm", "gemv", "saxpy"],
@@ -343,8 +434,8 @@
             "conv2d": "2D Convolution",
             "cub_radix_sort": "CUB Radix Sort",
             "cub_histogram": "CUB Histogram (Cluster DSM vs Atomics)",
-            "aes_128_ctr": "AES-128-CTR Cryptography",
-            "montecarlo": "Monte Carlo Pi Estimation",
+            "aes_128_ctr": "AES-128-CTR (stub kernel — invalid)",
+            "montecarlo": "Black-Scholes closed form (labelled montecarlo)",
             "llama32_embedding": "Llama-3.2 Embedding Layer",
             "llama32_rmsnorm": "Llama-3.2 RMSNorm Layer",
             "llama32_rope": "Llama-3.2 RoPE Positions",
@@ -364,29 +455,62 @@
 
         let currentGpu = Object.keys(tree).includes('NVIDIA_GH200_480GB') ? 'NVIDIA_GH200_480GB' : Object.keys(tree)[0] || '';
         let currentBench = 'gemm';
+        // 'status' = workload status / TODO matrix (landing view), 'gallery' = plots for one device
+        let currentView = (workloadStatus.workloads && location.hash !== '#plots') ? 'status' : 'gallery';
+        let statusFilter = 'all';
+        const openRows = new Set();
+
+        const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        const classOf = dev => deviceClass[dev] || 'gpu';
+
+        function countTodos() {
+            return (workloadStatus.workloads || []).reduce((n, w) => n + (w.todo || []).length, 0)
+                 + (workloadStatus.infra_todo || []).length;
+        }
 
         function renderNav() {
+            const statusNav = document.getElementById('status-nav');
+            statusNav.innerHTML = '<div class="nav-title">Project Status</div>';
+            if (workloadStatus.workloads) {
+                const el = document.createElement('div');
+                el.className = 'nav-item status-item' + (currentView === 'status' ? ' active' : '');
+                el.innerHTML = `Workload Status &amp; TODO <span class="count-pill">${countTodos()}</span>`;
+                el.title = 'Final workload suite: implementation + data-collection status per CPU / GPU';
+                el.onclick = () => { currentView = 'status'; updateView(); };
+                statusNav.appendChild(el);
+            }
+
             const gpuNav = document.getElementById('gpu-nav');
             gpuNav.innerHTML = '<div class="nav-title">Hardware Architecture</div>';
-            Object.keys(tree).forEach(gpu => {
-                const el = document.createElement('div');
-                el.className = 'nav-item' + (gpu === currentGpu ? ' active' : '');
-                el.innerText = gpu.replace(/_/g, ' ');
-                el.onclick = () => { 
-                    currentGpu = gpu; 
-                    // ensure currentBench exists on this GPU
-                    const available = Object.keys(tree[currentGpu] || {});
-                    if (!available.includes(currentBench) && available.length > 0) {
-                        currentBench = available[0];
-                    }
-                    updateView(); 
-                };
-                gpuNav.appendChild(el);
+            [['cpu', 'CPUs'], ['gpu', 'GPUs']].forEach(([cls, label]) => {
+                const devs = Object.keys(tree).filter(d => classOf(d) === cls);
+                if (devs.length === 0) return;
+                const sub = document.createElement('div');
+                sub.className = 'nav-subtitle';
+                sub.innerText = label;
+                gpuNav.appendChild(sub);
+                devs.forEach(gpu => {
+                    const el = document.createElement('div');
+                    el.className = 'nav-item' + (currentView === 'gallery' && gpu === currentGpu ? ' active' : '');
+                    el.innerText = gpu.replace(/_/g, ' ') + (gpu === 'NVIDIA_GH200_480GB' ? '  (+ Grace CPU)' : '');
+                    el.onclick = () => {
+                        currentView = 'gallery';
+                        currentGpu = gpu;
+                        // ensure currentBench exists on this device
+                        const available = Object.keys(tree[currentGpu] || {});
+                        if (!available.includes(currentBench) && available.length > 0) {
+                            currentBench = available[0];
+                        }
+                        updateView();
+                    };
+                    gpuNav.appendChild(el);
+                });
             });
 
             const benchCatContainer = document.getElementById('bench-categories');
             benchCatContainer.innerHTML = '';
-            
+            document.getElementById('bench-nav').hidden = (currentView === 'status');
+
             const availableBenches = Object.keys(tree[currentGpu] || {});
             
             // Render benchmarks grouped by taxonomy
@@ -409,7 +533,7 @@
                     el.className = 'nav-item' + (isActive ? ' active' : '') + (isActive && isCoherence ? ' coherence-active' : '');
                     el.innerText = displayNames[bench] || bench.replace(/_/g, ' ').toUpperCase();
                     el.title = el.innerText;
-                    el.onclick = () => { currentBench = bench; updateView(); };
+                    el.onclick = () => { currentView = 'gallery'; currentBench = bench; updateView(); };
                     catGroup.appendChild(el);
                 });
 
@@ -417,13 +541,165 @@
             });
         }
 
+        // ── Workload status / TODO matrix ─────────────────────────────────────
+        const IMPL_LABEL = {done: 'Done', partial: 'Partial', todo: 'TODO', broken: 'Broken'};
+
+        function implBadge(side) {
+            const s = (side && side.impl) || 'todo';
+            return `<span class="badge b-${esc(s)}" title="${esc(side && side.where)}">${IMPL_LABEL[s] || esc(s)}</span>`;
+        }
+
+        function dataCell(w, side, dev) {
+            const c = (w.cells && w.cells[side] || {})[dev];
+            if (!c) return `<td class="cell c-missing" title="No data yet for ${esc(dev)}">TODO</td>`;
+            if (c.state === 'invalid') {
+                return `<td class="cell c-invalid" title="${esc(c.rows)} rows, invalid: ${esc(c.notes.join('; '))}">⚠</td>`;
+            }
+            return `<td class="cell c-collected" title="${esc(c.valid_rows)} valid rows">✓</td>`;
+        }
+
+        function workloadFacts(w, devs) {
+            const core = {cpu: devs.cpu.filter(d => d.core), gpu: devs.gpu.filter(d => d.core)};
+            const has = (side, list) => list.filter(d => (w.cells[side][d.id] || {}).state === 'collected').length;
+            const cpuCore = has('cpu', core.cpu), gpuCore = has('gpu', core.gpu);
+            const missingCore = (core.cpu.length - cpuCore) + (core.gpu.length - gpuCore);
+            return {
+                cpuCore, gpuCore, missingCore,
+                ratioReady: cpuCore > 0 && gpuCore > 0,
+                cpuTodo: w.cpu.impl !== 'done', gpuTodo: w.gpu.impl !== 'done',
+                legacy: has('cpu', devs.cpu.filter(d => !d.core)) + has('gpu', devs.gpu.filter(d => !d.core)),
+                legacyTotal: devs.cpu.filter(d => !d.core).length + devs.gpu.filter(d => !d.core).length,
+            };
+        }
+
+        const FILTERS = {
+            all: ['All workloads', () => true],
+            cpu: ['CPU impl not done', f => f.cpuTodo],
+            gpu: ['GPU impl not done', f => f.gpuTodo],
+            data: ['Missing core-device data', f => f.missingCore > 0],
+            ratio: ['No CPU/GPU pair yet', f => !f.ratioReady],
+        };
+
+        function renderStatus() {
+            const S = workloadStatus;
+            const view = document.getElementById('status-view');
+            const devs = S.devices;
+            const core = {cpu: devs.cpu.filter(d => d.core), gpu: devs.gpu.filter(d => d.core)};
+            const facts = Object.fromEntries(S.workloads.map(w => [w.id, workloadFacts(w, devs)]));
+
+            const implCount = side => S.workloads.reduce((acc, w) => { acc[w[side].impl] = (acc[w[side].impl] || 0) + 1; return acc; }, {});
+            const ci = implCount('cpu'), gi = implCount('gpu');
+            const coreCells = S.workloads.length * (core.cpu.length + core.gpu.length);
+            const coreDone = Object.values(facts).reduce((n, f) => n + f.cpuCore + f.gpuCore, 0);
+            const ratioReady = Object.values(facts).filter(f => f.ratioReady).length;
+            const implLine = c => ['done', 'partial', 'todo', 'broken'].filter(k => c[k]).map(k => `${c[k]} ${IMPL_LABEL[k].toLowerCase()}`).join(' · ');
+
+            let html = `
+                <div class="tiles">
+                    <div class="tile"><div class="k">Final workloads</div><div class="v">${S.workloads.length}</div>
+                        <div class="s">${['B','C','S','A'].map(b => `${S.workloads.filter(w => w.bound === b).length} ${b}`).join(' · ')}</div></div>
+                    <div class="tile"><div class="k">CPU implementations</div><div class="v" style="color:#38bdf8">${ci.done || 0}<span style="font-size:1rem;color:var(--text-muted)"> / ${S.workloads.length}</span></div>
+                        <div class="s">${implLine(ci)}</div></div>
+                    <div class="tile"><div class="k">GPU implementations</div><div class="v" style="color:#34d399">${gi.done || 0}<span style="font-size:1rem;color:var(--text-muted)"> / ${S.workloads.length}</span></div>
+                        <div class="s">${implLine(gi)}</div></div>
+                    <div class="tile"><div class="k">Core-device data</div><div class="v">${coreDone}<span style="font-size:1rem;color:var(--text-muted)"> / ${coreCells}</span></div>
+                        <div class="s">workload × device cells on the ${core.cpu.length + core.gpu.length} core devices</div></div>
+                    <div class="tile"><div class="k">CPU/GPU ratio ready</div><div class="v">${ratioReady}<span style="font-size:1rem;color:var(--text-muted)"> / ${S.workloads.length}</span></div>
+                        <div class="s">≥1 core CPU and ≥1 core GPU with valid data</div></div>
+                </div>
+                <div class="toolbar">
+                    ${Object.entries(FILTERS).map(([k, [label]]) => `<button class="chip${statusFilter === k ? ' on' : ''}" data-filter="${k}">${label}</button>`).join('')}
+                    <div class="legend">
+                        <span><b class="c-collected">✓</b> data collected</span>
+                        <span><b class="c-invalid">⚠</b> data exists but invalid</span>
+                        <span><b class="c-missing">TODO</b> not collected</span>
+                    </div>
+                </div>
+                <div class="table-wrap"><table class="status">
+                    <thead>
+                        <tr>
+                            <th rowspan="2">ID</th><th rowspan="2">Workload</th>
+                            <th rowspan="2">CPU impl</th><th rowspan="2">GPU impl</th>
+                            <th colspan="${core.cpu.length}" class="dev side-cpu">Core CPUs</th>
+                            <th colspan="${core.gpu.length}" class="dev side-gpu">Core GPUs</th>
+                            <th rowspan="2" class="dev">Legacy</th><th rowspan="2" class="dev">TODOs</th>
+                        </tr>
+                        <tr>
+                            ${core.cpu.map(d => `<th class="dev side-cpu" title="${esc(d.label + (d.note ? ' — ' + d.note : ''))}">${esc(d.short || d.label)}</th>`).join('')}
+                            ${core.gpu.map(d => `<th class="dev side-gpu" title="${esc(d.label)}">${esc(d.short || d.label)}</th>`).join('')}
+                        </tr>
+                    </thead><tbody>`;
+
+            const ncols = 6 + core.cpu.length + core.gpu.length;
+            const pred = FILTERS[statusFilter][1];
+            let shown = 0;
+            ['B', 'C', 'S', 'A'].forEach(b => {
+                const rows = S.workloads.filter(w => w.bound === b && pred(facts[w.id]));
+                if (rows.length === 0) return;
+                const binfo = S.bounds[b] || {name: b};
+                html += `<tr class="group"><td colspan="${ncols}">${esc(binfo.name)}<small>${esc(binfo.expect || '')}</small></td></tr>`;
+                rows.forEach(w => {
+                    shown++;
+                    const f = facts[w.id];
+                    const open = openRows.has(w.id);
+                    html += `<tr class="wl" data-id="${esc(w.id)}">
+                        <td><b>${esc(w.id)}</b></td>
+                        <td class="name"><b>${esc(w.name)}</b><div class="meta">${esc(w.field)} ${(w.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div></td>
+                        <td>${implBadge(w.cpu)}</td><td>${implBadge(w.gpu)}</td>
+                        ${core.cpu.map(d => dataCell(w, 'cpu', d.id)).join('')}
+                        ${core.gpu.map(d => dataCell(w, 'gpu', d.id)).join('')}
+                        <td class="cell" style="color:var(--text-muted)" title="Legacy devices with data">${f.legacy}/${f.legacyTotal}</td>
+                        <td class="cell"><span class="badge ${(w.todo || []).length ? 'b-todo' : 'b-done'}">${(w.todo || []).length} ${open ? '▴' : '▾'}</span></td>
+                    </tr>`;
+                    if (open) {
+                        html += `<tr class="detail"><td colspan="${ncols}"><div class="cols">
+                            <div><h4>CPU implementation</h4><p>${esc(w.cpu.where)}</p>
+                                 <h4>GPU implementation</h4><p>${esc(w.gpu.where)}</p></div>
+                            <div><h4>TODO</h4><ul class="todo">${(w.todo || []).map(t => `<li>${esc(t)}</li>`).join('') || '<li style="color:var(--ok)">Nothing outstanding</li>'}</ul></div>
+                        </div></td></tr>`;
+                    }
+                });
+            });
+            if (shown === 0) html += `<tr><td colspan="${ncols}" style="color:var(--text-muted);text-align:center;padding:1.5rem">No workloads match this filter.</td></tr>`;
+            html += `</tbody></table></div>`;
+
+            const other = [...(S.other_devices?.cpu || []), ...(S.other_devices?.gpu || [])];
+            html += `<div class="two-col">
+                <div class="panel"><h3>Infrastructure TODO</h3><ul class="todo">${(S.infra_todo || []).map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>
+                <div class="panel"><h3>Dropped from the suite</h3><dl class="dropped">${(S.dropped || []).map(d => `<dt>${esc(d.name)}</dt><dd>${esc(d.why)}</dd>`).join('')}</dl></div>
+            </div>
+            <div class="panel"><h3>Scope</h3><p class="muted">${esc(S.plan)}</p><p class="muted">${esc(S.system_axis)}</p>
+                <p class="muted">Implementation status and TODOs are maintained in <code>results/workloads.json</code>; the ✓ / ⚠ / TODO data cells are recomputed from <code>results/data/</code> on every dashboard build.${other.length ? ` Devices with data not yet mapped in the manifest: <code>${other.map(esc).join(', ')}</code>.` : ''}</p></div>`;
+
+            view.innerHTML = html;
+            view.querySelectorAll('[data-filter]').forEach(b => b.onclick = () => { statusFilter = b.dataset.filter; renderStatus(); });
+            view.querySelectorAll('tr.wl').forEach(tr => tr.onclick = () => {
+                const id = tr.dataset.id;
+                openRows.has(id) ? openRows.delete(id) : openRows.add(id);
+                renderStatus();
+            });
+        }
+
         function updateView() {
             renderNav();
             const gallery = document.getElementById('gallery');
+            const statusView = document.getElementById('status-view');
             const title = document.getElementById('view-title');
             const subtitle = document.getElementById('view-subtitle');
             gallery.innerHTML = '';
-            
+
+            if (currentView === 'status' && workloadStatus.workloads) {
+                title.innerText = 'Workload Status & TODO';
+                subtitle.innerText = 'Final CPU-vs-GPU suite (ISCA\'10 bound classes) — what is implemented and which devices still need data. Click a row for its TODO list.';
+                document.getElementById('hardware-limits').style.display = 'none';
+                gallery.hidden = true;
+                statusView.hidden = false;
+                renderStatus();
+                return;
+            }
+            statusView.hidden = true;
+            gallery.hidden = false;
+
             const benchName = displayNames[currentBench] || currentBench.replace(/_/g, ' ').toUpperCase();
             title.innerText = `${currentGpu.replace(/_/g, ' ')} — ${benchName}`;
             

@@ -5,15 +5,11 @@ on:
     branches: [main]
     paths:
       - 'results/data/**.csv'
-      - 'results/generate_plots.py'
-      - 'results/generate_gemv_plots.py'
-      - 'results/generate_saxpy_plots.py'
-      - 'results/generate_spgemm_plots.py'
+      - 'results/plotting/**.py'
       - 'results/generate_index.py'
       - 'results/index.html'
-      - 'scripts/generate_all_workload_and_coherence_plots.py'
+      - 'results/workloads.json'
       - 'Makefile'
-      - 'results/gpu_specs.py'
       - 'requirements.txt'
       - '.github/workflows/plots.yml'
   workflow_dispatch: {}
@@ -45,11 +41,11 @@ jobs:
           # Remove .git from the checked-out plots folder to prevent deployment conflicts
           rm -rf results/plots/.git
           
-          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -qE '\.csv|results/generate_.*_plots\.py|scripts/generate_.*\.py|gpu_specs\.py|requirements\.txt|Makefile'; then
+          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -qE '\.csv|results/plotting/.*\.py|requirements\.txt|Makefile'; then
             echo "Data or scripts changed. Running full plot generation..."
             make plots
           else
-            echo "Only UI changed. Regenerating index.html..."
+            echo "Only UI / workload status changed. Regenerating index.html..."
             make venv
             .venv/bin/python results/generate_index.py
           fi

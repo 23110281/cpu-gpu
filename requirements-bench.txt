@@ -1,0 +1,4 @@
+# Benchmark-node dependencies (NOT installed in CI; CI only needs requirements.txt for plotting).
+#   pip install -r requirements.txt -r requirements-bench.txt
+# PyTorch harnesses in src/torch/ (CPU: oneDNN/MKL, GPU: cuBLAS/cuDNN/cuFFT/CUB):
+torch>=2.1.0

@@ -1,0 +1,913 @@
+{
+  "_doc": "Final workload suite + implementation status. Human-maintained: edit 'impl' / 'todo' as work lands. Data coverage per device is NOT edited here: results/generate_index.py computes it from the CSVs matched by each workload's 'data' sources (globs relative to results/data/). Source fields: glob, optional match {column: [values]} (rows must match all columns), optional device (override the device id; default = directory under results/data/<cpu|gpu>/), optional valid=false + note (data exists but is known-wrong and must be re-collected). Rows with a 'status' column only count when status contains 'ok' or 'l2-bound'.",
+  "plan": "Final suite derived from Lee et al., ISCA'10 ('Debunking the 100X GPU vs CPU myth'): every paper kernel that is primarily compute-, bandwidth- or synchronization-bound, plus LLM inference and cryptography. Each workload gets a tuned CPU and a tuned GPU implementation (fastest well-known library, driven from a PyTorch script in src/torch/), run on the same 6-device core matrix.",
+  "devices": {
+    "cpu": [
+      {
+        "id": "INTEL_C6620",
+        "label": "Intel Xeon SPR (c6620)",
+        "short": "Xeon SPR",
+        "core": true
+      },
+      {
+        "id": "AMD_C6525_100G",
+        "label": "AMD EPYC (c6525-100g)",
+        "short": "EPYC",
+        "core": true
+      },
+      {
+        "id": "NVIDIA_GRACE",
+        "label": "NVIDIA Grace (GH200)",
+        "short": "Grace",
+        "core": true,
+        "note": "Grace data lives in results/data/gpu/NVIDIA_GH200_480GB/ (residency_mode=cpu_local rows)"
+      },
+      {
+        "id": "INTEL_M510",
+        "label": "Xeon D-1548 (m510)",
+        "short": "D-1548",
+        "core": false
+      },
+      {
+        "id": "INTEL_C6220",
+        "label": "Xeon E5-2650 (c6220)",
+        "short": "E5-2650",
+        "core": false
+      },
+      {
+        "id": "INTEL_C220G5",
+        "label": "Xeon Silver 4114 (c220g5)",
+        "short": "Silver 4114",
+        "core": false
+      }
+    ],
+    "gpu": [
+      {
+        "id": "NVIDIA_A100",
+        "label": "A100",
+        "short": "A100",
+        "core": true
+      },
+      {
+        "id": "NVIDIA_L40S",
+        "label": "L40S",
+        "short": "L40S",
+        "core": true
+      },
+      {
+        "id": "NVIDIA_GH200_480GB",
+        "label": "H100 (GH200)",
+        "short": "H100",
+        "core": true
+      },
+      {
+        "id": "NVIDIA_A30",
+        "label": "A30",
+        "short": "A30",
+        "core": false
+      },
+      {
+        "id": "Tesla_V100-SXM2-16GB",
+        "label": "V100",
+        "short": "V100",
+        "core": false
+      },
+      {
+        "id": "Tesla_P100-PCIE-12GB",
+        "label": "P100",
+        "short": "P100",
+        "core": false
+      }
+    ]
+  },
+  "bounds": {
+    "B": {
+      "name": "Bandwidth-bound",
+      "expect": "GPU/CPU ratio tracks the peak DRAM bandwidth ratio"
+    },
+    "C": {
+      "name": "Compute-bound",
+      "expect": "GPU/CPU ratio tracks the peak FLOP/OP ratio"
+    },
+    "S": {
+      "name": "Synchronization-bound",
+      "expect": "Ratio below both the BW and FLOP ratios; the CPU can win"
+    },
+    "A": {
+      "name": "Application (composite)",
+      "expect": "Prefill tracks the FLOP ratio, decode the BW ratio"
+    }
+  },
+  "workloads": [
+    {
+      "id": "B1",
+      "name": "SAXPY",
+      "bound": "B",
+      "field": "Dense LA / BLAS-1",
+      "tags": [],
+      "cpu": {
+        "impl": "done",
+        "where": "src/cpu/cpu_saxpy_bench.c (MKL/OpenBLAS), src/torch/torch_saxpy_bench.py"
+      },
+      "gpu": {
+        "impl": "done",
+        "where": "src/gpu/gpu_saxpy_bench.cu (cuBLAS axpy)"
+      },
+      "todo": [
+        "Run GPU sweep on A100 (no SAXPY CSV yet)",
+        "Run torch_saxpy_bench.py (CPU) on core CPUs",
+        "Add bound/field/tags columns to CSV schema"
+      ],
+      "data": {
+        "cpu": [
+          {
+            "glob": "cpu/*/sweep_saxpy_*.csv"
+          },
+          {
+            "glob": "cpu/*/sweep_torch_saxpy_*.csv"
+          },
+          {
+            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "match": {
+              "workload": [
+                "saxpy"
+              ],
+              "residency_mode": [
+                "cpu_local"
+              ]
+            },
+            "device": "NVIDIA_GRACE"
+          }
+        ],
+        "gpu": [
+          {
+            "glob": "gpu/*/sweep_saxpy*.csv"
+          }
+        ]
+      }
+    },
+    {
+      "id": "B2",
+      "name": "LBM D3Q19",
+      "bound": "B",
+      "field": "CFD",
+      "tags": [
+        "gs"
+      ],
+      "cpu": {
+        "impl": "todo",
+        "where": "src/torch/torch_lbm_bench.py (lbmpy/pystencils OpenMP+SIMD)"
+      },
+      "gpu": {
+        "impl": "todo",
+        "where": "src/torch/torch_lbm_bench.py (lbmpy CUDA target)"
+      },
+      "todo": [
+        "Write torch_lbm_bench.py (lbmpy, SoA, fused stream-collide)",
+        "Validate mass/momentum conservation",
+        "Sweep 64^3-512^3, report MLUPS + GB/s"
+      ],
+      "data": {
+        "cpu": [],
+        "gpu": []
+      }
+    },
+    {
+      "id": "B3",
+      "name": "SpMV (CSR)",
+      "bound": "B",
+      "field": "Sparse solvers",
+      "tags": [
+        "gs",
+        "cache"
+      ],
+      "cpu": {
+        "impl": "done",
+        "where": "src/cpu/cpu_gemv_bench.c --engine sparse (MKL sparse)"
+      },
+      "gpu": {
+        "impl": "done",
+        "where": "src/gpu/gpu_gemv_bench.cu --engine sparse (cuSPARSE)"
+      },
+      "todo": [
+        "Split into torch_spmv_bench.py",
+        "Add SuiteSparse matrix set (paper used real matrices)",
+        "Grace: check torch CSR >= 60% of STREAM, else ArmPL/NVPL wrapper",
+        "Run sparse GEMV sweep on A100"
+      ],
+      "data": {
+        "cpu": [
+          {
+            "glob": "cpu/*/sweep_gemv_*.csv",
+            "match": {
+              "engine": [
+                "sparse"
+              ]
+            }
+          },
+          {
+            "glob": "cpu/*/sweep_torch_gemv_*.csv",
+            "match": {
+              "engine": [
+                "sparse"
+              ]
+            }
+          },
+          {
+            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "match": {
+              "workload": [
+                "spmv"
+              ],
+              "residency_mode": [
+                "cpu_local"
+              ]
+            },
+            "device": "NVIDIA_GRACE"
+          }
+        ],
+        "gpu": [
+          {
+            "glob": "gpu/*/sweep_gemv*.csv",
+            "match": {
+              "engine": [
+                "sparse"
+              ]
+            }
+          },
+          {
+            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "match": {
+              "workload": [
+                "spmv"
+              ],
+              "residency_mode": [
+                "gpu_explicit"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "B4",
+      "name": "SpGEMM (CSR)",
+      "bound": "B",
+      "field": "Graph / sparse",
+      "tags": [
+        "gs"
+      ],
+      "cpu": {
+        "impl": "done",
+        "where": "src/cpu/cpu_spgemm_bench.c (MKL mkl_sparse_spmm), src/torch/torch_spgemm_bench.py"
+      },
+      "gpu": {
+        "impl": "done",
+        "where": "src/gpu/gpu_spgemm_bench.cu (cuSPARSE SpGEMM)"
+      },
+      "todo": [
+        "Run GPU sweep on A100",
+        "Add SuiteSparse matrix set"
+      ],
+      "data": {
+        "cpu": [
+          {
+            "glob": "cpu/*/sweep_spgemm_*.csv"
+          },
+          {
+            "glob": "cpu/*/sweep_torch_spgemm_*.csv"
+          },
+          {
+            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "match": {
+              "workload": [
+                "spgemm"
+              ],
+              "residency_mode": [
+                "cpu_local"
+              ]
+            },
+            "device": "NVIDIA_GRACE"
+          }
+        ],
+        "gpu": [
+          {
+            "glob": "gpu/*/sweep_spgemm*.csv"
+          }
+        ]
+      }
+    },
+    {
+      "id": "C1",
+      "name": "GEMM",
+      "bound": "C",
+      "field": "Dense LA",
+      "tags": [
+        "ff"
+      ],
+      "cpu": {
+        "impl": "done",
+        "where": "src/cpu/cpu_gemm_bench.c (MKL/OpenBLAS), src/torch/torch_gemm_bench.py"
+      },
+      "gpu": {
+        "impl": "done",
+        "where": "src/gpu/gpu_gemm_bench.cu (cuBLAS / cuSPARSELt)"
+      },
+      "todo": [
+        "Run torch_gemm_bench.py on core CPUs (bf16 AMX on SPR)",
+        "Pin allow_tf32 per precision for fp32 headline"
+      ],
+      "data": {
+        "cpu": [
+          {
+            "glob": "cpu/*/sweep_gemm_*.csv"
+          },
+          {
+            "glob": "cpu/*/sweep_torch_gemm_*.csv"
+          },
+          {
+            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "match": {
+              "workload": [
+                "gemm"
+              ],
+              "residency_mode": [
+                "cpu_local"
+              ]
+            },
+            "device": "NVIDIA_GRACE"
+          }
+        ],
+        "gpu": [
+          {
+            "glob": "gpu/*/sweep_20*.csv"
+          }
+        ]
+      }
+    },
+    {
+      "id": "C2",
+      "name": "Monte Carlo option pricing (fp64)",
+      "bound": "C",
+      "field": "Finance",
+      "tags": [
+        "tx"
+      ],
+      "cpu": {
+        "impl": "partial",
+        "where": "src/cpu/cpu_montecarlo_bench.c (real GBM path MC, never run); torch_montecarlo_bench.py todo"
+      },
+      "gpu": {
+        "impl": "partial",
+        "where": "src/gpu/gh200/gpu_c2c_compute_bench.cu computes closed-form Black-Scholes, not path MC"
+      },
+      "todo": [
+        "Run cpu_montecarlo_bench sweep on core CPUs",
+        "Write torch_montecarlo_bench.py (torch.compile fused Philox + exp + payoff)",
+        "Replace GH200 closed-form Black-Scholes with path-simulation MC",
+        "Validate vs Black-Scholes closed form"
+      ],
+      "data": {
+        "cpu": [
+          {
+            "glob": "cpu/*/sweep_montecarlo_*.csv"
+          },
+          {
+            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "match": {
+              "workload": [
+                "montecarlo"
+              ],
+              "residency_mode": [
+                "cpu_local"
+              ]
+            },
+            "device": "NVIDIA_GRACE",
+            "valid": false,
+            "note": "closed-form Black-Scholes, not Monte Carlo paths"
+          }
+        ],
+        "gpu": [
+          {
+            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "match": {
+              "workload": [
+                "montecarlo"
+              ],
+              "residency_mode": [
+                "gpu_explicit"
+              ]
+            },
+            "valid": false,
+            "note": "closed-form Black-Scholes, not Monte Carlo paths"
+          }
+        ]
+      }
+    },
+    {
+      "id": "C3",
+      "name": "2D Convolution",
+      "bound": "C",
+      "field": "Image",
+      "tags": [
+        "cache"
+      ],
+      "cpu": {
+        "impl": "partial",
+        "where": "GH200 cpu_local path only; torch_conv_bench.py (oneDNN) todo"
+      },
+      "gpu": {
+        "impl": "partial",
+        "where": "src/gpu/gh200/gpu_c2c_fft_bench.cu conv2d (GH200 only); torch_conv_bench.py (cuDNN) todo"
+      },
+      "todo": [
+        "Write torch_conv_bench.py (F.conv2d: oneDNN / cuDNN)",
+        "Image-filter shapes 3/5/7, grayscale + RGB depthwise",
+        "Run on x86 CPUs, A100, L40S"
+      ],
+      "data": {
+        "cpu": [
+          {
+            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "match": {
+              "workload": [
+                "conv2d"
+              ],
+              "residency_mode": [
+                "cpu_local"
+              ]
+            },
+            "device": "NVIDIA_GRACE"
+          }
+        ],
+        "gpu": [
+          {
+            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "match": {
+              "workload": [
+                "conv2d"
+              ],
+              "residency_mode": [
+                "gpu_explicit"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "C4",
+      "name": "FFT 1D/2D",
+      "bound": "C",
+      "field": "Signal",
+      "tags": [
+        "cache"
+      ],
+      "cpu": {
+        "impl": "partial",
+        "where": "FFTW3 path in src/gpu/gh200/gpu_c2c_fft_bench.cu (Grace only); torch_fft_bench.py todo"
+      },
+      "gpu": {
+        "impl": "partial",
+        "where": "cuFFT in src/gpu/gh200/gpu_c2c_fft_bench.cu (GH200 only)"
+      },
+      "todo": [
+        "Write torch_fft_bench.py (torch.fft vs pyFFTW on CPU, cuFFT on GPU)",
+        "Run on x86 CPUs, A100, L40S"
+      ],
+      "data": {
+        "cpu": [
+          {
+            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "match": {
+              "workload": [
+                "cufft_1d",
+                "cufft_2d"
+              ],
+              "residency_mode": [
+                "cpu_local"
+              ]
+            },
+            "device": "NVIDIA_GRACE"
+          }
+        ],
+        "gpu": [
+          {
+            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "match": {
+              "workload": [
+                "cufft_1d",
+                "cufft_2d"
+              ],
+              "residency_mode": [
+                "gpu_explicit"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "C5",
+      "name": "Bilateral filter",
+      "bound": "C",
+      "field": "Image",
+      "tags": [
+        "tx",
+        "ff"
+      ],
+      "cpu": {
+        "impl": "todo",
+        "where": "src/torch/torch_bilateral_bench.py (OpenCV cv2.bilateralFilter)"
+      },
+      "gpu": {
+        "impl": "todo",
+        "where": "src/torch/torch_bilateral_bench.py (OpenCV CUDA; torch.compile fallback)"
+      },
+      "todo": [
+        "Write torch_bilateral_bench.py",
+        "Precise vs fast exp toggle (isolates SFU effect)",
+        "Validate CPU vs GPU output (PSNR)"
+      ],
+      "data": {
+        "cpu": [],
+        "gpu": []
+      }
+    },
+    {
+      "id": "C6",
+      "name": "Radix sort (key-value)",
+      "bound": "C",
+      "field": "Database",
+      "tags": [
+        "gs",
+        "cache",
+        "int"
+      ],
+      "cpu": {
+        "impl": "partial",
+        "where": "OpenMP merge sort in src/gpu/gh200/gpu_c2c_divergence_bench.cu (Grace only); torch_sort_bench.py todo"
+      },
+      "gpu": {
+        "impl": "partial",
+        "where": "CUB DeviceRadixSort in gpu_c2c_divergence_bench.cu (GH200 only)"
+      },
+      "todo": [
+        "Write torch_sort_bench.py (torch.sort vs numpy x86-simd-sort / VQSort)",
+        "uint32 keys + int32 values, uniform + skewed",
+        "Run on x86 CPUs, A100, L40S"
+      ],
+      "data": {
+        "cpu": [
+          {
+            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "match": {
+              "workload": [
+                "cub_radix_sort"
+              ],
+              "residency_mode": [
+                "cpu_local"
+              ]
+            },
+            "device": "NVIDIA_GRACE"
+          }
+        ],
+        "gpu": [
+          {
+            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "match": {
+              "workload": [
+                "cub_radix_sort"
+              ],
+              "residency_mode": [
+                "gpu_explicit"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "C7",
+      "name": "Index search",
+      "bound": "C",
+      "field": "Database",
+      "tags": [
+        "gs",
+        "cache"
+      ],
+      "cpu": {
+        "impl": "partial",
+        "where": "Grace cpu_local path in gpu_c2c_irregular_bench.cu; torch_search_bench.py todo"
+      },
+      "gpu": {
+        "impl": "partial",
+        "where": "thrust::lower_bound (GH200 only); Eytzinger variant in protocol_benchmark_suite.cu"
+      },
+      "todo": [
+        "Write torch_search_bench.py (torch.searchsorted)",
+        "Sweep tree size from L2-resident to 10x LLC (C to B crossover)",
+        "Run on x86 CPUs, A100, L40S"
+      ],
+      "data": {
+        "cpu": [
+          {
+            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "match": {
+              "workload": [
+                "thrust_search"
+              ],
+              "residency_mode": [
+                "cpu_local"
+              ]
+            },
+            "device": "NVIDIA_GRACE"
+          }
+        ],
+        "gpu": [
+          {
+            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "match": {
+              "workload": [
+                "thrust_search"
+              ],
+              "residency_mode": [
+                "gpu_explicit"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "C8",
+      "name": "AES-128-CTR",
+      "bound": "C",
+      "field": "Security",
+      "tags": [
+        "ff",
+        "int"
+      ],
+      "cpu": {
+        "impl": "broken",
+        "where": "Grace path in gpu_c2c_divergence_bench.cu runs 1 AESE/AESMC round, not 10"
+      },
+      "gpu": {
+        "impl": "broken",
+        "where": "gpu_aes_ctr_kernel is a byte XOR (memcpy); gpu_aes_coop_kernel is rotate/XOR"
+      },
+      "todo": [
+        "Write torch_aes_bench.py: CPU via 'cryptography' (OpenSSL AES-NI/VAES/ARMv8-CE) + hw-crypto-disabled variant",
+        "Write real FIPS-197 T-table GPU kernel (load_inline / CuPy RawKernel)",
+        "Validate with NIST SP 800-38A CTR vectors",
+        "Discard existing AES results"
+      ],
+      "data": {
+        "cpu": [
+          {
+            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "match": {
+              "workload": [
+                "aes_128_ctr"
+              ],
+              "residency_mode": [
+                "cpu_local"
+              ]
+            },
+            "device": "NVIDIA_GRACE",
+            "valid": false,
+            "note": "not real AES (1 round)"
+          }
+        ],
+        "gpu": [
+          {
+            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "match": {
+              "workload": [
+                "aes_128_ctr"
+              ],
+              "residency_mode": [
+                "gpu_explicit"
+              ]
+            },
+            "valid": false,
+            "note": "kernel is a byte XOR, not AES"
+          }
+        ]
+      }
+    },
+    {
+      "id": "C9",
+      "name": "SHA-256 multi-buffer",
+      "bound": "C",
+      "field": "Security",
+      "tags": [
+        "ff",
+        "int"
+      ],
+      "cpu": {
+        "impl": "partial",
+        "where": "src/cpu/cpu_cryptography_bench.c (pure C, never run); torch_sha256_bench.py (hashlib/OpenSSL SHA-NI) todo"
+      },
+      "gpu": {
+        "impl": "todo",
+        "where": "custom one-message-per-thread kernel (no well-known GPU library)"
+      },
+      "todo": [
+        "Run cpu_cryptography_bench on core CPUs",
+        "Write torch_sha256_bench.py (hashlib thread pool)",
+        "Write GPU SHA-256 kernel, validate digests vs hashlib"
+      ],
+      "data": {
+        "cpu": [
+          {
+            "glob": "cpu/*/sweep_cryptography_*.csv"
+          }
+        ],
+        "gpu": []
+      }
+    },
+    {
+      "id": "S1",
+      "name": "Histogram",
+      "bound": "S",
+      "field": "Image / analytics",
+      "tags": [
+        "gs"
+      ],
+      "cpu": {
+        "impl": "partial",
+        "where": "Grace cpu_local path in gpu_c2c_divergence_bench.cu; torch_hist_bench.py todo"
+      },
+      "gpu": {
+        "impl": "partial",
+        "where": "CUB histogram + cluster-DSM variant (GH200 only)"
+      },
+      "todo": [
+        "Write torch_hist_bench.py (torch.histc vs CuPy/CUB HistogramEven)",
+        "256 / 64K bins x uniform / Zipf skew",
+        "Thread-count sweep to expose reduction scaling",
+        "Run on x86 CPUs, A100, L40S"
+      ],
+      "data": {
+        "cpu": [
+          {
+            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "match": {
+              "workload": [
+                "cub_histogram"
+              ],
+              "residency_mode": [
+                "cpu_local"
+              ]
+            },
+            "device": "NVIDIA_GRACE"
+          }
+        ],
+        "gpu": [
+          {
+            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "match": {
+              "workload": [
+                "cub_histogram"
+              ],
+              "residency_mode": [
+                "gpu_explicit"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "S2",
+      "name": "Constraint solver (batched PGS)",
+      "bound": "S",
+      "field": "Game physics",
+      "tags": [
+        "gs"
+      ],
+      "cpu": {
+        "impl": "todo",
+        "where": "src/torch/torch_solver_bench.py (graph-colored batches, torch.compile)"
+      },
+      "gpu": {
+        "impl": "todo",
+        "where": "src/torch/torch_solver_bench.py (kernel-per-batch, CUDA Graphs)"
+      },
+      "todo": [
+        "Write torch_solver_bench.py",
+        "Sweep constraints per batch (task granularity)",
+        "Report us per barrier; validate residual decreases"
+      ],
+      "data": {
+        "cpu": [],
+        "gpu": []
+      }
+    },
+    {
+      "id": "A1",
+      "name": "Llama-3 inference",
+      "bound": "A",
+      "field": "LLM / AI",
+      "tags": [
+        "ff",
+        "gs"
+      ],
+      "cpu": {
+        "impl": "partial",
+        "where": "src/torch/bench_llama32_layers.py (cpu_local on Grace only); llama.cpp e2e todo"
+      },
+      "gpu": {
+        "impl": "partial",
+        "where": "src/torch/bench_llama32_layers.py (GH200 only); llama.cpp CUDA / vLLM e2e todo"
+      },
+      "todo": [
+        "Add --device cpu path to bench_llama32_layers.py for x86 CPUs",
+        "Add llama_e2e_bench.sh (llama.cpp llama-bench pp512/tg128) on all 6 devices",
+        "vLLM reference on GPUs",
+        "Run per-layer sweep on A100, L40S"
+      ],
+      "data": {
+        "cpu": [
+          {
+            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "match": {
+              "workload": [
+                "llama32_embedding",
+                "llama32_rmsnorm",
+                "llama32_rope",
+                "llama32_qkv_proj",
+                "llama32_sdpa_attention",
+                "llama32_swiglu_ffn",
+                "llama32_lmhead_topk",
+                "llama3_8b_prefill",
+                "llama3_8b_decode"
+              ],
+              "residency_mode": [
+                "cpu_local"
+              ]
+            },
+            "device": "NVIDIA_GRACE"
+          }
+        ],
+        "gpu": [
+          {
+            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "match": {
+              "workload": [
+                "llama32_embedding",
+                "llama32_rmsnorm",
+                "llama32_rope",
+                "llama32_qkv_proj",
+                "llama32_sdpa_attention",
+                "llama32_swiglu_ffn",
+                "llama32_lmhead_topk",
+                "llama3_8b_prefill",
+                "llama3_8b_decode"
+              ],
+              "residency_mode": [
+                "gpu_explicit"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "infra_todo": [
+    "Unify CSV schema: add bound / field / tags / library / metric_name / metric_value columns to every harness",
+    "Replace 4-regime enum in src/gpu/gh200/bench_harness.h and figure labels with bound + tags",
+    "Parameterize scripts/gpu/lock_clocks.sh per device (hard-coded to A100 1410 MHz)",
+    "Measured STREAM + peak FLOP/OP calibration for all 6 core devices",
+    "results/plotting/generate_roofline.py + paper-style Figure 1 (GPU/CPU ratio per workload, geomean) and Table 3",
+    "Add lbmpy, pystencils, cupy, pyfftw, opencv, cryptography, llama.cpp, vllm to requirements-bench.txt / node setup scripts"
+  ],
+  "dropped": [
+    {
+      "name": "GJK collision detection",
+      "why": "GPU win comes from the texture unit (fixed-function); not primarily C/B/S"
+    },
+    {
+      "name": "Ray casting",
+      "why": "Gather + oversized working set; not primarily C/B/S"
+    },
+    {
+      "name": "PCA",
+      "why": "GEMM (covariance) + GEMV (power iteration); redundant. src/cpu/cpu_pca_bench.c kept but not in suite"
+    },
+    {
+      "name": "k-means",
+      "why": "GEMM-like distances + scatter-reduction; covered by GEMM + Histogram. src/cpu/cpu_kmeans_bench.c kept but not in suite"
+    },
+    {
+      "name": "SHA-512",
+      "why": "Redundant with SHA-256"
+    },
+    {
+      "name": "Dense GEMV, RMSNorm, RoPE (standalone)",
+      "why": "Reported as Llama layer breakdowns (A1), not top-level kernels"
+    }
+  ],
+  "system_axis": "GH200 coherence experiments (residency modes, NVLink-C2C, UVM 96 GB cliff, CPU+GPU cooperative split, KV offload) are a system axis applied to SAXPY, SpMV, GEMM, Histogram and Llama decode, not separate workloads."
+}

@@ -7,3 +7,4 @@ results/plots/
 uncommitted/
 *.tar.gz
 hardware_specs_gh200.txt
+results/logs/

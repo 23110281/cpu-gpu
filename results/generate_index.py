@@ -1,27 +1,54 @@
-import os
+"""Build results/plots/index.html (the published dashboard).
+
+Inputs
+  results/index.html            template (JS placeholders replaced below)
+  results/plots/<DEVICE>/<bench>/*.png   plot tree (built by `make plots`)
+  results/data/{cpu,gpu}/<DEVICE>/...    raw CSVs (classify devices + data coverage)
+  results/workloads.json        final workload suite + implementation status / TODOs
+  results/raw/calibration/peaks.json     optional GH200 calibration
+
+Data coverage is computed, not hand-edited: a (workload, device) cell is
+'collected' when a CSV matched by one of the workload's data sources has at
+least one usable row for that device; 'invalid' when the only matching data is
+flagged valid=false in workloads.json; otherwise 'missing'.
+"""
+import csv
+import glob
 import json
-from pathlib import Path
+import os
 import re
+from pathlib import Path
 
 current_dir = Path(__file__).parent
 plots_dir = current_dir / "plots"
+data_dir = current_dir / "data"
 template_path = current_dir / "index.html"
+manifest_path = current_dir / "workloads.json"
 peaks_path = current_dir / "raw" / "calibration" / "peaks.json"
 
+csv.field_size_limit(1 << 24)
+
+# ── Plot tree ────────────────────────────────────────────────────────────────
 tree = {}
 if plots_dir.exists():
-    for gpu_dir in sorted(plots_dir.iterdir()):
-        if gpu_dir.is_dir():
-            gpu = gpu_dir.name
-            tree[gpu] = {}
-            for bench_dir in sorted(gpu_dir.iterdir()):
+    for dev_dir in sorted(plots_dir.iterdir()):
+        if dev_dir.is_dir():
+            dev = dev_dir.name
+            tree[dev] = {}
+            for bench_dir in sorted(dev_dir.iterdir()):
                 if bench_dir.is_dir():
-                    bench = bench_dir.name
-                    plots = []
-                    for plot_file in sorted(bench_dir.glob("*.png")):
-                        plots.append(plot_file.name)
+                    plots = [p.name for p in sorted(bench_dir.glob("*.png"))]
                     if plots:
-                        tree[gpu][bench] = plots
+                        tree[dev][bench_dir.name] = plots
+
+# ── Device classification (results/data/cpu|gpu/<DEVICE>) ───────────────────
+device_class = {}
+for side in ("cpu", "gpu"):
+    side_dir = data_dir / side
+    if side_dir.exists():
+        for d in sorted(side_dir.iterdir()):
+            if d.is_dir():
+                device_class[d.name] = side
 
 # Base limits for standard GPUs
 gpu_limits = {
@@ -64,14 +91,106 @@ if peaks_path.exists():
     except Exception as e:
         print(f"Warning: Failed to parse peaks.json: {e}")
 
-with open(template_path, "r") as f:
-    original_html = f.read()
 
-new_html = re.sub(r'const tree = \{.*?\};', f'const tree = {json.dumps(tree)};', original_html)
-new_html = re.sub(r'const gpuLimits = \{.*?\};', f'const gpuLimits = {json.dumps(gpu_limits)};', new_html)
+# ── Workload status matrix ───────────────────────────────────────────────────
+_csv_cache = {}
+
+
+def _read_rows(path):
+    if path not in _csv_cache:
+        try:
+            with open(path, newline="") as f:
+                _csv_cache[path] = list(csv.DictReader(f))
+        except Exception as e:  # unreadable CSV counts as no data
+            print(f"Warning: cannot read {path}: {e}")
+            _csv_cache[path] = []
+    return _csv_cache[path]
+
+
+def _usable(row):
+    status = row.get("status")
+    return status is None or "ok" in status or "l2-bound" in status
+
+
+def _device_of(path, side):
+    rel = Path(path).relative_to(data_dir).parts  # ('cpu'|'gpu', DEVICE, ...)
+    return rel[1] if len(rel) > 1 and rel[0] == side else None
+
+
+def _source_hits(src, side):
+    """Return {device: row_count} for one data source."""
+    hits = {}
+    for path in sorted(glob.glob(str(data_dir / src["glob"]))):
+        rows = _read_rows(path)
+        match = src.get("match", {})
+        n = sum(1 for r in rows if _usable(r) and all(r.get(k) in v for k, v in match.items()))
+        if n:
+            dev = src.get("device") or _device_of(path, src["glob"].split("/")[0])
+            if dev:
+                hits[dev] = hits.get(dev, 0) + n
+    return hits
+
+
+def build_status(manifest):
+    out = {k: manifest[k] for k in ("plan", "devices", "bounds", "infra_todo", "dropped", "system_axis")}
+    known = {s: {d["id"] for d in manifest["devices"][s]} for s in ("cpu", "gpu")}
+    # Device dirs with data that the manifest does not list (e.g. a new node whose
+    # dir is still named after its raw lscpu model) are surfaced, not dropped.
+    out["other_devices"] = {
+        s: sorted(d for d, c in device_class.items() if c == s and d not in known[s])
+        for s in ("cpu", "gpu")
+    }
+    workloads = []
+    for w in manifest["workloads"]:
+        cells = {}
+        for side in ("cpu", "gpu"):
+            per_dev = {}
+            for src in w["data"].get(side, []):
+                for dev, n in _source_hits(src, side).items():
+                    cell = per_dev.setdefault(dev, {"rows": 0, "valid_rows": 0, "notes": []})
+                    cell["rows"] += n
+                    if src.get("valid", True):
+                        cell["valid_rows"] += n
+                    elif src.get("note"):
+                        cell["notes"].append(src["note"])
+            for dev, c in per_dev.items():
+                c["state"] = "collected" if c["valid_rows"] else "invalid"
+            cells[side] = per_dev
+        entry = {k: v for k, v in w.items() if k != "data"}
+        entry["cells"] = cells
+        workloads.append(entry)
+    out["workloads"] = workloads
+    return out
+
+
+status = {}
+if manifest_path.exists():
+    with open(manifest_path) as f:
+        status = build_status(json.load(f))
+
+# ── Render ───────────────────────────────────────────────────────────────────
+with open(template_path, "r") as f:
+    html = f.read()
+
+
+def inject(src, name, value):
+    pattern = re.compile(r"const %s = \{.*?\};" % re.escape(name))
+    if not pattern.search(src):
+        raise SystemExit(f"template placeholder 'const {name} = {{}};' not found in {template_path}")
+    payload = json.dumps(value, separators=(",", ":")).replace("</", "<\\/")
+    return pattern.sub(lambda _m: f"const {name} = {payload};", src, count=1)
+
+
+html = inject(html, "tree", tree)
+html = inject(html, "gpuLimits", gpu_limits)
+html = inject(html, "deviceClass", device_class)
+html = inject(html, "workloadStatus", status)
 
 plots_dir.mkdir(parents=True, exist_ok=True)
 with open(plots_dir / "index.html", "w") as f:
-    f.write(new_html)
+    f.write(html)
 
+if status:
+    tot = sum(1 for _ in status["workloads"])
+    print(f"Workload status: {tot} workloads tracked from {manifest_path.name}")
 print("Generated results/plots/index.html successfully with updated taxonomy and plots.")

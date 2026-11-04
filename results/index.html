@@ -269,6 +269,84 @@
             border-radius: 8px;
             box-shadow: 0 0 40px rgba(0,0,0,0.9);
         }
+        /* ── Workload status / TODO view ─────────────────────────────── */
+        :root {
+            --ok: #34d399; --ok-bg: rgba(52, 211, 153, 0.12);
+            --warn: #fbbf24; --warn-bg: rgba(251, 191, 36, 0.12);
+            --todo: #f87171; --todo-bg: rgba(248, 113, 113, 0.10);
+            --part: #a78bfa; --part-bg: rgba(167, 139, 250, 0.12);
+        }
+        .nav-subtitle {
+            font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em;
+            color: var(--text-muted); opacity: 0.75; margin: 0.5rem 0 0.1rem 0.5rem;
+        }
+        .nav-item.status-item { color: var(--text-main); }
+        .nav-item .count-pill {
+            float: right; font-size: 0.68rem; padding: 0 0.45rem; border-radius: 999px;
+            background: var(--todo-bg); color: var(--todo); font-weight: 700;
+        }
+        [hidden] { display: none !important; }
+        .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+        .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.1rem; }
+        .tile .k { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700; }
+        .tile .v { font-size: 1.6rem; font-weight: 800; margin-top: 0.25rem; font-variant-numeric: tabular-nums; }
+        .tile .s { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.2rem; }
+        .toolbar { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 1rem; }
+        .chip {
+            font: inherit; font-size: 0.78rem; font-weight: 600; color: var(--text-muted);
+            background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
+            padding: 0.35rem 0.8rem; cursor: pointer;
+        }
+        .chip:hover { color: var(--text-main); border-color: #64748b; }
+        .chip.on { color: var(--primary); border-color: var(--primary); box-shadow: 0 0 10px var(--primary-glow); }
+        .legend { display: flex; flex-wrap: wrap; gap: 1rem; font-size: 0.78rem; color: var(--text-muted); margin-left: auto; }
+        .legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
+        .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 2rem; }
+        table.status { width: 100%; border-collapse: collapse; font-size: 0.82rem; min-width: 980px; }
+        table.status th, table.status td { padding: 0.55rem 0.6rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+        table.status thead th { background: rgba(15, 23, 42, 0.95); color: var(--text-muted); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; position: sticky; top: 0; }
+        table.status thead th.side-cpu { color: #38bdf8; }
+        table.status thead th.side-gpu { color: #34d399; }
+        table.status th.dev { text-align: center; white-space: nowrap; }
+        tr.group td { background: rgba(56, 189, 248, 0.06); color: var(--primary); font-weight: 700; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; }
+        tr.group td small { color: var(--text-muted); font-weight: 500; text-transform: none; letter-spacing: 0; margin-left: 0.5rem; }
+        tr.wl { cursor: pointer; }
+        tr.wl:hover td { background: rgba(51, 65, 85, 0.35); }
+        tr.wl td.name { min-width: 200px; }
+        tr.wl td.name b { color: var(--text-main); }
+        table.status td.cell, table.status th.dev { min-width: 64px; }
+        tr.wl td.name .meta { color: var(--text-muted); font-size: 0.72rem; margin-top: 0.1rem; }
+        .tag { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; padding: 0 0.35rem; margin-right: 0.2rem; border-radius: 4px; background: rgba(148, 163, 184, 0.15); color: #cbd5e1; }
+        .badge { display: inline-block; font-size: 0.7rem; font-weight: 700; padding: 0.12rem 0.5rem; border-radius: 999px; white-space: nowrap; }
+        .b-done { color: var(--ok); background: var(--ok-bg); }
+        .b-partial { color: var(--part); background: var(--part-bg); }
+        .b-todo { color: var(--todo); background: var(--todo-bg); }
+        .b-broken { color: var(--warn); background: var(--warn-bg); }
+        td.cell { text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .c-collected { color: var(--ok); }
+        .c-invalid { color: var(--warn); }
+        .c-missing { color: var(--todo); opacity: 0.8; font-weight: 600; font-size: 0.72rem; }
+        .dot { width: 0.6rem; height: 0.6rem; border-radius: 50%; display: inline-block; }
+        tr.detail td { background: rgba(5, 11, 20, 0.6); padding: 0.9rem 1.2rem 1.1rem; }
+        tr.detail .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; }
+        tr.detail h4 { margin: 0 0 0.4rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+        tr.detail p { margin: 0 0 0.6rem; color: #cbd5e1; font-family: 'JetBrains Mono', monospace; font-size: 0.76rem; line-height: 1.5; }
+        ul.todo { margin: 0; padding: 0; list-style: none; }
+        ul.todo li { padding: 0.22rem 0 0.22rem 1.4rem; position: relative; color: #e2e8f0; line-height: 1.45; }
+        ul.todo li::before { content: ""; position: absolute; left: 0.1rem; top: 0.5rem; width: 0.65rem; height: 0.65rem; border: 1.5px solid var(--todo); border-radius: 3px; }
+        .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem 1.3rem; margin-bottom: 1.5rem; }
+        .panel h3 { margin: 0 0 0.6rem; font-size: 0.95rem; }
+        .panel .muted { color: var(--text-muted); font-size: 0.85rem; line-height: 1.55; }
+        .two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.5rem; }
+        dl.dropped { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 1rem; font-size: 0.83rem; }
+        dl.dropped dt { font-weight: 600; color: var(--text-main); }
+        dl.dropped dd { margin: 0; color: var(--text-muted); }
+        @media (max-width: 760px) {
+            body { flex-direction: column; height: auto; overflow: auto; }
+            aside { width: 100%; min-width: 0; height: auto; }
+            main { height: auto; padding: 1.25rem 1rem; }
+            .gallery { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
@@ -278,6 +356,11 @@
             <div class="subtitle">CPU-GPU Empirical Characterization</div>
         </div>
         
+        <div class="nav-section" id="status-nav">
+            <div class="nav-title">Project Status</div>
+            <!-- Populated by JS -->
+        </div>
+
         <div class="nav-section" id="gpu-nav">
             <div class="nav-title">Hardware Architecture</div>
             <!-- Populated by JS -->
@@ -298,6 +381,10 @@
             <div id="hardware-limits" class="hardware-panel" style="display: none;"></div>
         </div>
         
+        <div id="status-view" hidden>
+            <!-- Populated by JS (renderStatus) -->
+        </div>
+
         <div class="gallery" id="gallery">
             <!-- Populated by JS -->
         </div>
@@ -310,7 +397,11 @@
     <script>
         const tree = {};
         const gpuLimits = {};
-        
+        // Injected by results/generate_index.py: device -> "cpu" | "gpu" (from results/data/<cpu|gpu>/)
+        const deviceClass = {};
+        // Injected by results/generate_index.py from results/workloads.json + CSV coverage scan
+        const workloadStatus = {};
+
         // Structured Taxonomy
         const taxonomy = {
             "Dense Linear Algebra": ["gemm", "gemv", "saxpy"],
@@ -343,8 +434,8 @@
             "conv2d": "2D Convolution",
             "cub_radix_sort": "CUB Radix Sort",
             "cub_histogram": "CUB Histogram (Cluster DSM vs Atomics)",
-            "aes_128_ctr": "AES-128-CTR Cryptography",
-            "montecarlo": "Monte Carlo Pi Estimation",
+            "aes_128_ctr": "AES-128-CTR (stub kernel — invalid)",
+            "montecarlo": "Black-Scholes closed form (labelled montecarlo)",
             "llama32_embedding": "Llama-3.2 Embedding Layer",
             "llama32_rmsnorm": "Llama-3.2 RMSNorm Layer",
             "llama32_rope": "Llama-3.2 RoPE Positions",
@@ -364,29 +455,62 @@
 
         let currentGpu = Object.keys(tree).includes('NVIDIA_GH200_480GB') ? 'NVIDIA_GH200_480GB' : Object.keys(tree)[0] || '';
         let currentBench = 'gemm';
+        // 'status' = workload status / TODO matrix (landing view), 'gallery' = plots for one device
+        let currentView = (workloadStatus.workloads && location.hash !== '#plots') ? 'status' : 'gallery';
+        let statusFilter = 'all';
+        const openRows = new Set();
+
+        const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        const classOf = dev => deviceClass[dev] || 'gpu';
+
+        function countTodos() {
+            return (workloadStatus.workloads || []).reduce((n, w) => n + (w.todo || []).length, 0)
+                 + (workloadStatus.infra_todo || []).length;
+        }
 
         function renderNav() {
+            const statusNav = document.getElementById('status-nav');
+            statusNav.innerHTML = '<div class="nav-title">Project Status</div>';
+            if (workloadStatus.workloads) {
+                const el = document.createElement('div');
+                el.className = 'nav-item status-item' + (currentView === 'status' ? ' active' : '');
+                el.innerHTML = `Workload Status &amp; TODO <span class="count-pill">${countTodos()}</span>`;
+                el.title = 'Final workload suite: implementation + data-collection status per CPU / GPU';
+                el.onclick = () => { currentView = 'status'; updateView(); };
+                statusNav.appendChild(el);
+            }
+
             const gpuNav = document.getElementById('gpu-nav');
             gpuNav.innerHTML = '<div class="nav-title">Hardware Architecture</div>';
-            Object.keys(tree).forEach(gpu => {
-                const el = document.createElement('div');
-                el.className = 'nav-item' + (gpu === currentGpu ? ' active' : '');
-                el.innerText = gpu.replace(/_/g, ' ');
-                el.onclick = () => { 
-                    currentGpu = gpu; 
-                    // ensure currentBench exists on this GPU
-                    const available = Object.keys(tree[currentGpu] || {});
-                    if (!available.includes(currentBench) && available.length > 0) {
-                        currentBench = available[0];
-                    }
-                    updateView(); 
-                };
-                gpuNav.appendChild(el);
+            [['cpu', 'CPUs'], ['gpu', 'GPUs']].forEach(([cls, label]) => {
+                const devs = Object.keys(tree).filter(d => classOf(d) === cls);
+                if (devs.length === 0) return;
+                const sub = document.createElement('div');
+                sub.className = 'nav-subtitle';
+                sub.innerText = label;
+                gpuNav.appendChild(sub);
+                devs.forEach(gpu => {
+                    const el = document.createElement('div');
+                    el.className = 'nav-item' + (currentView === 'gallery' && gpu === currentGpu ? ' active' : '');
+                    el.innerText = gpu.replace(/_/g, ' ') + (gpu === 'NVIDIA_GH200_480GB' ? '  (+ Grace CPU)' : '');
+                    el.onclick = () => {
+                        currentView = 'gallery';
+                        currentGpu = gpu;
+                        // ensure currentBench exists on this device
+                        const available = Object.keys(tree[currentGpu] || {});
+                        if (!available.includes(currentBench) && available.length > 0) {
+                            currentBench = available[0];
+                        }
+                        updateView();
+                    };
+                    gpuNav.appendChild(el);
+                });
             });
 
             const benchCatContainer = document.getElementById('bench-categories');
             benchCatContainer.innerHTML = '';
-            
+            document.getElementById('bench-nav').hidden = (currentView === 'status');
+
             const availableBenches = Object.keys(tree[currentGpu] || {});
             
             // Render benchmarks grouped by taxonomy
@@ -409,7 +533,7 @@
                     el.className = 'nav-item' + (isActive ? ' active' : '') + (isActive && isCoherence ? ' coherence-active' : '');
                     el.innerText = displayNames[bench] || bench.replace(/_/g, ' ').toUpperCase();
                     el.title = el.innerText;
-                    el.onclick = () => { currentBench = bench; updateView(); };
+                    el.onclick = () => { currentView = 'gallery'; currentBench = bench; updateView(); };
                     catGroup.appendChild(el);
                 });
 
@@ -417,13 +541,165 @@
             });
         }
 
+        // ── Workload status / TODO matrix ─────────────────────────────────────
+        const IMPL_LABEL = {done: 'Done', partial: 'Partial', todo: 'TODO', broken: 'Broken'};
+
+        function implBadge(side) {
+            const s = (side && side.impl) || 'todo';
+            return `<span class="badge b-${esc(s)}" title="${esc(side && side.where)}">${IMPL_LABEL[s] || esc(s)}</span>`;
+        }
+
+        function dataCell(w, side, dev) {
+            const c = (w.cells && w.cells[side] || {})[dev];
+            if (!c) return `<td class="cell c-missing" title="No data yet for ${esc(dev)}">TODO</td>`;
+            if (c.state === 'invalid') {
+                return `<td class="cell c-invalid" title="${esc(c.rows)} rows, invalid: ${esc(c.notes.join('; '))}">⚠</td>`;
+            }
+            return `<td class="cell c-collected" title="${esc(c.valid_rows)} valid rows">✓</td>`;
+        }
+
+        function workloadFacts(w, devs) {
+            const core = {cpu: devs.cpu.filter(d => d.core), gpu: devs.gpu.filter(d => d.core)};
+            const has = (side, list) => list.filter(d => (w.cells[side][d.id] || {}).state === 'collected').length;
+            const cpuCore = has('cpu', core.cpu), gpuCore = has('gpu', core.gpu);
+            const missingCore = (core.cpu.length - cpuCore) + (core.gpu.length - gpuCore);
+            return {
+                cpuCore, gpuCore, missingCore,
+                ratioReady: cpuCore > 0 && gpuCore > 0,
+                cpuTodo: w.cpu.impl !== 'done', gpuTodo: w.gpu.impl !== 'done',
+                legacy: has('cpu', devs.cpu.filter(d => !d.core)) + has('gpu', devs.gpu.filter(d => !d.core)),
+                legacyTotal: devs.cpu.filter(d => !d.core).length + devs.gpu.filter(d => !d.core).length,
+            };
+        }
+
+        const FILTERS = {
+            all: ['All workloads', () => true],
+            cpu: ['CPU impl not done', f => f.cpuTodo],
+            gpu: ['GPU impl not done', f => f.gpuTodo],
+            data: ['Missing core-device data', f => f.missingCore > 0],
+            ratio: ['No CPU/GPU pair yet', f => !f.ratioReady],
+        };
+
+        function renderStatus() {
+            const S = workloadStatus;
+            const view = document.getElementById('status-view');
+            const devs = S.devices;
+            const core = {cpu: devs.cpu.filter(d => d.core), gpu: devs.gpu.filter(d => d.core)};
+            const facts = Object.fromEntries(S.workloads.map(w => [w.id, workloadFacts(w, devs)]));
+
+            const implCount = side => S.workloads.reduce((acc, w) => { acc[w[side].impl] = (acc[w[side].impl] || 0) + 1; return acc; }, {});
+            const ci = implCount('cpu'), gi = implCount('gpu');
+            const coreCells = S.workloads.length * (core.cpu.length + core.gpu.length);
+            const coreDone = Object.values(facts).reduce((n, f) => n + f.cpuCore + f.gpuCore, 0);
+            const ratioReady = Object.values(facts).filter(f => f.ratioReady).length;
+            const implLine = c => ['done', 'partial', 'todo', 'broken'].filter(k => c[k]).map(k => `${c[k]} ${IMPL_LABEL[k].toLowerCase()}`).join(' · ');
+
+            let html = `
+                <div class="tiles">
+                    <div class="tile"><div class="k">Final workloads</div><div class="v">${S.workloads.length}</div>
+                        <div class="s">${['B','C','S','A'].map(b => `${S.workloads.filter(w => w.bound === b).length} ${b}`).join(' · ')}</div></div>
+                    <div class="tile"><div class="k">CPU implementations</div><div class="v" style="color:#38bdf8">${ci.done || 0}<span style="font-size:1rem;color:var(--text-muted)"> / ${S.workloads.length}</span></div>
+                        <div class="s">${implLine(ci)}</div></div>
+                    <div class="tile"><div class="k">GPU implementations</div><div class="v" style="color:#34d399">${gi.done || 0}<span style="font-size:1rem;color:var(--text-muted)"> / ${S.workloads.length}</span></div>
+                        <div class="s">${implLine(gi)}</div></div>
+                    <div class="tile"><div class="k">Core-device data</div><div class="v">${coreDone}<span style="font-size:1rem;color:var(--text-muted)"> / ${coreCells}</span></div>
+                        <div class="s">workload × device cells on the ${core.cpu.length + core.gpu.length} core devices</div></div>
+                    <div class="tile"><div class="k">CPU/GPU ratio ready</div><div class="v">${ratioReady}<span style="font-size:1rem;color:var(--text-muted)"> / ${S.workloads.length}</span></div>
+                        <div class="s">≥1 core CPU and ≥1 core GPU with valid data</div></div>
+                </div>
+                <div class="toolbar">
+                    ${Object.entries(FILTERS).map(([k, [label]]) => `<button class="chip${statusFilter === k ? ' on' : ''}" data-filter="${k}">${label}</button>`).join('')}
+                    <div class="legend">
+                        <span><b class="c-collected">✓</b> data collected</span>
+                        <span><b class="c-invalid">⚠</b> data exists but invalid</span>
+                        <span><b class="c-missing">TODO</b> not collected</span>
+                    </div>
+                </div>
+                <div class="table-wrap"><table class="status">
+                    <thead>
+                        <tr>
+                            <th rowspan="2">ID</th><th rowspan="2">Workload</th>
+                            <th rowspan="2">CPU impl</th><th rowspan="2">GPU impl</th>
+                            <th colspan="${core.cpu.length}" class="dev side-cpu">Core CPUs</th>
+                            <th colspan="${core.gpu.length}" class="dev side-gpu">Core GPUs</th>
+                            <th rowspan="2" class="dev">Legacy</th><th rowspan="2" class="dev">TODOs</th>
+                        </tr>
+                        <tr>
+                            ${core.cpu.map(d => `<th class="dev side-cpu" title="${esc(d.label + (d.note ? ' — ' + d.note : ''))}">${esc(d.short || d.label)}</th>`).join('')}
+                            ${core.gpu.map(d => `<th class="dev side-gpu" title="${esc(d.label)}">${esc(d.short || d.label)}</th>`).join('')}
+                        </tr>
+                    </thead><tbody>`;
+
+            const ncols = 6 + core.cpu.length + core.gpu.length;
+            const pred = FILTERS[statusFilter][1];
+            let shown = 0;
+            ['B', 'C', 'S', 'A'].forEach(b => {
+                const rows = S.workloads.filter(w => w.bound === b && pred(facts[w.id]));
+                if (rows.length === 0) return;
+                const binfo = S.bounds[b] || {name: b};
+                html += `<tr class="group"><td colspan="${ncols}">${esc(binfo.name)}<small>${esc(binfo.expect || '')}</small></td></tr>`;
+                rows.forEach(w => {
+                    shown++;
+                    const f = facts[w.id];
+                    const open = openRows.has(w.id);
+                    html += `<tr class="wl" data-id="${esc(w.id)}">
+                        <td><b>${esc(w.id)}</b></td>
+                        <td class="name"><b>${esc(w.name)}</b><div class="meta">${esc(w.field)} ${(w.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div></td>
+                        <td>${implBadge(w.cpu)}</td><td>${implBadge(w.gpu)}</td>
+                        ${core.cpu.map(d => dataCell(w, 'cpu', d.id)).join('')}
+                        ${core.gpu.map(d => dataCell(w, 'gpu', d.id)).join('')}
+                        <td class="cell" style="color:var(--text-muted)" title="Legacy devices with data">${f.legacy}/${f.legacyTotal}</td>
+                        <td class="cell"><span class="badge ${(w.todo || []).length ? 'b-todo' : 'b-done'}">${(w.todo || []).length} ${open ? '▴' : '▾'}</span></td>
+                    </tr>`;
+                    if (open) {
+                        html += `<tr class="detail"><td colspan="${ncols}"><div class="cols">
+                            <div><h4>CPU implementation</h4><p>${esc(w.cpu.where)}</p>
+                                 <h4>GPU implementation</h4><p>${esc(w.gpu.where)}</p></div>
+                            <div><h4>TODO</h4><ul class="todo">${(w.todo || []).map(t => `<li>${esc(t)}</li>`).join('') || '<li style="color:var(--ok)">Nothing outstanding</li>'}</ul></div>
+                        </div></td></tr>`;
+                    }
+                });
+            });
+            if (shown === 0) html += `<tr><td colspan="${ncols}" style="color:var(--text-muted);text-align:center;padding:1.5rem">No workloads match this filter.</td></tr>`;
+            html += `</tbody></table></div>`;
+
+            const other = [...(S.other_devices?.cpu || []), ...(S.other_devices?.gpu || [])];
+            html += `<div class="two-col">
+                <div class="panel"><h3>Infrastructure TODO</h3><ul class="todo">${(S.infra_todo || []).map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>
+                <div class="panel"><h3>Dropped from the suite</h3><dl class="dropped">${(S.dropped || []).map(d => `<dt>${esc(d.name)}</dt><dd>${esc(d.why)}</dd>`).join('')}</dl></div>
+            </div>
+            <div class="panel"><h3>Scope</h3><p class="muted">${esc(S.plan)}</p><p class="muted">${esc(S.system_axis)}</p>
+                <p class="muted">Implementation status and TODOs are maintained in <code>results/workloads.json</code>; the ✓ / ⚠ / TODO data cells are recomputed from <code>results/data/</code> on every dashboard build.${other.length ? ` Devices with data not yet mapped in the manifest: <code>${other.map(esc).join(', ')}</code>.` : ''}</p></div>`;
+
+            view.innerHTML = html;
+            view.querySelectorAll('[data-filter]').forEach(b => b.onclick = () => { statusFilter = b.dataset.filter; renderStatus(); });
+            view.querySelectorAll('tr.wl').forEach(tr => tr.onclick = () => {
+                const id = tr.dataset.id;
+                openRows.has(id) ? openRows.delete(id) : openRows.add(id);
+                renderStatus();
+            });
+        }
+
         function updateView() {
             renderNav();
             const gallery = document.getElementById('gallery');
+            const statusView = document.getElementById('status-view');
             const title = document.getElementById('view-title');
             const subtitle = document.getElementById('view-subtitle');
             gallery.innerHTML = '';
-            
+
+            if (currentView === 'status' && workloadStatus.workloads) {
+                title.innerText = 'Workload Status & TODO';
+                subtitle.innerText = 'Final CPU-vs-GPU suite (ISCA\'10 bound classes) — what is implemented and which devices still need data. Click a row for its TODO list.';
+                document.getElementById('hardware-limits').style.display = 'none';
+                gallery.hidden = true;
+                statusView.hidden = false;
+                renderStatus();
+                return;
+            }
+            statusView.hidden = true;
+            gallery.hidden = false;
+
             const benchName = displayNames[currentBench] || currentBench.replace(/_/g, ' ').toUpperCase();
             title.innerText = `${currentGpu.replace(/_/g, ' ')} — ${benchName}`;
             

@@ -112,8 +112,12 @@ def plot_gbps_vs_size(df, out_dir, spec, suffix=''):
                 g_df = sub[sub['gpus'] == gpus].sort_values('S')
                 ax.plot(g_df['S'], g_df['agg_gbps'], marker='o', color=gpu_palette[k],
                         label=f'{gpus} GPUs' if j == 0 else "")
-            ax.axhline(y=spec["memory_bandwidth_gbps"], color='black', linestyle=':', alpha=0.5,
-                       label=f"{spec['name_label']} HBM peak (~{spec['memory_bandwidth_gbps']} GB/s)" if j == 0 else "")
+                if len(sub['gpus'].unique()) > 1:
+                    ax.axhline(y=spec["memory_bandwidth_gbps"] * gpus, color=gpu_palette[k], linestyle=':', alpha=0.4,
+                               label=f"{gpus}x Peak (~{spec['memory_bandwidth_gbps'] * gpus} GB/s)" if j == 0 else "")
+            if len(sub['gpus'].unique()) <= 1:
+                ax.axhline(y=spec["memory_bandwidth_gbps"], color='black', linestyle=':', alpha=0.5,
+                           label=f"{spec['name_label']} HBM peak (~{spec['memory_bandwidth_gbps']} GB/s)" if j == 0 else "")
             ax.set_xscale('log', base=2)
             ax.set_xticks(sorted(sub['S'].unique()))
             ax.xaxis.set_major_formatter(ticker.ScalarFormatter())

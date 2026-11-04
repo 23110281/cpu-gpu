@@ -276,7 +276,8 @@ def plot_bandwidth(df, out_dir, spec, suffix=''):
                 ax.plot(g_df['M'], g_df['d2h_gbps'], linestyle='--', marker='v', color=color, 
                         label=f'{gpus} GPUs (D2H)' if j==0 else "")
                 
-                ax.axhline(y=spec["pcie_bandwidth_gbps"] * gpus, color=color, linestyle=':', alpha=0.5, label=f"PCIe Peak ({gpus}x)" if j==0 else "")
+                ic_type = "NVLink-C2C" if spec.get("pcie_bandwidth_gbps", 24) > 100 else "PCIe"
+                ax.axhline(y=spec["pcie_bandwidth_gbps"] * gpus, color=color, linestyle=':', alpha=0.5, label=f"{ic_type} Peak ({gpus}x)" if j==0 else "")
             
             ax.set_xscale('log', base=2)
             ax.set_xticks(sorted(sub['M'].unique()))

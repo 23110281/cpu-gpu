@@ -1,0 +1,11 @@
+Run: zerocopy_gemm (Launch 3/5)
+Command: ./bin/protocol_benchmark_suite zerocopy_gemm 30 5
+Duration: 13.51 s
+Exit Code: 0
+
+[WORKLOAD 4] BF16 GEMM (M=N=K=8192, Pure Zero-Copy vs. HBM-Staged with explicit timing)...
+  Pure Zero-Copy GEMM: Median =  22.46 +/- 0.02 TFLOPS (Min:  22.36, Max:  22.59, CV: 0.2%) | Correctness: PASS
+  HBM-Staged End-to-End: Median = 442.73 +/- 0.29 TFLOPS (Min: 440.49, Max: 443.93, CV: 0.2%) | Correctness: PASS
+[WORKLOAD 4] BF16 GEMM (M=N=K=16384, Pure Zero-Copy vs. HBM-Staged with explicit timing)...
+  Pure Zero-Copy GEMM: Median =  28.81 +/- 0.01 TFLOPS (Min:  28.71, Max:  28.85, CV: 0.1%) | Correctness: PASS
+  HBM-Staged End-to-End: Median = 611.89 +/- 0.09 TFLOPS (Min: 611.43, Max: 612.46, CV: 0.0%) | Correctness: PASS

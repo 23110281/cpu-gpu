@@ -43,6 +43,7 @@
 #include <unistd.h>
 #include "bf16_cvt.h"
 #include "gemv_host.h"   /* provides gemv_gen_csr() -- the CSR generator to use */
+#include "gpu_device_specs.h"
 
 /* -- error-checking macros ------------------------------------------------- */
 #define CUDA_CHECK_J(expr, lbl) do {                                         \
@@ -57,6 +58,20 @@
 #define SPARSE_CHECK_J(expr, lbl) do {                                       \
     cusparseStatus_t _s = (expr);                                             \
     if (_s != CUSPARSE_STATUS_SUCCESS) {                                      \
+        fprintf(stderr, "cuSPARSE %s:%d %s -> %d\n",                         \
+                __FILE__, __LINE__, #expr, (int)_s);                         \
+        j->rc = -1; goto lbl;                                                \
+    }                                                                         \
+} while (0)
+
+#define SPARSE_SPGEMM_CHECK_J(expr, lbl) do {                                \
+    cusparseStatus_t _s = (expr);                                             \
+    if (_s == CUSPARSE_STATUS_INSUFFICIENT_RESOURCES ||                       \
+        _s == CUSPARSE_STATUS_ALLOC_FAILED) {                                 \
+        fprintf(stderr, "[dev %d] SpGEMM %s:%d resource limit (%d); oom-skip\n",\
+                j->dev, __FILE__, __LINE__, (int)_s);                        \
+        j->rc = -2; goto lbl;                                                \
+    } else if (_s != CUSPARSE_STATUS_SUCCESS) {                               \
         fprintf(stderr, "cuSPARSE %s:%d %s -> %d\n",                         \
                 __FILE__, __LINE__, #expr, (int)_s);                         \
         j->rc = -1; goto lbl;                                                \
@@ -260,7 +275,7 @@ static void *spgemm_worker(void *arg) {
         SPARSE_CHECK_J(cusparseSpGEMM_createDescr(&desc), barrier_out);
 
         /* OOM preflight: query Phase 1 buffer size, check against mem_frac */
-        SPARSE_CHECK_J(cusparseSpGEMM_workEstimation(handle,
+        SPARSE_SPGEMM_CHECK_J(cusparseSpGEMM_workEstimation(handle,
             CUSPARSE_OPERATION_NON_TRANSPOSE, CUSPARSE_OPERATION_NON_TRANSPOSE,
             palpha, matA, matB, pbeta, matC,
             cuda_type(j->prec), CUSPARSE_SPGEMM_DEFAULT,
@@ -281,14 +296,14 @@ static void *spgemm_worker(void *arg) {
         CUDA_CHECK_J(cudaEventCreate(&e_sym0), barrier_out);
         CUDA_CHECK_J(cudaEventCreate(&e_sym1), barrier_out);
         cudaEventRecord(e_sym0, st);
-        SPARSE_CHECK_J(cusparseSpGEMM_workEstimation(handle,
+        SPARSE_SPGEMM_CHECK_J(cusparseSpGEMM_workEstimation(handle,
             CUSPARSE_OPERATION_NON_TRANSPOSE, CUSPARSE_OPERATION_NON_TRANSPOSE,
             palpha, matA, matB, pbeta, matC,
             cuda_type(j->prec), CUSPARSE_SPGEMM_DEFAULT,
             desc, &bufSize1, dBuf1), barrier_out);
 
         /* Query Phase 2 buffer size */
-        SPARSE_CHECK_J(cusparseSpGEMM_compute(handle,
+        SPARSE_SPGEMM_CHECK_J(cusparseSpGEMM_compute(handle,
             CUSPARSE_OPERATION_NON_TRANSPOSE, CUSPARSE_OPERATION_NON_TRANSPOSE,
             palpha, matA, matB, pbeta, matC,
             cuda_type(j->prec), CUSPARSE_SPGEMM_DEFAULT,
@@ -303,7 +318,7 @@ static void *spgemm_worker(void *arg) {
         }
 
         CUDA_CHECK_J(cudaMalloc(&dBuf2, bufSize2 ? bufSize2 : 1), barrier_out);
-        SPARSE_CHECK_J(cusparseSpGEMM_compute(handle,
+        SPARSE_SPGEMM_CHECK_J(cusparseSpGEMM_compute(handle,
             CUSPARSE_OPERATION_NON_TRANSPOSE, CUSPARSE_OPERATION_NON_TRANSPOSE,
             palpha, matA, matB, pbeta, matC,
             cuda_type(j->prec), CUSPARSE_SPGEMM_DEFAULT,
@@ -689,7 +704,7 @@ static void run_config(const cfg_t *c, FILE *csv, const char *host, int cudart,
         }
     }
     double agg_gbps = (wall > 0) ? sum_bytes / wall / 1e9 : 0;
-    double pct_peak_bw = 100.0 * agg_gbps / (1555.0 * (double)G);
+    double pct_peak_bw = 100.0 * agg_gbps / (get_gpu_spec_for_device(0).peak_hbm_gbps * (double)G);
 
     int bn = 0; double max_e2e = 0;
     for (int g = 0; g < G; g++) {

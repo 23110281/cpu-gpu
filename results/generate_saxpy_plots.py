@@ -187,7 +187,8 @@ def plot_bandwidth(df, out_dir, spec):
                 ax.plot(g_df['N'], g_df['d2h_gbps'], linestyle='--', marker='v', color=color, 
                         label=f'{gpus} GPUs (D2H)' if j==0 else "")
                 
-            ax.axhline(y=spec["pcie_bandwidth_gbps"], color='black', linestyle=':', alpha=0.5, label=f"PCIe Gen4 (~{spec['pcie_bandwidth_gbps']} GB/s)" if j==0 else "")
+            ic_label = spec.get("interconnect_label", f"PCIe Gen4 (~{spec['pcie_bandwidth_gbps']} GB/s)")
+            ax.axhline(y=spec["pcie_bandwidth_gbps"], color='black', linestyle=':', alpha=0.5, label=ic_label if j==0 else "")
             
             ax.set_xscale('log', base=2)
             ax.set_xticks(sorted(sub['N'].unique()))
@@ -271,7 +272,7 @@ def main():
         
         print(f"Loading SAXPY data from {csv_file}...")
         df = pd.read_csv(csv_file, engine='python', skipinitialspace=True)
-        df = df[df["status"].astype(str).str.startswith("ok")]
+        df = df[df["status"].astype(str).str.contains("ok|l2-bound")]
         if not df.empty:
             plot_gbps_heatmap(df, out_dir)
             plot_gbps_vs_size(df, out_dir, spec)

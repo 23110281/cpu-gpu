@@ -58,6 +58,7 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include "bf16_cvt.h"
+#include "gpu_device_specs.h"
 
 /* -- error-checking macros ------------------------------------------------- */
 /* J-variants set j->rc and jump to a cleanup label -- safe inside void*.     */
@@ -136,10 +137,11 @@ static cudaDataType out_type(prec_t p) {
  *       ./bin/gpu_gemm_bench_cu --sizes 8192 --precisions fp64 --gpus 1 --no-nvml
  * DMMA% ~= 0, FMA% > 0  =>  CUDA cores confirmed.                             */
 static double peak_tflops(prec_t p, int fp64_tensor) {
+    gpu_spec_t s = get_gpu_spec_for_device(0);
     switch (p) {
-    case PREC_FP32: return 19.5;
-    case PREC_FP64: return fp64_tensor ? 19.5 : 9.7;
-    case PREC_BF16: return 312.0;
+    case PREC_FP32: return s.peak_fp32_tflops;
+    case PREC_FP64: return fp64_tensor ? s.peak_fp64_tensor_tflops : s.peak_fp64_cuda_tflops;
+    case PREC_BF16: return s.peak_bf16_tflops;
     }
     return 1.0;
 }
@@ -1198,14 +1200,15 @@ static void run_config(const cfg_t *c, FILE *csv, const char *host, int cudart,
     }
 
     if (err) {
+        const char *estat = (p == PREC_FP64 && engine == ENG_SPARSE) ? "unsupported-precision" : "error";
         printf("%-6s %-5s %-3d %6ld %6.3f %9s %9s %6s %8s %8s %6s %5s %7s %s\n",
-               eng_s, pn, G, S, display_density, "-","-","-","-","-","-","-","-","error");
+               eng_s, pn, G, S, display_density, "-","-","-","-","-","-","-","-", estat);
         if (csv) fprintf(csv,
             "%s,%ld,%s,%d,%s,%s,%d,%ld,%ld,%ld,%d,%d,"
             "0,0,0,0,0,0,0,0,0,0,none,0,%.3f,%d,%d,%.3g,"
-            "0,0,0,0,0,0,0,0,%s,%.4g,%ld,error\n",
+            "0,0,0,0,0,0,0,0,%s,%.4g,%ld,%s\n",
             c->tag,ts,host,cudart,mode_s,pn,G,S,S,S,c->iters,c->warmup,
-            mem_gb,c->fp64_tensor,c->validate&&S<=c->valid_max,rel,eng_s,display_density,display_nnz);
+            mem_gb,c->fp64_tensor,c->validate&&S<=c->valid_max,rel,eng_s,display_density,display_nnz, estat);
         return;
     }
 
@@ -1419,8 +1422,12 @@ int main(int argc, char **argv) {
     else
         printf("#   fp64  -> CUDA cores  (cuBLASLt non-tensor algo, TENSOR_OP_MASK=0)\n");
     printf("#   bf16  -> Tensor cores (COMPUTE_32F + TENSOR_OP, FP32 accum)\n");
-    printf("# Peak refs (per GPU): fp32=19.5T fp64=%s bf16=312T\n",
-           c.fp64_tensor ? "19.5T(DMMA)" : "9.7T(CUDA)");
+    gpu_spec_t spec0 = get_gpu_spec_for_device(0);
+    printf("# Peak refs (per GPU): fp32=%.1fT fp64=%.1fT(%s) bf16=%.1fT (%s)\n",
+           spec0.peak_fp32_tflops,
+           c.fp64_tensor ? spec0.peak_fp64_tensor_tflops : spec0.peak_fp64_cuda_tflops,
+           c.fp64_tensor ? "DMMA" : "CUDA",
+           spec0.peak_bf16_tflops, spec0.name);
     printf("%-6s %-5s %-3s %6s %6s %9s %9s %6s %8s %8s %6s %5s %7s %s\n",
            "eng","prec","G","N","dens",
            "aggTF","effTF","pk%","comp_ms","e2e_ms","xfer%","util%","SMclk","status");

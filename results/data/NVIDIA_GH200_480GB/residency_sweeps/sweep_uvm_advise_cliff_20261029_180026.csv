@@ -1,0 +1,11 @@
+workload,regime,precision,residency_mode,working_set_bytes,problem_size,threads_or_sms,t_alloc_ms,t_h2d_ms,t_kernel_cold_ms,t_kernel_warm_ms,t_d2h_ms,t_e2e_ms,eff_bw_gbps,c2c_bw_gbps,gflops,pct_peak,status
+saxpy_uvm_cliff,2,fp32,gpu_zero_copy,68719476736,"saxpy_cliff_WS_64GB_N_8589934592",132,0.000,0.000,0.000,304.949,0.000,304.949,338.02,338.02,56.34,0.0,ok
+gemv_uvm_cliff,2,fp32,gpu_zero_copy,68719476736,"gemv_cliff_WS_64GB_M_32768_N_524288",132,0.000,0.000,0.000,716.418,0.000,716.418,95.92,95.92,47.96,0.0,ok
+llama3_kv_uvm_cliff,2,bf16,gpu_zero_copy,68719476736,"llama3_kv_cliff_WS_64GB_S_16777216",132,0.000,0.000,0.000,195.174,0.000,195.174,352.09,352.09,1408.38,0.0,ok
+saxpy_uvm_cliff,2,fp32,uvm_demand,68719476736,"saxpy_cliff_WS_64GB_N_8589934592",132,0.000,0.000,0.000,29.127,0.000,29.127,3539.00,3539.00,589.83,0.0,ok
+gemv_uvm_cliff,2,fp32,uvm_demand,68719476736,"gemv_cliff_WS_64GB_M_32768_N_524288",132,0.000,0.000,0.000,39.834,0.000,39.834,1725.19,1725.19,862.57,0.0,ok
+llama3_kv_uvm_cliff,2,bf16,uvm_demand,68719476736,"llama3_kv_cliff_WS_64GB_S_16777216",132,0.000,0.000,0.000,18.060,0.000,18.060,3805.06,3805.06,15220.22,0.0,ok
+saxpy_uvm_cliff,2,fp32,uvm_prefetch_gpu,68719476736,"saxpy_cliff_WS_64GB_N_8589934592",132,0.000,0.000,0.000,29.233,0.000,29.233,3526.13,3526.13,587.69,0.0,ok
+gemv_uvm_cliff,2,fp32,uvm_prefetch_gpu,68719476736,"gemv_cliff_WS_64GB_M_32768_N_524288",132,0.000,0.000,0.000,39.841,0.000,39.841,1724.88,1724.88,862.41,0.0,ok
+llama3_kv_uvm_cliff,2,bf16,uvm_prefetch_gpu,68719476736,"llama3_kv_cliff_WS_64GB_S_16777216",132,0.000,0.000,0.000,18.137,0.000,18.137,3788.82,3788.82,15155.29,0.0,ok
+saxpy_uvm_cliff,2,fp32,uvm_pref_cpu_acc_gpu,68719476736,"saxpy_cliff_WS_64GB_N_8589934592",132,0.000,0.000,0.000,2024.754,0.000,2024.754,50.91,50.91,8.48,0.0,ok

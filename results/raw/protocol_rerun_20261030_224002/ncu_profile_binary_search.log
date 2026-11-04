@@ -1,0 +1,55 @@
+==PROF== Connected to process 443981 (/users/rudra281/testing_arm_bench/cpu-gpu-bench/bin/protocol_benchmark_suite)
+==PROF== Profiling "std_binary_search" - 0: 0%....50%....100% - 1 pass
+==PROF== Profiling "std_binary_search" - 1: 0%....50%....100% - 1 pass
+==PROF== Profiling "std_binary_search" - 2: 0%....50%....100% - 1 pass
+==PROF== Profiling "std_binary_search" - 3: 0%....50%....100% - 1 pass
+[WORKLOAD 3] 64-bit Binary Search over NVLink-C2C (N=33554432 keys, 0.25 GB in Host LPDDR5X, M=16777216 queries in HBM3)...
+  C2C Zero-Copy Search: Median =   158.16 +/-  0.00 M-Ops/s (Min:   158.16, Max:   158.16, CV: 0.0%) | Correctness: PASS
+[WORKLOAD 3] 64-bit Binary Search over NVLink-C2C (N=4294967296 keys, 32.00 GB in Host LPDDR5X, M=4000000 queries in HBM3)...
+  C2C Zero-Copy Search: Median =     1.45 +/-  0.00 M-Ops/s (Min:     1.45, Max:     1.45, CV: 0.0%) | Correctness: PASS
+==PROF== Disconnected from process 443981
+[443981] protocol_benchmark_suite@127.0.0.1
+  std_binary_search(long *, const long *, const long *, long, int) (65536, 1, 1)x(256, 1, 1), Context 1, Stream 7, Device 0, CC 9.0
+    Section: Command line profiler metrics
+    ---------------------- ----------- ------------
+    Metric Name            Metric Unit Metric Value
+    ---------------------- ----------- ------------
+    dram__bytes_read.sum         Mbyte       135.50
+    dram__bytes_write.sum        Mbyte       116.98
+    gpu__time_duration.sum          ms        76.42
+    lts__t_sectors.sum          sector    371548270
+    ---------------------- ----------- ------------
+
+  std_binary_search(long *, const long *, const long *, long, int) (65536, 1, 1)x(256, 1, 1), Context 1, Stream 7, Device 0, CC 9.0
+    Section: Command line profiler metrics
+    ---------------------- ----------- ------------
+    Metric Name            Metric Unit Metric Value
+    ---------------------- ----------- ------------
+    dram__bytes_read.sum         Mbyte       135.20
+    dram__bytes_write.sum        Mbyte       114.44
+    gpu__time_duration.sum          ms        75.93
+    lts__t_sectors.sum          sector    369436593
+    ---------------------- ----------- ------------
+
+  std_binary_search(long *, const long *, const long *, long, int) (15625, 1, 1)x(256, 1, 1), Context 1, Stream 7, Device 0, CC 9.0
+    Section: Command line profiler metrics
+    ---------------------- ----------- ------------
+    Metric Name            Metric Unit Metric Value
+    ---------------------- ----------- ------------
+    dram__bytes_read.sum         Mbyte        35.76
+    dram__bytes_write.sum        Mbyte        64.97
+    gpu__time_duration.sum           s         2.74
+    lts__t_sectors.sum          sector    128972375
+    ---------------------- ----------- ------------
+
+  std_binary_search(long *, const long *, const long *, long, int) (15625, 1, 1)x(256, 1, 1), Context 1, Stream 7, Device 0, CC 9.0
+    Section: Command line profiler metrics
+    ---------------------- ----------- ------------
+    Metric Name            Metric Unit Metric Value
+    ---------------------- ----------- ------------
+    dram__bytes_read.sum         Mbyte        35.44
+    dram__bytes_write.sum        Mbyte        65.07
+    gpu__time_duration.sum           s         2.73
+    lts__t_sectors.sum          sector    128890036
+    ---------------------- ----------- ------------
+

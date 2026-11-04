@@ -1,0 +1,203 @@
+Fri Oct 30 20:21:23 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.178.04             Driver Version: 580.178.04     CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GH200 480GB             On  |   00000009:01:00.0 Off |                    0 |
+| N/A   18C    P0             71W /  700W |       4MiB /  97871MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+==============NVSMI LOG==============
+
+Timestamp                                              : Fri Oct 30 20:21:23 2026
+Driver Version                                         : 580.178.04
+CUDA Version                                           : 13.0
+
+Attached GPUs                                          : 1
+GPU 00000009:01:00.0
+    Performance State                                  : P0
+    Clocks Event Reasons
+        Idle                                           : Active
+        Applications Clocks Setting                    : Not Active
+        SW Power Cap                                   : Not Active
+        HW Slowdown                                    : Not Active
+            HW Thermal Slowdown                        : Not Active
+            HW Power Brake Slowdown                    : Not Active
+        Sync Boost                                     : Not Active
+        SW Thermal Slowdown                            : Not Active
+        Display Clock Setting                          : Not Active
+    Clocks Event Reasons Counters
+        SW Power Capping                               : 650109360 us
+        Sync Boost                                     : 0 us
+        SW Thermal Slowdown                            : 0 us
+        HW Thermal Slowdown                            : 0 us
+        HW Power Braking                               : 0 us
+    Sparse Operation Mode                              : Disabled
+    ECC Mode
+        Current                                        : Enabled
+        Pending                                        : Enabled
+    ECC Errors
+        Volatile
+            SRAM Correctable                           : 0
+            SRAM Uncorrectable Parity                  : 0
+            SRAM Uncorrectable SEC-DED                 : 0
+            DRAM Correctable                           : 0
+            DRAM Uncorrectable                         : 0
+        Aggregate
+            SRAM Correctable                           : 0
+            SRAM Uncorrectable Parity                  : 0
+            SRAM Uncorrectable SEC-DED                 : 0
+            DRAM Correctable                           : 0
+            DRAM Uncorrectable                         : 0
+            SRAM Threshold Exceeded                    : No
+        Aggregate Uncorrectable SRAM Sources
+            SRAM L2                                    : 0
+            SRAM SM                                    : 0
+            SRAM Microcontroller                       : 0
+            SRAM PCIE                                  : 0
+            SRAM Other                                 : 0
+        Channel Repair Pending                         : No
+        TPC Repair Pending                             : No
+        Unrepairable Memory                            : No
+    GPU Power Readings
+        Average Power Draw                             : 71.03 W
+        Instantaneous Power Draw                       : 71.08 W
+        Current Power Limit                            : 700.00 W
+        Requested Power Limit                          : 700.00 W
+        Default Power Limit                            : 900.00 W
+        Min Power Limit                                : 100.00 W
+        Max Power Limit                                : 900.00 W
+    Power Samples
+        Duration                                       : 2.36 sec
+        Number of Samples                              : 119
+        Max                                            : 71.77 W
+        Min                                            : 70.42 W
+        Avg                                            : 71.07 W
+    GPU Memory Power Readings 
+        Average Power Draw                             : 13.42 W
+        Instantaneous Power Draw                       : N/A
+    Module Power Readings
+        Average Power Draw                             : 154.12 W
+        Instantaneous Power Draw                       : 155.08 W
+        Current Power Limit                            : 1000.00 W
+        Requested Power Limit                          : 1000.00 W
+        Default Power Limit                            : 1000.00 W
+        Min Power Limit                                : 200.00 W
+        Max Power Limit                                : 1000.00 W
+    Clocks
+        Graphics                                       : 345 MHz
+        SM                                             : 345 MHz
+        Memory                                         : 2619 MHz
+        Video                                          : 765 MHz
+    Applications Clocks
+        Graphics                                       : 1980 MHz
+        Memory                                         : 2619 MHz
+    Default Applications Clocks
+        Graphics                                       : 1980 MHz
+        Memory                                         : 2619 MHz
+    Deferred Clocks
+        Memory                                         : N/A
+    Max Clocks
+        Graphics                                       : 1980 MHz
+        SM                                             : 1980 MHz
+        Memory                                         : 2619 MHz
+        Video                                          : 1545 MHz
+    Max Customer Boost Clocks
+        Graphics                                       : 1980 MHz
+    SM Clock Samples
+        Duration                                       : Not Found
+        Number of Samples                              : Not Found
+        Max                                            : Not Found
+        Min                                            : Not Found
+        Avg                                            : Not Found
+    Memory Clock Samples
+        Duration                                       : Not Found
+        Number of Samples                              : Not Found
+        Max                                            : Not Found
+        Min                                            : Not Found
+        Avg                                            : Not Found
+    Clock Policy
+        Auto Boost                                     : N/A
+        Auto Boost Default                             : N/A
+
+performance
+Architecture:                       aarch64
+CPU op-mode(s):                     64-bit
+Byte Order:                         Little Endian
+CPU(s):                             72
+On-line CPU(s) list:                0-71
+Vendor ID:                          ARM
+Model name:                         Neoverse-V2
+Model:                              0
+Thread(s) per core:                 1
+Core(s) per socket:                 72
+Socket(s):                          1
+Stepping:                           r0p0
+Frequency boost:                    disabled
+CPU max MHz:                        3456.0000
+CPU min MHz:                        81.0000
+BogoMIPS:                           2000.00
+Flags:                              fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp asimdhp cpuid asimdrdm jscvt fcma lrcpc dcpop sha3 sm3 sm4 asimddp sha512 sve asimdfhm dit uscat ilrcpc flagm ssbs sb paca pacg dcpodp sve2 sveaes svepmull svebitperm svesha3 svesm4 flagm2 frint svei8mm svebf16 i8mm bf16 dgh bti
+L1d cache:                          4.5 MiB (72 instances)
+L1i cache:                          4.5 MiB (72 instances)
+L2 cache:                           72 MiB (72 instances)
+L3 cache:                           114 MiB (1 instance)
+NUMA node(s):                       9
+NUMA node0 CPU(s):                  0-71
+NUMA node1 CPU(s):                  
+NUMA node2 CPU(s):                  
+NUMA node3 CPU(s):                  
+NUMA node4 CPU(s):                  
+NUMA node5 CPU(s):                  
+NUMA node6 CPU(s):                  
+NUMA node7 CPU(s):                  
+NUMA node8 CPU(s):                  
+Vulnerability Gather data sampling: Not affected
+Vulnerability Itlb multihit:        Not affected
+Vulnerability L1tf:                 Not affected
+Vulnerability Mds:                  Not affected
+Vulnerability Meltdown:             Not affected
+Vulnerability Mmio stale data:      Not affected
+Vulnerability Retbleed:             Not affected
+Vulnerability Spec rstack overflow: Not affected
+Vulnerability Spec store bypass:    Mitigation; Speculative Store Bypass disabled via prctl
+Vulnerability Spectre v1:           Mitigation; __user pointer sanitization
+Vulnerability Spectre v2:           Not affected
+Vulnerability Srbds:                Not affected
+Vulnerability Tsx async abort:      Not affected
+drwxr-xr-x 7 root root 0 Oct 29 11:48 /sys/devices/system/node/node0
+drwxr-xr-x 5 root root 0 Oct 29 11:48 /sys/devices/system/node/node1
+drwxr-xr-x 7 root root 0 Oct 29 11:48 /sys/devices/system/node/node2
+drwxr-xr-x 7 root root 0 Oct 29 11:48 /sys/devices/system/node/node3
+drwxr-xr-x 7 root root 0 Oct 29 11:48 /sys/devices/system/node/node4
+drwxr-xr-x 7 root root 0 Oct 29 11:48 /sys/devices/system/node/node5
+drwxr-xr-x 7 root root 0 Oct 29 11:48 /sys/devices/system/node/node6
+drwxr-xr-x 7 root root 0 Oct 29 11:48 /sys/devices/system/node/node7
+drwxr-xr-x 7 root root 0 Oct 29 11:48 /sys/devices/system/node/node8
+always [madvise] never
+=== GH200 HARDWARE ENVIRONMENT SNAPSHOT ===
+Timestamp: 20261030_202123
+
+--- NVIDIA-SMI SUMMARY ---
+
+--- GPU CLOCKS AND POWER SPECS ---
+
+--- CPU GOVERNOR ---
+
+--- CPU AND NUMA TOPOLOGY (LSCPU) ---
+
+--- NUMA NODES IN SYSFS ---
+
+--- TRANSPARENT HUGE PAGES ---

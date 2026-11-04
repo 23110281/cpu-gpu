@@ -1,0 +1,157 @@
+Protocol Run ID: protocol_rerun_20261030_202123
+
+================================================================================
+Workload: cpu_stream
+Command:  OMP_NUM_THREADS=72 OMP_PROC_BIND=close ./bin/protocol_benchmark_suite cpu_stream 30 5
+================================================================================
+
+[Launch 1/5] (Duration: 0.72 s, Exit Code: 0)
+[WORKLOAD 1] Grace CPU STREAM (N=150000000 doubles, 3.6GB working set > 114MB SLC)...
+  CPU Triad: Median= 306.9 +/-  1.3 GB/s (Min:  300.9, Max:  318.5, CV: 1.2%) | Correctness: PASS
+  CPU Copy:  Median= 317.1 +/-  3.7 GB/s (Min:  295.9, Max:  330.9, CV: 3.3%) | Correctness: PASS
+
+[Launch 2/5] (Duration: 0.71 s, Exit Code: 0)
+[WORKLOAD 1] Grace CPU STREAM (N=150000000 doubles, 3.6GB working set > 114MB SLC)...
+  CPU Triad: Median= 308.2 +/-  1.4 GB/s (Min:  302.8, Max:  324.5, CV: 1.3%) | Correctness: PASS
+  CPU Copy:  Median= 320.5 +/-  3.1 GB/s (Min:  296.0, Max:  330.2, CV: 2.7%) | Correctness: PASS
+
+[Launch 3/5] (Duration: 0.73 s, Exit Code: 0)
+[WORKLOAD 1] Grace CPU STREAM (N=150000000 doubles, 3.6GB working set > 114MB SLC)...
+  CPU Triad: Median= 309.2 +/-  0.8 GB/s (Min:  304.9, Max:  313.2, CV: 0.7%) | Correctness: PASS
+  CPU Copy:  Median= 314.8 +/-  9.5 GB/s (Min:  192.9, Max:  326.9, CV: 8.6%) | Correctness: PASS
+
+[Launch 4/5] (Duration: 0.72 s, Exit Code: 0)
+[WORKLOAD 1] Grace CPU STREAM (N=150000000 doubles, 3.6GB working set > 114MB SLC)...
+  CPU Triad: Median= 309.8 +/-  0.7 GB/s (Min:  304.9, Max:  313.0, CV: 0.6%) | Correctness: PASS
+  CPU Copy:  Median= 315.9 +/-  2.6 GB/s (Min:  300.1, Max:  324.3, CV: 2.3%) | Correctness: PASS
+
+[Launch 5/5] (Duration: 0.73 s, Exit Code: 0)
+[WORKLOAD 1] Grace CPU STREAM (N=150000000 doubles, 3.6GB working set > 114MB SLC)...
+  CPU Triad: Median= 308.6 +/-  1.0 GB/s (Min:  302.3, Max:  314.5, CV: 0.9%) | Correctness: PASS
+  CPU Copy:  Median= 319.9 +/- 13.8 GB/s (Min:  109.0, Max:  331.0, CV: 12.4%) | Correctness: PASS
+================================================================================
+Workload: histogram
+Command:  ./bin/protocol_benchmark_suite histogram 30 5
+================================================================================
+
+[Launch 1/5] (Duration: 1.54 s, Exit Code: 0)
+[WORKLOAD 2] 65k-Bin Histogram (N=268435456 elements, 1.07GB, Distribution: Uniform)...
+  Global Atomics: Median =  365.8 +/-  0.1 GB/s (Min:  365.3, Max:  366.0, CV: 0.0%) | Correctness: PASS
+  Cluster DSM:    Median =  575.5 +/-  0.3 GB/s (Min:  572.9, Max:  576.4, CV: 0.1%) | Correctness: PASS | Speedup: 1.57x
+[WORKLOAD 2] 65k-Bin Histogram (N=268435456 elements, 1.07GB, Distribution: Skewed (Clustered))...
+  Global Atomics: Median =  119.6 +/-  0.0 GB/s (Min:  119.6, Max:  119.7, CV: 0.0%) | Correctness: PASS
+  Cluster DSM:    Median =  563.0 +/-  1.5 GB/s (Min:  553.6, Max:  569.0, CV: 0.8%) | Correctness: PASS | Speedup: 4.71x
+
+[Launch 2/5] (Duration: 1.40 s, Exit Code: 0)
+[WORKLOAD 2] 65k-Bin Histogram (N=268435456 elements, 1.07GB, Distribution: Uniform)...
+  Global Atomics: Median =  365.7 +/-  0.0 GB/s (Min:  365.5, Max:  365.9, CV: 0.0%) | Correctness: PASS
+  Cluster DSM:    Median =  575.2 +/-  0.2 GB/s (Min:  573.8, Max:  576.4, CV: 0.1%) | Correctness: PASS | Speedup: 1.57x
+[WORKLOAD 2] 65k-Bin Histogram (N=268435456 elements, 1.07GB, Distribution: Skewed (Clustered))...
+  Global Atomics: Median =  119.6 +/-  0.0 GB/s (Min:  119.5, Max:  119.7, CV: 0.0%) | Correctness: PASS
+  Cluster DSM:    Median =  561.9 +/-  1.5 GB/s (Min:  553.8, Max:  568.1, CV: 0.7%) | Correctness: PASS | Speedup: 4.70x
+
+[Launch 3/5] (Duration: 1.42 s, Exit Code: 0)
+[WORKLOAD 2] 65k-Bin Histogram (N=268435456 elements, 1.07GB, Distribution: Uniform)...
+  Global Atomics: Median =  365.4 +/-  0.1 GB/s (Min:  364.8, Max:  365.6, CV: 0.1%) | Correctness: PASS
+  Cluster DSM:    Median =  575.3 +/-  0.2 GB/s (Min:  573.8, Max:  576.3, CV: 0.1%) | Correctness: PASS | Speedup: 1.57x
+[WORKLOAD 2] 65k-Bin Histogram (N=268435456 elements, 1.07GB, Distribution: Skewed (Clustered))...
+  Global Atomics: Median =  119.6 +/-  0.0 GB/s (Min:  119.5, Max:  119.7, CV: 0.0%) | Correctness: PASS
+  Cluster DSM:    Median =  561.9 +/-  1.6 GB/s (Min:  550.3, Max:  567.8, CV: 0.8%) | Correctness: PASS | Speedup: 4.70x
+
+[Launch 4/5] (Duration: 1.42 s, Exit Code: 0)
+[WORKLOAD 2] 65k-Bin Histogram (N=268435456 elements, 1.07GB, Distribution: Uniform)...
+  Global Atomics: Median =  365.3 +/-  0.1 GB/s (Min:  364.8, Max:  365.6, CV: 0.1%) | Correctness: PASS
+  Cluster DSM:    Median =  575.5 +/-  0.2 GB/s (Min:  573.2, Max:  576.0, CV: 0.1%) | Correctness: PASS | Speedup: 1.58x
+[WORKLOAD 2] 65k-Bin Histogram (N=268435456 elements, 1.07GB, Distribution: Skewed (Clustered))...
+  Global Atomics: Median =  119.5 +/-  0.0 GB/s (Min:  119.5, Max:  119.6, CV: 0.0%) | Correctness: PASS
+  Cluster DSM:    Median =  563.1 +/-  1.3 GB/s (Min:  555.9, Max:  567.8, CV: 0.7%) | Correctness: PASS | Speedup: 4.71x
+
+[Launch 5/5] (Duration: 1.44 s, Exit Code: 0)
+[WORKLOAD 2] 65k-Bin Histogram (N=268435456 elements, 1.07GB, Distribution: Uniform)...
+  Global Atomics: Median =  365.3 +/-  0.0 GB/s (Min:  365.0, Max:  365.4, CV: 0.0%) | Correctness: PASS
+  Cluster DSM:    Median =  575.4 +/-  0.2 GB/s (Min:  573.7, Max:  576.2, CV: 0.1%) | Correctness: PASS | Speedup: 1.58x
+[WORKLOAD 2] 65k-Bin Histogram (N=268435456 elements, 1.07GB, Distribution: Skewed (Clustered))...
+  Global Atomics: Median =  119.4 +/-  0.0 GB/s (Min:  119.4, Max:  119.5, CV: 0.0%) | Correctness: PASS
+  Cluster DSM:    Median =  561.7 +/-  1.2 GB/s (Min:  550.4, Max:  568.9, CV: 0.6%) | Correctness: PASS | Speedup: 4.70x
+================================================================================
+Workload: binary_search
+Command:  ./bin/protocol_benchmark_suite binary_search 30 5
+================================================================================
+
+[Launch 1/5] (Duration: 0.63 s, Exit Code: 0)
+[WORKLOAD 3] 64-bit Binary Search (N=33554432 keys, M=16777216 queries, Little's Law Saturation)...
+  Standard Search:  Median =   5407.0 +/-  14.5 M-Ops/s (Min:   5369.7, Max:   5518.2, CV: 0.7%) | Correctness: PASS
+  Eytzinger (BFS):  Median =   6698.5 +/-  13.0 M-Ops/s (Min:   6609.5, Max:   6763.3, CV: 0.5%) | Correctness: PASS
+
+[Launch 2/5] (Duration: 0.63 s, Exit Code: 0)
+[WORKLOAD 3] 64-bit Binary Search (N=33554432 keys, M=16777216 queries, Little's Law Saturation)...
+  Standard Search:  Median =   5407.4 +/-  14.8 M-Ops/s (Min:   5379.2, Max:   5545.1, CV: 0.8%) | Correctness: PASS
+  Eytzinger (BFS):  Median =   6763.9 +/-  11.3 M-Ops/s (Min:   6665.1, Max:   6811.2, CV: 0.5%) | Correctness: PASS
+
+[Launch 3/5] (Duration: 0.63 s, Exit Code: 0)
+[WORKLOAD 3] 64-bit Binary Search (N=33554432 keys, M=16777216 queries, Little's Law Saturation)...
+  Standard Search:  Median =   5408.8 +/-  15.1 M-Ops/s (Min:   5385.9, Max:   5563.9, CV: 0.8%) | Correctness: PASS
+  Eytzinger (BFS):  Median =   6765.1 +/-   9.9 M-Ops/s (Min:   6706.8, Max:   6824.9, CV: 0.4%) | Correctness: PASS
+
+[Launch 4/5] (Duration: 0.62 s, Exit Code: 0)
+[WORKLOAD 3] 64-bit Binary Search (N=33554432 keys, M=16777216 queries, Little's Law Saturation)...
+  Standard Search:  Median =   5413.7 +/-  12.5 M-Ops/s (Min:   5384.0, Max:   5543.0, CV: 0.6%) | Correctness: PASS
+  Eytzinger (BFS):  Median =   6758.9 +/-  11.1 M-Ops/s (Min:   6676.4, Max:   6818.5, CV: 0.5%) | Correctness: PASS
+
+[Launch 5/5] (Duration: 0.63 s, Exit Code: 0)
+[WORKLOAD 3] 64-bit Binary Search (N=33554432 keys, M=16777216 queries, Little's Law Saturation)...
+  Standard Search:  Median =   5414.6 +/-   8.2 M-Ops/s (Min:   5366.0, Max:   5457.0, CV: 0.4%) | Correctness: PASS
+  Eytzinger (BFS):  Median =   6748.6 +/-  10.6 M-Ops/s (Min:   6700.2, Max:   6815.1, CV: 0.4%) | Correctness: PASS
+================================================================================
+Workload: zerocopy_gemm
+Command:  ./bin/protocol_benchmark_suite zerocopy_gemm 30 5
+================================================================================
+
+[Launch 1/5] (Duration: 2.17 s, Exit Code: 0)
+[WORKLOAD 4] BF16 GEMM (M=N=K=8192, Pure Zero-Copy vs. HBM-Staged with explicit timing)...
+  Pure Zero-Copy GEMM: Median =  22.54 +/- 0.02 TFLOPS (Min:  22.46, Max:  22.66, CV: 0.2%) | Correctness: PASS
+  HBM-Staged End-to-End: Median = 441.01 +/- 0.26 TFLOPS (Min: 439.37, Max: 442.67, CV: 0.2%) | Correctness: PASS
+
+[Launch 2/5] (Duration: 2.35 s, Exit Code: 0)
+[WORKLOAD 4] BF16 GEMM (M=N=K=8192, Pure Zero-Copy vs. HBM-Staged with explicit timing)...
+  Pure Zero-Copy GEMM: Median =  20.40 +/- 0.01 TFLOPS (Min:  20.31, Max:  20.52, CV: 0.2%) | Correctness: PASS
+  HBM-Staged End-to-End: Median = 440.83 +/- 0.26 TFLOPS (Min: 439.45, Max: 442.48, CV: 0.2%) | Correctness: PASS
+
+[Launch 3/5] (Duration: 2.19 s, Exit Code: 0)
+[WORKLOAD 4] BF16 GEMM (M=N=K=8192, Pure Zero-Copy vs. HBM-Staged with explicit timing)...
+  Pure Zero-Copy GEMM: Median =  22.36 +/- 0.02 TFLOPS (Min:  22.27, Max:  22.46, CV: 0.2%) | Correctness: PASS
+  HBM-Staged End-to-End: Median = 441.34 +/- 0.33 TFLOPS (Min: 439.28, Max: 443.02, CV: 0.2%) | Correctness: PASS
+
+[Launch 4/5] (Duration: 2.24 s, Exit Code: 0)
+[WORKLOAD 4] BF16 GEMM (M=N=K=8192, Pure Zero-Copy vs. HBM-Staged with explicit timing)...
+  Pure Zero-Copy GEMM: Median =  21.71 +/- 0.02 TFLOPS (Min:  21.62, Max:  21.80, CV: 0.2%) | Correctness: PASS
+  HBM-Staged End-to-End: Median = 440.97 +/- 0.23 TFLOPS (Min: 439.69, Max: 442.37, CV: 0.1%) | Correctness: PASS
+
+[Launch 5/5] (Duration: 2.17 s, Exit Code: 0)
+[WORKLOAD 4] BF16 GEMM (M=N=K=8192, Pure Zero-Copy vs. HBM-Staged with explicit timing)...
+  Pure Zero-Copy GEMM: Median =  22.52 +/- 0.02 TFLOPS (Min:  22.44, Max:  22.63, CV: 0.2%) | Correctness: PASS
+  HBM-Staged End-to-End: Median = 441.87 +/- 0.37 TFLOPS (Min: 439.86, Max: 443.52, CV: 0.2%) | Correctness: PASS
+================================================================================
+Workload: llama_decode
+Command:  ./bin/protocol_benchmark_suite llama_decode 30 5
+================================================================================
+
+[Launch 1/5] (Duration: 0.81 s, Exit Code: 0)
+[WORKLOAD 5] Llama-3.2 1B Decode Attention (S_kv=65536, KV_Working_Set=128.00 MB > 50MB L2, Splits=128)...
+  FlashDecoding (Split-KV): Median =  507.7 +/-  0.7 GB/s (Min:  503.2, Max:  510.4, CV: 0.4%) | Correctness: PASS
+
+[Launch 2/5] (Duration: 0.80 s, Exit Code: 0)
+[WORKLOAD 5] Llama-3.2 1B Decode Attention (S_kv=65536, KV_Working_Set=128.00 MB > 50MB L2, Splits=128)...
+  FlashDecoding (Split-KV): Median =  507.8 +/-  0.5 GB/s (Min:  503.8, Max:  511.1, CV: 0.3%) | Correctness: PASS
+
+[Launch 3/5] (Duration: 0.82 s, Exit Code: 0)
+[WORKLOAD 5] Llama-3.2 1B Decode Attention (S_kv=65536, KV_Working_Set=128.00 MB > 50MB L2, Splits=128)...
+  FlashDecoding (Split-KV): Median =  504.1 +/-  0.6 GB/s (Min:  500.7, Max:  508.2, CV: 0.4%) | Correctness: PASS
+
+[Launch 4/5] (Duration: 0.80 s, Exit Code: 0)
+[WORKLOAD 5] Llama-3.2 1B Decode Attention (S_kv=65536, KV_Working_Set=128.00 MB > 50MB L2, Splits=128)...
+  FlashDecoding (Split-KV): Median =  505.0 +/-  0.9 GB/s (Min:  494.4, Max:  508.9, CV: 0.5%) | Correctness: PASS
+
+[Launch 5/5] (Duration: 0.79 s, Exit Code: 0)
+[WORKLOAD 5] Llama-3.2 1B Decode Attention (S_kv=65536, KV_Working_Set=128.00 MB > 50MB L2, Splits=128)...
+  FlashDecoding (Split-KV): Median =  504.5 +/-  1.0 GB/s (Min:  496.9, Max:  508.9, CV: 0.5%) | Correctness: PASS

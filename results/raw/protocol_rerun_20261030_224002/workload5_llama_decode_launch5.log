@@ -1,0 +1,8 @@
+Run: llama_decode (Launch 5/5)
+Command: ./bin/protocol_benchmark_suite llama_decode 30 5
+Duration: 1.78 s
+Exit Code: 0
+
+[WORKLOAD 5] Llama-3.2 1B Decode Attention (S_kv=65536, KV_Working_Set=128.00 MB > 50MB L2, Splits=128)...
+  Unsplit Baseline:       Median =    4.7 +/-  0.0 GB/s (Min:    4.7, Max:    4.7, CV: 0.0%) | Correctness: PASS
+  FlashDecoding Split-KV: Median =  511.3 +/-  0.9 GB/s (Min:  505.0, Max:  515.9, CV: 0.5%) | Correctness: PASS | Speedup: 107.78x

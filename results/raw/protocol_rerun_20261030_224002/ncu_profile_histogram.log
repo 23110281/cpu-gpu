@@ -1,0 +1,97 @@
+==PROF== Connected to process 443867 (/users/rudra281/testing_arm_bench/cpu-gpu-bench/bin/protocol_benchmark_suite)
+==PROF== Profiling "hist_global_atomics" - 0: 0%....50%....100% - 1 pass
+==PROF== Profiling "hist_cluster_dsm" - 1: 0%....50%....100% - 1 pass
+==PROF== Profiling "hist_global_atomics" - 2: 0%....50%....100% - 1 pass
+==PROF== Profiling "hist_cluster_dsm" - 3: 0%....50%....100% - 1 pass
+==PROF== Profiling "hist_global_atomics" - 4: 0%....50%....100% - 1 pass
+==PROF== Profiling "hist_cluster_dsm" - 5: 0%....50%....100% - 1 pass
+==PROF== Profiling "hist_global_atomics" - 6: 0%....50%....100% - 1 pass
+==PROF== Profiling "hist_cluster_dsm" - 7: 0%....50%....100% - 1 pass
+[WORKLOAD 2] 65k-Bin Histogram (N=268435456 elements, 1.07GB, Distribution: Uniform)...
+  Global Atomics: Median =   51.5 +/-  0.0 GB/s (Min:   51.5, Max:   51.5, CV: 0.0%) | Correctness: PASS
+  Cluster DSM:    Median =   53.0 +/-  0.0 GB/s (Min:   53.0, Max:   53.0, CV: 0.0%) | Correctness: PASS | Speedup: 1.03x
+[WORKLOAD 2] 65k-Bin Histogram (N=268435456 elements, 1.07GB, Distribution: Skewed (Clustered))...
+  Global Atomics: Median =   40.2 +/-  0.0 GB/s (Min:   40.2, Max:   40.2, CV: 0.0%) | Correctness: PASS
+  Cluster DSM:    Median =   53.5 +/-  0.0 GB/s (Min:   53.5, Max:   53.5, CV: 0.0%) | Correctness: PASS | Speedup: 1.33x
+==PROF== Disconnected from process 443867
+[443867] protocol_benchmark_suite@127.0.0.1
+  hist_global_atomics(const unsigned int *, unsigned int *, unsigned long) (528, 1, 1)x(512, 1, 1), Context 1, Stream 7, Device 0, CC 9.0
+    Section: Command line profiler metrics
+    ---------------------- ----------- ------------
+    Metric Name            Metric Unit Metric Value
+    ---------------------- ----------- ------------
+    dram__bytes_read.sum         Gbyte         1.07
+    dram__bytes_write.sum        Mbyte         2.44
+    gpu__time_duration.sum          ms         2.94
+    ---------------------- ----------- ------------
+
+  hist_cluster_dsm(const unsigned int *, unsigned int *, unsigned long) (528, 1, 1)x(512, 1, 1), Context 1, Stream 7, Device 0, CC 9.0
+    Section: Command line profiler metrics
+    ---------------------- ----------- ------------
+    Metric Name            Metric Unit Metric Value
+    ---------------------- ----------- ------------
+    dram__bytes_read.sum         Gbyte         1.07
+    dram__bytes_write.sum        Mbyte         1.07
+    gpu__time_duration.sum          ms         2.19
+    ---------------------- ----------- ------------
+
+  hist_global_atomics(const unsigned int *, unsigned int *, unsigned long) (528, 1, 1)x(512, 1, 1), Context 1, Stream 7, Device 0, CC 9.0
+    Section: Command line profiler metrics
+    ---------------------- ----------- ------------
+    Metric Name            Metric Unit Metric Value
+    ---------------------- ----------- ------------
+    dram__bytes_read.sum         Gbyte         1.07
+    dram__bytes_write.sum        Kbyte        37.38
+    gpu__time_duration.sum          ms         2.94
+    ---------------------- ----------- ------------
+
+  hist_cluster_dsm(const unsigned int *, unsigned int *, unsigned long) (528, 1, 1)x(512, 1, 1), Context 1, Stream 7, Device 0, CC 9.0
+    Section: Command line profiler metrics
+    ---------------------- ----------- ------------
+    Metric Name            Metric Unit Metric Value
+    ---------------------- ----------- ------------
+    dram__bytes_read.sum         Gbyte         1.07
+    dram__bytes_write.sum        Mbyte         1.23
+    gpu__time_duration.sum          ms         2.32
+    ---------------------- ----------- ------------
+
+  hist_global_atomics(const unsigned int *, unsigned int *, unsigned long) (528, 1, 1)x(512, 1, 1), Context 1, Stream 7, Device 0, CC 9.0
+    Section: Command line profiler metrics
+    ---------------------- ----------- ------------
+    Metric Name            Metric Unit Metric Value
+    ---------------------- ----------- ------------
+    dram__bytes_read.sum         Gbyte         1.07
+    dram__bytes_write.sum        Kbyte       351.49
+    gpu__time_duration.sum          ms         8.97
+    ---------------------- ----------- ------------
+
+  hist_cluster_dsm(const unsigned int *, unsigned int *, unsigned long) (528, 1, 1)x(512, 1, 1), Context 1, Stream 7, Device 0, CC 9.0
+    Section: Command line profiler metrics
+    ---------------------- ----------- ------------
+    Metric Name            Metric Unit Metric Value
+    ---------------------- ----------- ------------
+    dram__bytes_read.sum         Gbyte         1.07
+    dram__bytes_write.sum        Kbyte       547.33
+    gpu__time_duration.sum          ms         2.46
+    ---------------------- ----------- ------------
+
+  hist_global_atomics(const unsigned int *, unsigned int *, unsigned long) (528, 1, 1)x(512, 1, 1), Context 1, Stream 7, Device 0, CC 9.0
+    Section: Command line profiler metrics
+    ---------------------- ----------- ------------
+    Metric Name            Metric Unit Metric Value
+    ---------------------- ----------- ------------
+    dram__bytes_read.sum         Gbyte         1.07
+    dram__bytes_write.sum        Kbyte       344.06
+    gpu__time_duration.sum          ms         8.98
+    ---------------------- ----------- ------------
+
+  hist_cluster_dsm(const unsigned int *, unsigned int *, unsigned long) (528, 1, 1)x(512, 1, 1), Context 1, Stream 7, Device 0, CC 9.0
+    Section: Command line profiler metrics
+    ---------------------- ----------- ------------
+    Metric Name            Metric Unit Metric Value
+    ---------------------- ----------- ------------
+    dram__bytes_read.sum         Gbyte         1.07
+    dram__bytes_write.sum        Kbyte       283.14
+    gpu__time_duration.sum          ms         2.44
+    ---------------------- ----------- ------------
+

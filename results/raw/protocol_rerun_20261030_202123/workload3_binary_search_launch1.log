@@ -1,0 +1,8 @@
+Run: binary_search (Launch 1/5)
+Command: ./bin/protocol_benchmark_suite binary_search 30 5
+Duration: 0.63 s
+Exit Code: 0
+
+[WORKLOAD 3] 64-bit Binary Search (N=33554432 keys, M=16777216 queries, Little's Law Saturation)...
+  Standard Search:  Median =   5407.0 +/-  14.5 M-Ops/s (Min:   5369.7, Max:   5518.2, CV: 0.7%) | Correctness: PASS
+  Eytzinger (BFS):  Median =   6698.5 +/-  13.0 M-Ops/s (Min:   6609.5, Max:   6763.3, CV: 0.5%) | Correctness: PASS

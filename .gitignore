@@ -4,3 +4,6 @@ bin/
 third_party/
 results/plots/
 *.pyc
+uncommitted/
+*.tar.gz
+hardware_specs_gh200.txt

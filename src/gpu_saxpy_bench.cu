@@ -34,6 +34,7 @@
 #include <atomic>
 #include <unistd.h>
 #include "bf16_cvt.h"
+#include "gpu_device_specs.h"
 
 /* -- error-checking macros ------------------------------------------------- */
 #define CUDA_CHECK_J(expr, lbl) do {                                         \
@@ -72,8 +73,10 @@ static const char *prec_name(prec_t p) {
 }
 static size_t in_bytes(prec_t p) { return p == PREC_FP32 ? 4 : p == PREC_FP64 ? 8 : 2; }
 
-/* A100-SXM4-40GB HBM2e peak. Copy from gemv_host.h L71. */
-static inline double peak_gbps(void) { return 1555.0; }
+/* Dynamic device HBM peak. */
+static inline double peak_gbps(void) {
+    return get_gpu_spec_for_device(0).peak_hbm_gbps;
+}
 
 static inline float hashf(uint64_t i, uint64_t seed) {
     uint64_t x = i * 0x9E3779B97F4A7C15ULL + seed;

@@ -42,7 +42,7 @@ echo "==> sweep: sizes=$SIZES precs=$PRECS gpus=$GPUS  -> $OUT"
 #    that keep CSR memory sane.
 SPSIZES="${SPSIZES:-1024,2048,4096,8192,16384}"
 DENS="${DENS:-0.01,0.05,0.1,0.25}"
-./bin/gpu_gemm_bench --engine sparse --sizes "$SPSIZES" --precisions fp32,fp64 \
+./bin/gpu_gemm_bench --engine sparse --sizes "$SPSIZES" --precisions fp32,bf16 \
     --density "$DENS" --gpus "$GPUS" --iters "$ITERS" --validate --csv "$OUT" --tag sparse
 # control: dense GEMM fed 10%-nonzero data — should match the dense numbers above
 ./bin/gpu_gemm_bench --engine dense  --sizes "$SPSIZES" --precisions fp32 \

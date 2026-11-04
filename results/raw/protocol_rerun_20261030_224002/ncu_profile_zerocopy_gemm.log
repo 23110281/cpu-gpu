@@ -1,0 +1,29 @@
+==PROF== Connected to process 444101 (/tmp/test_zc_gemm_16k)
+==PROF== Profiling "nvjet_tst_192x192_64x3_2x1_v_..." - 0: 0%....50%....100% - 1 pass
+==PROF== Profiling "nvjet_tst_192x192_64x3_2x1_v_..." - 1: 0%....50%....100% - 1 pass
+Allocating M=N=K=16384 matrices (3x 0.50 GB = 1.50 GB total)...
+Pure Zero-Copy GEMM (M=N=K=16384): Time = 339.53 ms -> Throughput = 25.91 TFLOPS (2.62% of 989.4 TF)
+==PROF== Disconnected from process 444101
+[444101] test_zc_gemm_16k@127.0.0.1
+  nvjet_tst_192x192_64x3_2x1_v_bz_coopB_NNN (2, 66, 1)x(384, 1, 1), Context 1, Stream 7, Device 0, CC 9.0
+    Section: Command line profiler metrics
+    ---------------------- ----------- ------------
+    Metric Name            Metric Unit Metric Value
+    ---------------------- ----------- ------------
+    dram__bytes_read.sum         Kbyte       216.06
+    dram__bytes_write.sum        Mbyte         5.51
+    gpu__time_duration.sum          ms       309.47
+    lts__t_sectors.sum          sector   3302094217
+    ---------------------- ----------- ------------
+
+  nvjet_tst_192x192_64x3_2x1_v_bz_coopB_NNN (2, 66, 1)x(384, 1, 1), Context 1, Stream 7, Device 0, CC 9.0
+    Section: Command line profiler metrics
+    ---------------------- ----------- ------------
+    Metric Name            Metric Unit Metric Value
+    ---------------------- ----------- ------------
+    dram__bytes_read.sum         Kbyte       442.11
+    dram__bytes_write.sum        Mbyte         5.51
+    gpu__time_duration.sum          ms       310.53
+    lts__t_sectors.sum          sector   3299444676
+    ---------------------- ----------- ------------
+

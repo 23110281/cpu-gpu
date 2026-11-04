@@ -1,21 +1,29 @@
 # gpu_specs.py
 # Hardware specifications for plotting reference lines
-
 GPU_SPECS = {
+    "NVIDIA_GH200_480GB": {
+        "memory_bandwidth_gbps": 4000,
+        "pcie_bandwidth_gbps": 900,
+        "name_label": "GH200",
+        "interconnect_label": "NVLink-C2C (~900 GB/s)"
+    },
     "NVIDIA_A100": {
         "memory_bandwidth_gbps": 1555,
         "pcie_bandwidth_gbps": 24,
-        "name_label": "A100"
+        "name_label": "A100",
+        "interconnect_label": "PCIe Gen4 (~24 GB/s)"
     },
     "NVIDIA_L40S": {
         "memory_bandwidth_gbps": 864,
         "pcie_bandwidth_gbps": 24,
-        "name_label": "L40S"
+        "name_label": "L40S",
+        "interconnect_label": "PCIe Gen4 (~24 GB/s)"
     },
     "default": {
         "memory_bandwidth_gbps": 1000,
         "pcie_bandwidth_gbps": 24,
-        "name_label": "GPU"
+        "name_label": "GPU",
+        "interconnect_label": "PCIe (~24 GB/s)"
     }
 }
 

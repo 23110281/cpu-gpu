@@ -1,0 +1,12 @@
+Run: binary_search (Launch 2/5)
+Command: ./bin/protocol_benchmark_suite binary_search 30 5
+Duration: 99.98 s
+Exit Code: 0
+
+[WORKLOAD 3] 64-bit Binary Search (N=33554432 keys, M=16777216 queries, Little's Law Saturation)...
+  Standard Search:  Median =   5396.5 +/-   8.5 M-Ops/s (Min:   5373.5, Max:   5486.8, CV: 0.4%) | Correctness: PASS
+  Eytzinger (BFS):  Median =   6735.8 +/-   8.4 M-Ops/s (Min:   6676.0, Max:   6776.2, CV: 0.4%) | Correctness: PASS
+[WORKLOAD 3] 64-bit Binary Search over NVLink-C2C (N=33554432 keys, 0.25 GB in Host LPDDR5X, M=16777216 queries in HBM3)...
+  C2C Zero-Copy Search: Median =   222.29 +/-  0.87 M-Ops/s (Min:   219.09, Max:   228.67, CV: 1.1%) | Correctness: PASS
+[WORKLOAD 3] 64-bit Binary Search over NVLink-C2C (N=4294967296 keys, 32.00 GB in Host LPDDR5X, M=4000000 queries in HBM3)...
+  C2C Zero-Copy Search: Median =     1.47 +/-  0.00 M-Ops/s (Min:     1.46, Max:     1.48, CV: 0.3%) | Correctness: PASS

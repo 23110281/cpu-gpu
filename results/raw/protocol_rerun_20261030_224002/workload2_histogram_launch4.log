@@ -1,0 +1,11 @@
+Run: histogram (Launch 4/5)
+Command: ./bin/protocol_benchmark_suite histogram 30 5
+Duration: 1.42 s
+Exit Code: 0
+
+[WORKLOAD 2] 65k-Bin Histogram (N=268435456 elements, 1.07GB, Distribution: Uniform)...
+  Global Atomics: Median =  365.5 +/-  0.1 GB/s (Min:  365.3, Max:  366.0, CV: 0.0%) | Correctness: PASS
+  Cluster DSM:    Median =  574.8 +/-  0.3 GB/s (Min:  573.9, Max:  577.2, CV: 0.2%) | Correctness: PASS | Speedup: 1.57x
+[WORKLOAD 2] 65k-Bin Histogram (N=268435456 elements, 1.07GB, Distribution: Skewed (Clustered))...
+  Global Atomics: Median =  119.6 +/-  0.0 GB/s (Min:  119.5, Max:  119.7, CV: 0.0%) | Correctness: PASS
+  Cluster DSM:    Median =  561.9 +/-  1.1 GB/s (Min:  557.0, Max:  568.0, CV: 0.6%) | Correctness: PASS | Speedup: 4.70x

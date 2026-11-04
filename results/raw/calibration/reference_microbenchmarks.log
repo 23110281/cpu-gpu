@@ -1,0 +1,24 @@
+================================================================================
+ GH200 REFERENCE CALIBRATION MICROBENCHMARKS (Protocol Section 7)
+ Node: NVIDIA GH200 480GB (72-Core Grace Neoverse-V2 + Hopper GH100 96GB HBM3)
+================================================================================
+
+[CALIB 1/3] Benchmarking Grace 72-Core CPU STREAM...
+  CPU STREAM Triad (30 iters): Median =  307.7 GB/s (Min:  303.2, Max:  311.7, Std:  2.2, CV: 0.7%)
+  CPU STREAM Copy  (30 iters): Median =  313.6 GB/s (Min:  294.3, Max:  328.4, Std:  9.7, CV: 3.1%)
+
+[CALIB 2/3] Benchmarking Hopper GPU HBM3 STREAM...
+  GPU HBM3 Triad (30 iters): Median = 3749.7 GB/s (Min: 3739.1, Max: 3751.5, Std:  2.8, CV: 0.1%)
+  GPU HBM3 Copy  (30 iters): Median = 3351.2 GB/s (Min: 3328.5, Max: 3356.3, Std:  4.9, CV: 0.1%)
+
+[CALIB 3/3] Benchmarking NVLink-C2C (H2D, D2H, and Bidirectional)...
+  NVLink-C2C H2D  (30 iters): Median =  365.0 GB/s (Min:  364.4, Max:  365.4, Std:  0.2, CV: 0.1%)
+  NVLink-C2C D2H  (30 iters): Median =  298.2 GB/s (Min:  297.2, Max:  298.2, Std:  0.2, CV: 0.1%)
+  NVLink-C2C Bidir(30 iters): Median =  380.3 GB/s (Min:  380.0, Max:  380.5, Std:  0.1, CV: 0.0%)
+
+================================================================================
+ CALIBRATION SUMMARY (Demonstrated Peaks for Reporting):
+  1. Grace CPU STREAM Peak:   307.7 GB/s (Triad) /  313.6 GB/s (Copy)
+  2. Hopper HBM3 STREAM Peak: 3749.7 GB/s (Triad) / 3351.2 GB/s (Copy)
+  3. NVLink-C2C Wire Peak:    365.0 GB/s (H2D) /  298.2 GB/s (D2H) /  380.3 GB/s (Bidir)
+================================================================================

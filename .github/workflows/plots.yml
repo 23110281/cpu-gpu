@@ -11,6 +11,7 @@ on:
       - 'results/generate_spgemm_plots.py'
       - 'results/generate_index.py'
       - 'results/index.html'
+      - 'scripts/generate_all_workload_and_coherence_plots.py'
       - 'Makefile'
       - 'results/gpu_specs.py'
       - 'requirements.txt'
@@ -44,7 +45,7 @@ jobs:
           # Remove .git from the checked-out plots folder to prevent deployment conflicts
           rm -rf results/plots/.git
           
-          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -qE '\.csv|results/generate_.*_plots\.py|gpu_specs\.py|requirements\.txt|Makefile'; then
+          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -qE '\.csv|results/generate_.*_plots\.py|scripts/generate_.*\.py|gpu_specs\.py|requirements\.txt|Makefile'; then
             echo "Data or scripts changed. Running full plot generation..."
             make plots
           else

@@ -52,6 +52,7 @@
 #include <unistd.h>
 #include "bf16_cvt.h"
 #include "gemv_host.h"
+#include "gpu_device_specs.h"
 
 /* -- error-checking macros (identical pattern to gpu_gemm_bench.cu) -------- */
 #define CUDA_CHECK_J(expr, lbl) do {                                         \
@@ -214,27 +215,49 @@ static std::mutex g_gemv_cusparse_setup_mutex;
  * transpose needed for a vector) and A via the same OP_T/lda=S trick,
  * k=S, m=mrows, n=1.                                                       */
 static cublasStatus_t do_gemv(cublasHandle_t h, prec_t p, long S, long mrows,
-                               const void *dA, const void *dx, void *dy) {
+                              const void *dA, const void *dx, void *dy) {
     static const float  f1 = 1.0f, f0 = 0.0f;
     static const double d1 = 1.0,  d0 = 0.0;
-    int iS = (int)S, iM = (int)mrows;
+    int iS = (int)S;
     switch (p) {
-    case PREC_FP32:
-        return cublasSgemv(h, CUBLAS_OP_T, iS, iM, &f1,
-                            (const float *)dA, iS,
-                            (const float *)dx, 1, &f0,
-                            (float *)dy, 1);
-    case PREC_FP64:
-        return cublasDgemv(h, CUBLAS_OP_T, iS, iM, &d1,
-                            (const double *)dA, iS,
-                            (const double *)dx, 1, &d0,
-                            (double *)dy, 1);
-    case PREC_BF16:
+    case PREC_FP32: {
+        /* Chunk rows when mrows is large to prevent signed 32-bit int overflow in cublasSgemv (col * lda >= 2^31) */
+        long chunk = 16384;
+        for (long r = 0; r < mrows; r += chunk) {
+            long cur_chunk = (mrows - r < chunk) ? (mrows - r) : chunk;
+            const float *cur_A = (const float *)dA + (size_t)r * S;
+            float *cur_y = (float *)dy + r;
+            cublasStatus_t s = cublasSgemv(h, CUBLAS_OP_T, iS, (int)cur_chunk, &f1,
+                                           cur_A, iS,
+                                           (const float *)dx, 1, &f0,
+                                           cur_y, 1);
+            if (s != CUBLAS_STATUS_SUCCESS) return s;
+        }
+        return CUBLAS_STATUS_SUCCESS;
+    }
+    case PREC_FP64: {
+        /* Chunk rows when mrows is large to prevent signed 32-bit int overflow in cublasDgemv */
+        long chunk = 8192;
+        for (long r = 0; r < mrows; r += chunk) {
+            long cur_chunk = (mrows - r < chunk) ? (mrows - r) : chunk;
+            const double *cur_A = (const double *)dA + (size_t)r * S;
+            double *cur_y = (double *)dy + r;
+            cublasStatus_t s = cublasDgemv(h, CUBLAS_OP_T, iS, (int)cur_chunk, &d1,
+                                           cur_A, iS,
+                                           (const double *)dx, 1, &d0,
+                                           cur_y, 1);
+            if (s != CUBLAS_STATUS_SUCCESS) return s;
+        }
+        return CUBLAS_STATUS_SUCCESS;
+    }
+    case PREC_BF16: {
+        int iM = (int)mrows;
         return cublasGemmEx(h, CUBLAS_OP_T, CUBLAS_OP_N, iM, 1, iS,
                              &f1, dA, CUDA_R_16BF, iS,
                              dx, CUDA_R_16BF, iS,
                              &f0, dy, CUDA_R_32F, iM,
                              CUBLAS_COMPUTE_32F, CUBLAS_GEMM_DEFAULT_TENSOR_OP);
+    }
     }
     return CUBLAS_STATUS_NOT_SUPPORTED;
 }
@@ -864,7 +887,8 @@ static void run_gemv_config(const cfg_t *c, FILE *csv, const char *host, int cud
 
     double agg_gbps = sum_bytes / wall / 1e9;
     double per_gpu = agg_gbps / (double)G;
-    double pct = 100.0 * agg_gbps / ((double)G * gemv_peak_gbps());
+    double peak_bw = get_gpu_spec_for_device(0).peak_hbm_gbps;
+    double pct = 100.0 * agg_gbps / ((double)G * peak_bw);
     double replicas_mult = (c->mode == MODE_REPLICAS) ? (double)G : 1.0;
     double agg_tflops = (engine == ENG_SPARSE)
         ? replicas_mult * (double)nnz * 2.0 * (double)c->iters / wall / 1e12
@@ -1022,8 +1046,9 @@ int main(int argc, char **argv) {
 
     printf("# GPU GEMV/SpMV bench  host=%s devices=%d mode=%s cudart=%d cap=%.1fGB\n",
            host, ndev, c.mode == MODE_SPLIT ? "split" : "replicas", cudart, (double)cap / 1e9);
-    printf("# Memory-bandwidth-bound at every size -- peak ref ~%.0f GB/s (A100-SXM4-40GB HBM2)\n",
-           gemv_peak_gbps());
+    gpu_spec_t spec0 = get_gpu_spec_for_device(0);
+    printf("# Memory-bandwidth-bound at every size -- peak ref ~%.0f GB/s (%s)\n",
+           spec0.peak_hbm_gbps, spec0.name);
     printf("%-6s %-5s %-3s %6s %9s %9s %6s %8s %8s %5s %7s %7s %s\n",
            "eng", "prec", "G", "S", "aggGBps", "perGPU", "pk%", "comp_ms", "e2e_ms", "xfer%", "TFLOPs", "SMclk", "status");
 

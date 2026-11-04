@@ -1,0 +1,514 @@
+# dmidecode 3.3
+Getting SMBIOS data from sysfs.
+SMBIOS 3.6.0 present.
+# SMBIOS implementations newer than version 3.5.0 are not
+# fully supported by this version of dmidecode.
+Table at 0x7856350000.
+
+Handle 0x0000, DMI type 0, 26 bytes
+BIOS Information
+	Vendor: American Megatrends International, LLC.
+	Version: 3A21
+	Release Date: 07/10/2024
+	ROM Size: 64 MB
+	Characteristics:
+		PCI is supported
+		PNP is supported
+		BIOS is upgradeable
+		BIOS shadowing is allowed
+		Boot from CD is supported
+		Selectable boot is supported
+		BIOS ROM is socketed
+		Serial services are supported (int 14h)
+		ACPI is supported
+		BIOS boot specification is supported
+		Targeted content distribution is supported
+		UEFI is supported
+	BIOS Revision: 5.34
+	Firmware Revision: 3.35
+
+Handle 0x0001, DMI type 1, 27 bytes
+System Information
+	Manufacturer: Quanta Cloud Technology Inc.
+	Product Name: QuantaGrid S74G-2U 1S7GZ9Z0000
+	Version: ---
+	Serial Number: QTWS7G0235100073
+	UUID: 336f4ad0-53db-11ee-8b8f-74d4dd4ba761
+	Wake-up Type: Power Switch
+	SKU Number: Default string
+	Family: Default string
+
+Handle 0x0002, DMI type 2, 15 bytes
+Base Board Information
+	Manufacturer: Quanta Cloud Technology Inc.
+	Product Name: S7G MB (CG1)
+	Version: 31S7GMB0000
+	Serial Number: S7GMB035000150
+	Asset Tag: ---
+	Features:
+		Board is a hosting board
+		Board is replaceable
+	Location In Chassis: PartComponent
+	Chassis Handle: 0x0003
+	Type: Motherboard
+	Contained Object Handles: 0
+
+Handle 0x0003, DMI type 3, 22 bytes
+Chassis Information
+	Manufacturer: Quanta Cloud Technology Inc.
+	Type: Rack Mount Chassis
+	Lock: Not Present
+	Version: 1S7GZ9Z0000
+	Serial Number: QTWS7G0235100073
+	Asset Tag: ---
+	Boot-up State: Safe
+	Power Supply State: Safe
+	Thermal State: Safe
+	Security Status: None
+	OEM Information: 0x00000000
+	Height: Unspecified
+	Number Of Power Cords: Unspecified
+	Contained Elements: 0
+	SKU Number: Default string
+
+Handle 0x000F, DMI type 11, 5 bytes
+OEM Strings
+	String 1: Default string
+	String 2: Default string
+	String 3: Default string
+	String 4: Default string
+	String 5: Default string
+
+Handle 0x0011, DMI type 13, 22 bytes
+BIOS Language Information
+	Language Description Format: Long
+	Installable Languages: 1
+		en|US|iso8859-1
+	Currently Installed Language: en|US|iso8859-1
+
+Handle 0x0012, DMI type 32, 11 bytes
+System Boot Information
+	Status: No errors detected
+
+Handle 0x0016, DMI type 45, 26 bytes
+Firmware Inventory Information
+	Firmware Component Name: BIOS Firmware
+	Firmware Version: 3A21
+	Firmware ID: 6BC01137-240D-4E4D-BE92-E27FB6C8698F
+	Release Date: 07/10/2024
+	Manufacturer: Quanta
+	Lowest Supported Firmware Version: 3A03
+	Image Size: 64 MB
+	Characteristics:
+		Updatable: Yes
+		Write-Protect: No
+	State: Enabled
+	Associated Components: 1
+		0x0000
+
+Handle 0x0017, DMI type 38, 18 bytes
+IPMI Device Information
+	Interface Type: SSIF (SMBus System Interface)
+	Specification Version: 2.0
+	I2C Slave Address: 0x10
+	NV Storage Device: Not Present
+	Base Address: 0x10 (SMBus)
+
+Handle 0x0018, DMI type 42, 17 bytes
+Management Controller Host Interface
+	Host Interface Type: OEM
+
+Handle 0x0019, DMI type 43, 31 bytes
+TPM Device
+	Vendor ID: IFX
+	Specification Version: 2.0
+	Firmware Revision: 7.85
+	Description: INFINEON
+	Characteristics:
+		Family configurable via platform software support
+	OEM-specific Information: 0x00000000
+
+Handle 0x001A, DMI type 42, 131 bytes
+Management Controller Host Interface
+	Host Interface Type: Network
+	Device Type: USB
+	idVendor: 0x046b
+	idProduct: 0xffb0
+	Protocol ID: 04 (Redfish over IP)
+		Service UUID: 61a74bdd-d474-8f8b-11ee-53db339e9cd6
+		Host IP Assignment Type: Static
+		Host IP Address Format: IPv4
+		IPv4 Address: 169.254.0.18
+		IPv4 Mask: 255.255.0.0
+		Redfish Service IP Discovery Type: Static
+		Redfish Service IP Address Format: IPv4
+		IPv4 Redfish Service Address: 169.254.0.17
+		IPv4 Redfish Service Mask: 255.255.0.0
+		Redfish Service Port: 443
+		Redfish Service Vlan: 0
+		Redfish Service Hostname: 
+
+Handle 0x001B, DMI type 7, 27 bytes
+Cache Information
+	Socket Designation: L1 Instruction Cache
+	Configuration: Enabled, Not Socketed, Level 1
+	Operational Mode: Write Back
+	Location: Internal
+	Installed Size: 4608 kB
+	Maximum Size: 4608 kB
+	Supported SRAM Types:
+		Unknown
+	Installed SRAM Type: Unknown
+	Speed: Unknown
+	Error Correction Type: Unknown
+	System Type: Instruction
+	Associativity: 4-way Set-associative
+
+Handle 0x001C, DMI type 7, 27 bytes
+Cache Information
+	Socket Designation: L1 Data Cache
+	Configuration: Enabled, Not Socketed, Level 1
+	Operational Mode: Write Back
+	Location: Internal
+	Installed Size: 4608 kB
+	Maximum Size: 4608 kB
+	Supported SRAM Types:
+		Unknown
+	Installed SRAM Type: Unknown
+	Speed: Unknown
+	Error Correction Type: Unknown
+	System Type: Data
+	Associativity: 4-way Set-associative
+
+Handle 0x001D, DMI type 7, 27 bytes
+Cache Information
+	Socket Designation: L2 Cache
+	Configuration: Enabled, Not Socketed, Level 2
+	Operational Mode: Write Back
+	Location: Internal
+	Installed Size: 72 MB
+	Maximum Size: 72 MB
+	Supported SRAM Types:
+		Unknown
+	Installed SRAM Type: Unknown
+	Speed: Unknown
+	Error Correction Type: Unknown
+	System Type: Unified
+	Associativity: 8-way Set-associative
+
+Handle 0x001E, DMI type 7, 27 bytes
+Cache Information
+	Socket Designation: L3 Cache
+	Configuration: Enabled, Not Socketed, Level 3
+	Operational Mode: Write Back
+	Location: Internal
+	Installed Size: 114 MB
+	Maximum Size: 114 MB
+	Supported SRAM Types:
+		Unknown
+	Installed SRAM Type: Unknown
+	Speed: Unknown
+	Error Correction Type: Unknown
+	System Type: Unified
+	Associativity: 12-way Set-associative
+
+Handle 0x001F, DMI type 4, 50 bytes
+Processor Information
+	Socket Designation: G1:0.0
+	Type: Central Processor
+	Family: <OUT OF SPEC>
+	Manufacturer: NVIDIA
+	ID: 41 02 6B 03 02 00 00 00
+	Version: Grace A02
+	Voltage: Unknown
+	External Clock: 1000 MHz
+	Max Speed: Unknown
+	Current Speed: 3456 MHz
+	Status: Populated, Enabled
+	Upgrade: None
+	L1 Cache Handle: 0x001C
+	L2 Cache Handle: 0x001D
+	L3 Cache Handle: 0x001E
+	Serial Number: 0x000000017820B1C91000000012FF00C0
+	Asset Tag: 1654523006487
+	Part Number: 900-2G530-0060-000
+	Core Count: 72
+	Core Enabled: 72
+	Thread Count: 72
+	Characteristics:
+		64-bit capable
+		Execute Protection
+		Arm64 SoC ID
+
+Handle 0x0027, DMI type 11, 5 bytes
+OEM Strings
+
+Handle 0x0028, DMI type 16, 23 bytes
+Physical Memory Array
+	Location: System Board Or Motherboard
+	Use: System Memory
+	Error Correction Type: Single-bit ECC
+	Maximum Capacity: 480 GB
+	Error Information Handle: No Error
+	Number Of Devices: 1
+
+Handle 0x0029, DMI type 17, 92 bytes
+Memory Device
+	Array Handle: 0x0028
+	Error Information Handle: 0x0000
+	Total Width: 576 bits
+	Data Width: 512 bits
+	Size: 480 GB
+	Form Factor: Die
+	Set: None
+	Locator: LP5x_0
+	Bank Locator: LP5x_0
+	Type: LPDDR5
+	Type Detail: None
+	Speed: 6400 MT/s
+	Manufacturer: NVIDIA
+	Serial Number: 9223382417692081099
+	Asset Tag: Not Specified
+	Part Number: 699-2G530-0206-500
+	Rank: 3
+	Configured Memory Speed: Unknown
+	Minimum Voltage: 1.1 V
+	Maximum Voltage: 1.1 V
+	Configured Voltage: 1.1 V
+	Memory Technology: DRAM
+	Memory Operating Mode Capability: None
+	Firmware Version: Not Specified
+	Module Manufacturer ID: Bank 4, Hex 0x6B
+	Module Product ID: Unknown
+	Memory Subsystem Controller Manufacturer ID: Unknown
+	Memory Subsystem Controller Product ID: Unknown
+	Non-Volatile Size: None
+	Volatile Size: 480 GB
+	Cache Size: None
+	Logical Size: None
+
+Handle 0x002A, DMI type 19, 31 bytes
+Memory Array Mapped Address
+	Starting Address: 0x00080000000
+	Ending Address: 0x078800003FF
+	Range Size: 480 GB
+	Physical Array Handle: 0x0028
+	Partition Width: 0
+
+Handle 0x002D, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: J40 - TPM
+	Internal Connector Type: Other
+	External Reference Designator: Not Specified
+	External Connector Type: None
+	Port Type: Other
+
+Handle 0x002E, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: J190 - USB_CONN_0(DEBUG)
+	Internal Connector Type: Other
+	External Reference Designator: Not Specified
+	External Connector Type: None
+	Port Type: USB
+
+Handle 0x002F, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: J68 - JTAG_CPLD_PROG(FPGA)
+	Internal Connector Type: Other
+	External Reference Designator: Not Specified
+	External Connector Type: None
+	Port Type: Other
+
+Handle 0x0030, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: J3 - JTAG_CPLD_PROG(FAN)
+	Internal Connector Type: Other
+	External Reference Designator: Not Specified
+	External Connector Type: None
+	Port Type: Other
+
+Handle 0x0031, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: J74 - JTAG_CPU
+	Internal Connector Type: Other
+	External Reference Designator: Not Specified
+	External Connector Type: None
+	Port Type: Other
+
+Handle 0x0032, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: J125 - DEBUG_CONN
+	Internal Connector Type: Other
+	External Reference Designator: Not Specified
+	External Connector Type: None
+	Port Type: Other
+
+Handle 0x0033, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: J31 - SCM
+	Internal Connector Type: Other
+	External Reference Designator: Not Specified
+	External Connector Type: None
+	Port Type: Other
+
+Handle 0x0034, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: J36 - RTC_BAT
+	Internal Connector Type: Other
+	External Reference Designator: Not Specified
+	External Connector Type: None
+	Port Type: Other
+
+Handle 0x0035, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: J134 - FP_CONN
+	Internal Connector Type: Other
+	External Reference Designator: Not Specified
+	External Connector Type: None
+	Port Type: Other
+
+Handle 0x0036, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: J114 - PMBUS_CONN
+	Internal Connector Type: Other
+	External Reference Designator: Not Specified
+	External Connector Type: None
+	Port Type: Other
+
+Handle 0x0037, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: J69 - HDD_SMBUS_CONN
+	Internal Connector Type: Other
+	External Reference Designator: Not Specified
+	External Connector Type: None
+	Port Type: Other
+
+Handle 0x0038, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: J76 - FAN_SMBUS_CONN
+	Internal Connector Type: Other
+	External Reference Designator: Not Specified
+	External Connector Type: None
+	Port Type: Other
+
+Handle 0x0039, DMI type 8, 9 bytes
+Port Connector Information
+	Internal Reference Designator: J138 - NVLINK_CHASSIS_ID_CONN
+	Internal Connector Type: Other
+	External Reference Designator: Not Specified
+	External Connector Type: None
+	Port Type: Other
+
+Handle 0x003A, DMI type 9, 29 bytes
+System Slot Information
+	Designation: MCIO_SLOT_0(PCIe x8) + MCIO_SLOT_1(PCIe x8) - PCIe x16
+	Type: x16 PCI Express 5 x16
+	Current Usage: In Use
+	Length: Long
+	ID: 1
+	Characteristics:
+		3.3 V is provided
+	Bus Address: 0006:01:00.0
+	Data Bus Width: 8
+	Peer Devices: 0
+	Height: Not applicable
+
+Handle 0x003B, DMI type 9, 29 bytes
+System Slot Information
+	Designation: MCIO_SLOT_4(PCIe x8) + MCIO_SLOT_5(PCIe x8) - PCIe x16
+	Type: x16 PCI Express 5 x16
+	Current Usage: In Use
+	Length: Long
+	ID: 3
+	Characteristics:
+		3.3 V is provided
+	Bus Address: 0000:01:00.0
+	Data Bus Width: 16
+	Peer Devices: 0
+	Height: Not applicable
+
+Handle 0x003C, DMI type 9, 29 bytes
+System Slot Information
+	Designation: MCIO_SLOT_2(PCIe x8) + MCIO_SLOT_3(PCIe x8) - PCIe x16
+	Type: x16 PCI Express 5 x16
+	Current Usage: Available
+	Length: Long
+	ID: 2
+	Characteristics:
+		3.3 V is provided
+	Bus Address: 00ff:ff:1f.7
+	Data Bus Width: 0
+	Peer Devices: 0
+	Height: Not applicable
+
+Handle 0x003D, DMI type 9, 29 bytes
+System Slot Information
+	Designation: M.2_SLOT_0(PCIe x4)
+	Type: x8 PCI Express 5 x8
+	Current Usage: In Use
+	Length: Long
+	ID: 36
+	Characteristics:
+		3.3 V is provided
+	Bus Address: 0004:01:00.0
+	Data Bus Width: 4
+	Peer Devices: 0
+	Height: Not applicable
+
+Handle 0x003E, DMI type 9, 29 bytes
+System Slot Information
+	Designation: M.2_SLOT_1(PCIe x4)
+	Type: x8 PCI Express 5 x8
+	Current Usage: Available
+	Length: Long
+	ID: 68
+	Characteristics:
+		3.3 V is provided
+	Bus Address: 00ff:ff:1f.7
+	Data Bus Width: 0
+	Peer Devices: 0
+	Height: Not applicable
+
+Handle 0x003F, DMI type 9, 29 bytes
+System Slot Information
+	Designation: GPU 1(PCIe x2)
+	Type: x2 PCI Express 4 x2
+	Current Usage: In Use
+	Length: Short
+	ID: 255
+	Characteristics:
+		3.3 V is provided
+	Bus Address: 0009:01:00.0
+	Data Bus Width: 1
+	Peer Devices: 0
+	Height: Not applicable
+
+Handle 0x0040, DMI type 12, 5 bytes
+System Configuration Options
+	Option 1: SW1: FAN_PWM; 0x00000004/0x00000002(ON/OFF): PWM Duty 20; 0x00000004/0x00000002(ON/ON): PWM Duty 40; 0x00000004/0x00000002(OFF/OFF): PWM Duty 60; 0x00000004/0x00000002(OFF/ON): PWM Duty 80.
+	Option 2: SW2-1: Force FAN Full Run; OFF: NORMAL; ON: FULL RUN.
+	Option 3: SW2-2: I2C Debug Switch; OFF: BUS10; ON: BUS16.
+	Option 4: SW4-1: Golbal Write Protect; OFF: NORMAL; ON: Protect.
+	Option 5: SW4-2: UART Switch; OFF: CPU UART0 to BMC; ON: CPU UART0 to IO BD.
+	Option 6: SW8-1: TPM Selection; OFF: MB TPM; ON: BMC TPM*.
+	Option 7: SW8-2: CMOS_CLEAR; OFF: NORMAL; ON: CMOS_CLEAR.
+
+Handle 0x0041, DMI type 41, 11 bytes
+Onboard Device
+	Reference Designation: onboard VGA
+	Type: Video
+	Status: Enabled
+	Type Instance: 1
+	Bus Address: 0008:04:00.0
+
+Handle 0x0042, DMI type 41, 11 bytes
+Onboard Device
+	Reference Designation: Embedded USB Controller
+	Type: Other
+	Status: Enabled
+	Type Instance: 2
+	Bus Address: 0008:05:00.0
+
+Handle 0x0043, DMI type 127, 4 bytes
+End Of Table
+

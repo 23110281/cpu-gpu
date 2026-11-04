@@ -6,6 +6,7 @@ import re
 current_dir = Path(__file__).parent
 plots_dir = current_dir / "plots"
 template_path = current_dir / "index.html"
+peaks_path = current_dir / "raw" / "calibration" / "peaks.json"
 
 tree = {}
 if plots_dir.exists():
@@ -22,7 +23,12 @@ if plots_dir.exists():
                     if plots:
                         tree[gpu][bench] = plots
 
+# Base limits for standard GPUs
 gpu_limits = {
+    "NVIDIA_GH200_480GB": {
+        "compute": {"sms": 132, "fp32_cores_per_sm": 128, "fp64_cores_per_sm": 64, "tc_per_sm": 4, "tc_flops_per_clock": 948, "boost_mhz": 1980},
+        "memory": {"bus_width_bits": 6144, "speed_gbps": 5.238}
+    },
     "NVIDIA_A100": {
         "compute": {"sms": 108, "fp32_cores_per_sm": 64, "fp64_cores_per_sm": 32, "tc_per_sm": 4, "tc_flops_per_clock": 512, "boost_mhz": 1410},
         "memory": {"bus_width_bits": 5120, "speed_gbps": 2.43}
@@ -45,14 +51,27 @@ gpu_limits = {
     }
 }
 
+# Calibrate GH200 specs from peaks.json if available
+if peaks_path.exists():
+    try:
+        with open(peaks_path, "r") as f:
+            peaks = json.load(f)
+            hg = peaks.get("hopper_gpu", {})
+            if hg:
+                gpu_limits["NVIDIA_GH200_480GB"]["compute"]["sms"] = hg.get("sm_count", 132)
+                gpu_limits["NVIDIA_GH200_480GB"]["compute"]["boost_mhz"] = int(hg.get("sm_clock_boost_ghz", 1.980) * 1000)
+                gpu_limits["NVIDIA_GH200_480GB"]["memory"]["bus_width_bits"] = hg.get("hbm3_bus_width_bits", 6144)
+    except Exception as e:
+        print(f"Warning: Failed to parse peaks.json: {e}")
+
 with open(template_path, "r") as f:
     original_html = f.read()
 
 new_html = re.sub(r'const tree = \{.*?\};', f'const tree = {json.dumps(tree)};', original_html)
-new_html = re.sub(r'const gpuLimits = \{\};', f'const gpuLimits = {json.dumps(gpu_limits)};', new_html)
+new_html = re.sub(r'const gpuLimits = \{.*?\};', f'const gpuLimits = {json.dumps(gpu_limits)};', new_html)
 
 plots_dir.mkdir(parents=True, exist_ok=True)
 with open(plots_dir / "index.html", "w") as f:
     f.write(new_html)
 
-print("Generated results/plots/index.html successfully.")
+print("Generated results/plots/index.html successfully with updated taxonomy and plots.")

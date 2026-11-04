@@ -1,0 +1,8 @@
+Run: cpu_stream (Launch 3/5)
+Command: OMP_NUM_THREADS=72 OMP_PROC_BIND=close ./bin/protocol_benchmark_suite cpu_stream 30 5
+Duration: 0.73 s
+Exit Code: 0
+
+[WORKLOAD 1] Grace CPU STREAM (N=150000000 doubles, 3.6GB working set > 114MB SLC)...
+  CPU Triad: Median= 309.2 +/-  0.8 GB/s (Min:  304.9, Max:  313.2, CV: 0.7%) | Correctness: PASS
+  CPU Copy:  Median= 314.8 +/-  9.5 GB/s (Min:  192.9, Max:  326.9, CV: 8.6%) | Correctness: PASS

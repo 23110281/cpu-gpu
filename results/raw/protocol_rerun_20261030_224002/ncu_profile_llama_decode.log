@@ -1,0 +1,78 @@
+==PROF== Connected to process 444142 (/users/rudra281/testing_arm_bench/cpu-gpu-bench/bin/protocol_benchmark_suite)
+==PROF== Profiling "llama_decode_unsplit_kernel" - 0: 0%....50%....100% - 1 pass
+==PROF== Profiling "llama_decode_split_kernel" - 1: 0%....50%....100% - 1 pass
+==PROF== Profiling "llama_decode_reduce_kernel" - 2: 0%....50%....100% - 1 pass
+==PROF== Profiling "llama_decode_unsplit_kernel" - 3: 0%....50%....100% - 1 pass
+==PROF== Profiling "llama_decode_split_kernel" - 4: 0%....50%....100% - 1 pass
+==PROF== Profiling "llama_decode_reduce_kernel" - 5: 0%....50%....100% - 1 pass
+[WORKLOAD 5] Llama-3.2 1B Decode Attention (S_kv=65536, KV_Working_Set=128.00 MB > 50MB L2, Splits=128)...
+  Unsplit Baseline:       Median =    2.2 +/-  0.0 GB/s (Min:    2.2, Max:    2.2, CV: 0.0%) | Correctness: PASS
+  FlashDecoding Split-KV: Median =    2.3 +/-  0.0 GB/s (Min:    2.3, Max:    2.3, CV: 0.0%) | Correctness: PASS | Speedup: 1.05x
+==PROF== Disconnected from process 444142
+[444142] protocol_benchmark_suite@127.0.0.1
+  llama_decode_unsplit_kernel(const __nv_bfloat16 *, const __nv_bfloat16 *, const __nv_bfloat16 *, __nv_bfloat16 *, int) (32, 1, 1)x(32, 1, 1), Context 1, Stream 7, Device 0, CC 9.0
+    Section: Command line profiler metrics
+    ---------------------- ----------- ------------
+    Metric Name            Metric Unit Metric Value
+    ---------------------- ----------- ------------
+    dram__bytes_read.sum         Mbyte       134.67
+    dram__bytes_write.sum        Mbyte         3.12
+    gpu__time_duration.sum          ms        31.57
+    lts__t_sectors.sum          sector     10255581
+    ---------------------- ----------- ------------
+
+  llama_decode_split_kernel(const __nv_bfloat16 *, const __nv_bfloat16 *, const __nv_bfloat16 *, float *, float *, float *, int, int) (128, 32, 1)x(32, 1, 1), Context 1, Stream 7, Device 0, CC 9.0
+    Section: Command line profiler metrics
+    ---------------------- ----------- ------------
+    Metric Name            Metric Unit Metric Value
+    ---------------------- ----------- ------------
+    dram__bytes_read.sum         Mbyte       134.23
+    dram__bytes_write.sum        Kbyte        72.45
+    gpu__time_duration.sum          us       261.95
+    lts__t_sectors.sum          sector     17690289
+    ---------------------- ----------- ------------
+
+  llama_decode_reduce_kernel(const float *, const float *, const float *, __nv_bfloat16 *, int) (32, 1, 1)x(64, 1, 1), Context 1, Stream 7, Device 0, CC 9.0
+    Section: Command line profiler metrics
+    ---------------------- ----------- ------------
+    Metric Name            Metric Unit Metric Value
+    ---------------------- ----------- ------------
+    dram__bytes_read.sum         Mbyte         1.10
+    dram__bytes_write.sum         byte            0
+    gpu__time_duration.sum          us        40.13
+    lts__t_sectors.sum          sector        59497
+    ---------------------- ----------- ------------
+
+  llama_decode_unsplit_kernel(const __nv_bfloat16 *, const __nv_bfloat16 *, const __nv_bfloat16 *, __nv_bfloat16 *, int) (32, 1, 1)x(32, 1, 1), Context 1, Stream 7, Device 0, CC 9.0
+    Section: Command line profiler metrics
+    ---------------------- ----------- ------------
+    Metric Name            Metric Unit Metric Value
+    ---------------------- ----------- ------------
+    dram__bytes_read.sum         Mbyte       134.50
+    dram__bytes_write.sum        Kbyte       664.06
+    gpu__time_duration.sum          ms        31.55
+    lts__t_sectors.sum          sector     10205942
+    ---------------------- ----------- ------------
+
+  llama_decode_split_kernel(const __nv_bfloat16 *, const __nv_bfloat16 *, const __nv_bfloat16 *, float *, float *, float *, int, int) (128, 32, 1)x(32, 1, 1), Context 1, Stream 7, Device 0, CC 9.0
+    Section: Command line profiler metrics
+    ---------------------- ----------- ------------
+    Metric Name            Metric Unit Metric Value
+    ---------------------- ----------- ------------
+    dram__bytes_read.sum         Mbyte       134.24
+    dram__bytes_write.sum        Kbyte       101.12
+    gpu__time_duration.sum          us       261.41
+    lts__t_sectors.sum          sector     17373808
+    ---------------------- ----------- ------------
+
+  llama_decode_reduce_kernel(const float *, const float *, const float *, __nv_bfloat16 *, int) (32, 1, 1)x(64, 1, 1), Context 1, Stream 7, Device 0, CC 9.0
+    Section: Command line profiler metrics
+    ---------------------- ----------- ------------
+    Metric Name            Metric Unit Metric Value
+    ---------------------- ----------- ------------
+    dram__bytes_read.sum         Mbyte         1.09
+    dram__bytes_write.sum         byte            0
+    gpu__time_duration.sum          us        39.78
+    lts__t_sectors.sum          sector        59579
+    ---------------------- ----------- ------------
+

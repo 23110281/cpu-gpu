@@ -195,7 +195,8 @@
         "Add SuiteSparse matrix set (needs download permission on nodes)",
         "Run on GPU nodes (A100, L40S, H100)",
         "Grace: ArmPL/NVPL wrapper if <60% STREAM",
-        "Collect: 6 devices x 3 trials"
+        "Collect: 6 devices x 3 trials",
+        "Delete old src/torch/torch_gemv_bench.py / torch_spgemm_bench.py (superseded)"
       ],
       "data": {
         "cpu": [
@@ -272,7 +273,8 @@
         "Add SuiteSparse subset",
         "Run on GPU nodes (A100, L40S, H100)",
         "Delete CPU nanosleep fallback in native bench (fabricated rows)",
-        "Collect: 6 devices x 3 trials"
+        "Collect: 6 devices x 3 trials",
+        "Delete old src/torch/torch_gemv_bench.py / torch_spgemm_bench.py (superseded)"
       ],
       "data": {
         "cpu": [
@@ -370,18 +372,16 @@
         "tx"
       ],
       "cpu": {
-        "impl": "todo",
-        "where": "not yet in v2 harness (src/cpu/cpu_montecarlo_bench.c (real GBM path MC, never run); torch_montecarlo_bench.py todo)"
+        "impl": "done",
+        "where": "src/torch/bench/workloads/c2_montecarlo.py: native C++/OpenMP Philox4x32-10, AVX2 libmvec (2.39 Gpaths/s EPYC)"
       },
       "gpu": {
-        "impl": "todo",
-        "where": "not yet in v2 harness (src/gpu/gh200/gpu_c2c_compute_bench.cu computes closed-form Black-Scholes, not path MC)"
+        "impl": "partial",
+        "where": "src/torch/bench/workloads/c2_montecarlo.py: native CUDA, same Philox stream [CUDA path written, not yet run on a GPU]"
       },
       "todo": [
-        "torch.compile fused Philox->Box-Muller->GBM->payoff (fp64), CPU+GPU",
-        "Validate within 4 SE of Black-Scholes; RNG independent of thread count",
-        "Native C cross-check: counter-based RNG, 4-SE tolerance",
-        "Delete GH200 closed-form \"montecarlo\"",
+        "252-step path variant (optional)",
+        "Run on GPU nodes (A100, L40S, H100)",
         "Collect: 6 devices x 3 trials"
       ],
       "data": {
@@ -537,16 +537,15 @@
         "ff"
       ],
       "cpu": {
-        "impl": "todo",
-        "where": "not yet in v2 harness (src/torch/torch_bilateral_bench.py (OpenCV cv2.bilateralFilter))"
+        "impl": "done",
+        "where": "src/torch/bench/workloads/c5_bilateral.py: OpenCV bilateralFilter | native exact OpenMP+SIMD (7x OpenCV on EPYC)"
       },
       "gpu": {
-        "impl": "todo",
-        "where": "not yet in v2 harness (src/torch/torch_bilateral_bench.py (OpenCV CUDA; torch.compile fallback))"
+        "impl": "partial",
+        "where": "src/torch/bench/workloads/c5_bilateral.py: native CUDA expf | __expf (SFU effect) [CUDA path written, not yet run on a GPU]"
       },
       "todo": [
-        "OpenCV bilateralFilter (CPU reference) + torch.compile kernel on CPU and GPU",
-        "precise vs fast exp toggle (SFU effect); PSNR>=60 dB CPU vs GPU",
+        "Run on GPU nodes (A100, L40S, H100)",
         "Collect: 6 devices x 3 trials"
       ],
       "data": {
@@ -670,18 +669,16 @@
         "int"
       ],
       "cpu": {
-        "impl": "todo",
-        "where": "not yet in v2 harness (Grace path in gpu_c2c_divergence_bench.cu runs 1 AESE/AESMC round, not 10)"
+        "impl": "done",
+        "where": "src/torch/bench/workloads/c8_aes.py: OpenSSL EVP AES-128-CTR + OpenMP; sw variant (AES-NI off)"
       },
       "gpu": {
-        "impl": "todo",
-        "where": "not yet in v2 harness (gpu_aes_ctr_kernel is a byte XOR (memcpy); gpu_aes_coop_kernel is rotate/XOR)"
+        "impl": "partial",
+        "where": "src/torch/bench/workloads/c8_aes.py: custom T-table kernel (algorithm verified vs NIST in Python) [CUDA path written, not yet run on a GPU]"
       },
       "todo": [
-        "CPU: cryptography/OpenSSL EVP AES-128-CTR (+ hw-crypto-disabled variant)",
-        "GPU: FIPS-197 T-table kernel (load_inline)",
-        "NIST SP 800-38A vectors; CPU and GPU ciphertext byte-identical",
-        "Delete both stub AES kernels",
+        "Delete GH200 stub AES kernels (gpu_aes_ctr_kernel, gpu_aes_coop_kernel)",
+        "Run on GPU nodes (A100, L40S, H100)",
         "Collect: 6 devices x 3 trials"
       ],
       "data": {
@@ -729,18 +726,16 @@
         "int"
       ],
       "cpu": {
-        "impl": "todo",
-        "where": "not yet in v2 harness (src/cpu/cpu_cryptography_bench.c (pure C, never run); torch_sha256_bench.py (hashlib/OpenSSL SHA-NI) todo)"
+        "impl": "done",
+        "where": "src/torch/bench/workloads/c9_sha256.py: OpenSSL low-level SHA-256 + OpenMP; sw variant (SHA-NI off)"
       },
       "gpu": {
-        "impl": "todo",
-        "where": "not yet in v2 harness (custom one-message-per-thread kernel (no well-known GPU library))"
+        "impl": "partial",
+        "where": "src/torch/bench/workloads/c9_sha256.py: custom one-message-per-thread kernel [CUDA path written, not yet run on a GPU]"
       },
       "todo": [
-        "CPU: hashlib (OpenSSL SHA-NI/ARMv8) multi-buffer thread pool",
-        "GPU: one-message-per-thread kernel with padding",
-        "FIPS 180-4 vectors; digests identical CPU vs GPU",
-        "Delete cpu_cryptography_bench.c (no chaining, DCE risk)",
+        "Delete src/cpu/cpu_cryptography_bench.c",
+        "Run on GPU nodes (A100, L40S, H100)",
         "Collect: 6 devices x 3 trials"
       ],
       "data": {
@@ -815,16 +810,15 @@
         "gs"
       ],
       "cpu": {
-        "impl": "todo",
-        "where": "not yet in v2 harness (src/torch/torch_solver_bench.py (graph-colored batches, torch.compile))"
+        "impl": "done",
+        "where": "src/torch/bench/workloads/s2_solver.py: native OpenMP, omp-for barrier per batch"
       },
       "gpu": {
-        "impl": "todo",
-        "where": "not yet in v2 harness (src/torch/torch_solver_bench.py (kernel-per-batch, CUDA Graphs))"
+        "impl": "partial",
+        "where": "src/torch/bench/workloads/s2_solver.py: native CUDA kernel-per-batch (CUDA Graph) | cooperative grid.sync [CUDA path written, not yet run on a GPU]"
       },
       "todo": [
-        "Batched PGS: graph-coloured batches; torch.compile (CPU), CUDA Graph per iteration (GPU)",
-        "Sweep constraints-per-batch; residual CPU vs GPU within 1e-6",
+        "Run on GPU nodes (A100, L40S, H100)",
         "Collect: 6 devices x 3 trials"
       ],
       "data": {

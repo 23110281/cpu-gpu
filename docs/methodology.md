@@ -120,6 +120,10 @@ Any deviation from this protocol, such as a library that cannot exclude its own 
 |---|---|---|
 | C4 FFT (CPU) | MKL DFTI descriptors are created inside every `torch.fft` call, so CPU samples include planning time. | ATen does not expose plan reuse. pyFFTW with reusable plans is the planned alternative CPU library. |
 | B4 SpGEMM | The symbolic (structure) phase and output allocation are inside every call, on both devices. | `torch.sparse.mm` has no separable phases. It is identical on CPU and GPU. |
+| A1 Llama-3 | Exact Llama-3.2-1B/3B and Llama-3-8B architectures with **random** weights (N(0, 0.02)). | The official checkpoints are gated by licence and token. Dense fp32/bf16 kernel time does not depend on weight values. Correctness is checked against fp64 on a 2-layer instance. End-to-end llama.cpp/vLLM rows with real weights are future work. |
+| B2 LBM, C2 MC, C5 bilateral, S2 solver | Native kernels (C++/OpenMP and CUDA), one algorithm for both devices, instead of a library. | No well-known library implements these exact kernels for both devices. Each is validated against an fp64 reference, and its vectorization was verified with compiler reports. |
+| C5 bilateral (OpenCV) | OpenCV approximates the range weights with a lookup table, so it is validated with tolerance 1e-2 instead of 1e-4. | It is a library approximation. Native exact kernels are 7× faster on EPYC anyway. |
+| Size grids | GEMM ≤ 8192, conv ≤ 8192², sort ≤ 2²⁷ pairs; the thread-scaling sweep uses the median size. | The larger sizes cost hours per device without new information: the GEMM peak is already reached at 8192, and every bandwidth workload still has rows ≥ 4× LLC. |
 | C3 conv2d (torch) | `F.conv2d` allocates its output on every call. | It has no `out=` variant. The GPU caching allocator reuses the block. On the CPU, glibc vs jemalloc (verified loaded) measured 1552 vs 1552 ms (1 channel) and 6143 vs 6306 ms (3 channels) at 16K², so allocation inside the call is not a bottleneck. Default: glibc; jemalloc is opt-in (`BENCH_ALLOCATOR=jemalloc`, row flag `alloc=jemalloc`). |
 
 ## Platform pitfalls found during validation (EPYC 7402P, c6525-100g)

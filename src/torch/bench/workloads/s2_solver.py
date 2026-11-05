@@ -137,10 +137,13 @@ def _cuda_ext():
     from ._cpusort import _ensure_ninja_on_path
     _ensure_ninja_on_path()
     try:
-        return load_inline(name="bench_pgs_cuda_v1", cpp_sources="",
+        # No -rdc=true: torch's JIT build (load_inline) has no CUDA device-link step, so rdc
+        # objects leave __cudaRegisterLinkedBinary_* unresolved and the module fails to load.
+        # grid.sync() needs no rdc since CUDA 11 (cooperative launch is enough).
+        return load_inline(name="bench_pgs_cuda_v2", cpp_sources="",
                            cuda_sources="#include <ATen/cuda/CUDAContext.h>\n" + _CUDA_SRC,
                            functions=["pgs_iter_launches", "pgs_iter_coop", "coop_max_blocks"],
-                           extra_cuda_cflags=["-O3", "-rdc=true"], extra_ldflags=["-lcudadevrt"])
+                           extra_cuda_cflags=["-O3"])
     except Exception as e:
         raise Unsupported(f"PGS CUDA extension build failed: {str(e)[:140]}") from e
 

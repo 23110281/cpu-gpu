@@ -9,7 +9,9 @@
   "scaling": {
     "workloads": [
       "B1",
-      "C1"
+      "C1",
+      "S1",
+      "S2"
     ],
     "base": "socket0",
     "threads": [

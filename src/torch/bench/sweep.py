@@ -81,12 +81,15 @@ def _jobs(dcfg: dict, selected, smoke: bool):
 
 
 def _preflight_oom_row(w, c, dcfg, pl, trial, campaign, out_root):
-    row = {"schema": schema.SCHEMA_VERSION, "run_id": f"{campaign}-preflight", "trial": trial,
+    from . import env
+    sha, dirty = env.git_state()
+    flag = f"preflight:ws*{MEM_HEADROOM}>max_mem_gb={dcfg['max_mem_gb']}" + (";dirty_tree" if dirty else "")
+    row = {"schema": schema.SCHEMA_VERSION, "run_id": f"{campaign}-preflight", "trial": trial, "git_sha": sha,
            "workload_id": w.id, "workload": w.name, "variant": c.get("variant", "base"), "bound": w.bound,
            "device_class": dcfg["device_class"], "device": dcfg["device_id"], "precision": c.get("precision", ""),
            "placement": pl, "params_json": c, "working_set_bytes": w.working_set_bytes(c),
            "config_hash": schema.config_hash(w.id, c, pl, dcfg["device_id"]),
-           "status": "oom", "flag": f"preflight:ws*{MEM_HEADROOM}>max_mem_gb={dcfg['max_mem_gb']}"}
+           "status": "oom", "flag": flag}
     p = schema.output_paths(out_root, dcfg["device_class"], dcfg["device_id"], w.id, w.name)["rows"]
     schema.append_row(p, row)
 

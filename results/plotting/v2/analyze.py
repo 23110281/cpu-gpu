@@ -21,6 +21,7 @@ import warnings
 import json
 import math
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -45,6 +46,16 @@ def problem_key(params_json: str) -> str:
     return json.dumps({k: v for k, v in sorted(p.items()) if k not in DROP_KEYS}, sort_keys=True)
 
 
+def lib_label(params_json: str, library) -> str:
+    """The config's `lib` key; workloads with a single implementation have none, so the label
+    comes from the row's `library` column ("torch2.x/...", "native C++/...", "OpenSSL ...")."""
+    lib = json.loads(params_json).get("lib")
+    if lib:
+        return lib
+    m = re.match(r"[A-Za-z]+", str(library or ""))
+    return m.group(0).lower() if m else "unknown"
+
+
 def load() -> pd.DataFrame:
     frames = []
     for f in sorted(glob.glob(str(DATA / "*" / "*" / "*.csv"))):
@@ -55,7 +66,7 @@ def load() -> pd.DataFrame:
         return pd.DataFrame()
     df = pd.concat(frames, ignore_index=True)
     df = df[(df["status"] == "ok") & ~df["flag"].fillna("").str.contains("smoke")].copy()
-    df["lib"] = df["params_json"].map(lambda s: json.loads(s).get("lib", "torch"))
+    df["lib"] = [lib_label(p, l) for p, l in zip(df["params_json"], df["library"])]
     df["problem"] = df["params_json"].map(problem_key)
     df["scaling"] = df["placement"].fillna("").str.contains(":")
     return df
@@ -130,15 +141,8 @@ def bounds_table(head: pd.DataFrame, df: pd.DataFrame, dev: str) -> pd.DataFrame
             rec["pct_of_measured_peak"] = 100 * r["gflops"] / peak[r["precision"]]
         rows.append(rec)
     out = pd.DataFrame(rows)
-    # sync-bound evidence: S1 thread-scaling efficiency, S2 batch-size sensitivity
-    sc = df[(df["device"] == dev) & df["scaling"]]
-    for wid, g in sc.groupby("workload_id"):
-        g = g.assign(t=g["threads"].astype(int)).groupby("t")["metric_value"].median().sort_index()
-        if len(g) > 1:
-            eff = (g / g.iloc[0]) / (g.index / g.index[0])
-            out = pd.concat([out, pd.DataFrame([{"workload_id": wid, "bound": "scaling",
-                                                  "problem": f"threads {list(g.index)}",
-                                                  "scaling_efficiency_at_max": float(eff.iloc[-1])}])])
+    out = pd.concat([out, scaling_table(df, dev)])
+    # sync-bound evidence: S2 batch-size sensitivity (scaling efficiency is in scaling_table)
     s2 = head[head["workload_id"] == "S2"]
     if len(s2) > 1:
         b = s2.assign(batch=s2["problem"].map(lambda p: json.loads(p)["batch"])).sort_values("batch")
@@ -146,6 +150,28 @@ def bounds_table(head: pd.DataFrame, df: pd.DataFrame, dev: str) -> pd.DataFrame
                                               "problem": "iterations/s, smallest vs largest batch",
                                               "sync_slowdown": float(b["metric"].iloc[-1] / b["metric"].iloc[0])}])])
     return out
+
+
+def scaling_table(df: pd.DataFrame, dev: str) -> pd.DataFrame:
+    """Thread-scaling efficiency per (workload, problem, lib): the scaling rows (`<base>:<T>`)
+    plus the full-placement row of the same problem and library as the top point. Each series
+    is one configuration -- never a median across libraries or precisions."""
+    d = df[df["device"] == dev]
+    sc = d[d["scaling"]]
+    rows = []
+    for (wid, prob, lib), g in sc.groupby(["workload_id", "problem", "lib"]):
+        base = g["placement"].iloc[0].split(":")[0]
+        full = d[(d["workload_id"] == wid) & (d["problem"] == prob) & (d["lib"] == lib) & (d["placement"] == base)]
+        g = pd.concat([g, full]).assign(t=lambda x: x["threads"].astype(int))
+        s = g.groupby("t")["metric_value"].median().sort_index()
+        if len(s) < 2:
+            continue
+        eff = (s / s.iloc[0]) / (s.index / s.index[0])
+        rows.append({"workload_id": wid, "bound": "scaling", "problem": prob, "lib": lib, "placement": base,
+                     "threads": " ".join(map(str, s.index)),
+                     "speedup_at_max": float(s.iloc[-1] / s.iloc[0]),
+                     "scaling_efficiency_at_max": float(eff.iloc[-1])})
+    return pd.DataFrame(rows)
 
 
 def ratios(heads_by_dev: dict) -> pd.DataFrame:

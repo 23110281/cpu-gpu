@@ -214,3 +214,18 @@ def test_black_scholes_reference():
     from bench.workloads.c2_montecarlo import black_scholes_call
     # textbook value: S=100, K=105, r=5%, sigma=20%, T=1  ->  8.0214 (Hull)
     assert black_scholes_call(100, 105, 0.05, 0.2, 1.0) == pytest.approx(8.02135, abs=1e-4)
+
+
+def test_search_keys_fit_int32_and_are_sorted():
+    """C7 builds strictly increasing int32 keys for every configured size (2^29 overflowed before)."""
+    from bench.workloads.c7_search import KEYS
+    for k in KEYS:
+        max_gap = max(1, min(8, (2 ** 31 - 2) // k))
+        assert k * max_gap < 2 ** 31 - 1
+    import torch
+    from bench.core import Ctx
+    from bench.workloads.c7_search import WORKLOAD
+    ctx = Ctx("cpu", torch.device("cpu"), "t", 1, "node", 0, 1, False, 32 << 20)
+    st = WORKLOAD.setup({"keys": 1 << 14, "queries": 1 << 10, "order": "random", "precision": "int32",
+                         "variant": "base"}, ctx)
+    assert bool((st["keys"][1:] > st["keys"][:-1]).all())

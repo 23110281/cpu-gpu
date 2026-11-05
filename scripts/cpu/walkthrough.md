@@ -110,9 +110,14 @@ tail -f results/logs/suite_latest.log
 
 ---
 
-### Path C: PyTorch Benchmark Suite (AMD & Intel Nodes)
+### Path C: v2 Publication Harness (AMD & Intel Nodes) — the data used in the paper
 
-The PyTorch benchmarks port all 4 algebraic workloads (Dense GEMM, Dense GEMV & Sparse SpMV, Vector SAXPY, Sparse SpGEMM) into PyTorch with full CPU thread scaling, hardware telemetry (RAPL/MSR), and identical CSV schemas.
+`src/torch/bench/` runs every workload under the measurement protocol in `docs/methodology.md`:
+- pinned threads with parallel first touch;
+- kernel-only timing with ≥ 30 samples and 3 trials;
+- full-size validation;
+- RAPL/MSR telemetry;
+- one long-format CSV schema with provenance.
 
 #### Step C.1: Verify PyTorch Runtime
 Confirm that PyTorch CPU runtime is installed and operational:
@@ -120,34 +125,28 @@ Confirm that PyTorch CPU runtime is installed and operational:
 python3 -c "import torch; print('PyTorch Version:', torch.__version__)"
 ```
 
-#### Step C.2: Quick Smoke Test (Optional)
-Run a quick sanity test on small matrix/vector sizes:
+#### Step C.2: Quick Smoke Test
+Check that every workload runs and validates on this node, using small sizes and a short timing policy. The rows go to `results/data/smoke/` and are never analysed.
 ```bash
-make run_torch_gemm
+make bench_smoke
 ```
 
-#### Step C.3: Launch Complete PyTorch Suite in Background
-Start all 4 PyTorch benchmark sweeps detached in the background:
+#### Step C.3: Launch the v2 Publication Sweep in Background
+This runs every registered workload through the v2 harness (`docs/methodology.md`):
+- every configuration, on one pinned socket and on that socket with SMT, plus a thread-scaling sweep;
+- 3 independent trials;
+- output to `results/data/v2/cpu/<DEVICE>/`.
 
-- **On AMD EPYC Nodes** (requires sudo for AMD MSR socket energy reads):
+`DEVICE` must match a file in `configs/devices/`:
 ```bash
-sudo make torch_amd_suite_bg
+make torch_suite_bg DEVICE=INTEL_C6620       # Intel Xeon (c6620)
+sudo make torch_suite_bg DEVICE=AMD_C6525_100G   # AMD EPYC: sudo needed for RAPL/MSR energy reads
+tail -f results/logs/bench_<DEVICE>.log
 ```
+To preview the job list without running anything: `make bench_suite_dry DEVICE=<DEVICE>`. If a sweep is interrupted, resume it with the campaign id printed at the start: `PYTHONPATH=src/torch python3 -m bench sweep --device-config configs/devices/<DEVICE>.json --campaign <id>`.
 
-- **On Intel Xeon Nodes**:
-```bash
-make torch_intel_suite_bg
-```
-
-> **Safe Disconnection**: You can safely close your laptop or disconnect your SSH session immediately after launching. The benchmarks run completely detached via `nohup` with `SIGHUP` immunity.
-
-#### Step C.4: Monitor Real-Time Progress
-Stream the live PyTorch benchmark throughput, frequencies, and power measurements:
-```bash
-tail -f results/logs/suite_torch_latest.log
-```
-
-Upon completion, all 4 PyTorch sweeps are timestamped into `results/data/cpu/<CPU_MODEL>/` and automatically committed to your backup GitHub repository.
+#### Step C.4: Retrieve the Data
+When the sweep finishes, copy `results/data/v2/cpu/<DEVICE>/` back to the repository and commit it; it contains the CSV, `samples/` and `env/`. The native harnesses from Paths A and B write to `results/data/native/cpu/<CPU_MODEL>/`, which are cross-checks only, and their runners push those to the backup repository.
 
 
 ---
@@ -167,7 +166,7 @@ sudo chmod -R a+r results/data
 ```
 Then run this from your local machine to copy directly into your local folder:
 ```bash
-scp -r Kushal17@<cloudlab-node-ip>:~/cpu-gpu/results/data/cpu/* "/home/kushal/cpu gpu project/"
+scp -r Kushal17@<cloudlab-node-ip>:~/cpu-gpu/results/data/native/cpu/* "/home/kushal/cpu gpu project/"
 ```
 
 ### Step 4.3: Generate Local Visualization Plots

@@ -268,7 +268,7 @@ def plot_fig8_freq_temp(df, out_dir, cpu_name):
 
 def main():
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))  # -> results/
-    csv_pattern = os.path.join(base_dir, 'data', 'cpu', '*', 'sweep_spgemm_*.csv')
+    csv_pattern = os.path.join(base_dir, 'data', 'legacy', 'cpu', '*', 'sweep_spgemm_*.csv')
     csv_files = [
         path for path in glob.glob(csv_pattern)
         if any(name in os.path.basename(os.path.dirname(path)).lower() for name in ('cpu', 'intel', 'amd'))

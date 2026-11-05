@@ -1,0 +1,7 @@
+{
+  "device_id": "NVIDIA_GH200_480GB",
+  "device_class": "gpu",
+  "label": "NVIDIA H100 (GH200)",
+  "gpu_index": 0,
+  "_note": "max_mem_gb omitted: detected at sweep time (CPU MemTotal/sockets*0.8, GPU nvidia-smi*0.9). Placements resolving to the same CPU set and scaling counts >= the socket's cores are dropped automatically."
+}

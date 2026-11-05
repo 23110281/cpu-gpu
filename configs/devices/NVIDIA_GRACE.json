@@ -1,0 +1,25 @@
+{
+  "device_id": "NVIDIA_GRACE",
+  "device_class": "cpu",
+  "label": "NVIDIA Grace, 72x Neoverse-V2 (GH200 host)",
+  "placements": [
+    "socket0",
+    "socket0-smt"
+  ],
+  "scaling": {
+    "workloads": [
+      "B1",
+      "C1"
+    ],
+    "base": "socket0",
+    "threads": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      32
+    ]
+  },
+  "_note": "max_mem_gb omitted: detected at sweep time (CPU MemTotal/sockets*0.8, GPU nvidia-smi*0.9). Placements resolving to the same CPU set and scaling counts >= the socket's cores are dropped automatically."
+}

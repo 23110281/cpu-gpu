@@ -1,0 +1,7 @@
+{
+  "device_id": "NVIDIA_A100",
+  "device_class": "gpu",
+  "label": "NVIDIA A100 (CloudLab)",
+  "gpu_index": 0,
+  "_note": "max_mem_gb omitted: detected at sweep time (CPU MemTotal/sockets*0.8, GPU nvidia-smi*0.9). Placements resolving to the same CPU set and scaling counts >= the socket's cores are dropped automatically."
+}

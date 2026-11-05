@@ -26,7 +26,7 @@ PHYS_CORES=$(lscpu -p 2>/dev/null | grep -v '^#' | sort -u -t, -k 2,4 | wc -l ||
 MAX_THREADS=$(nproc || echo "16")
 
 STAMP=$(date +%Y%m%d_%H%M%S)
-OUT_DIR="results/data/cpu/${CPU_MODEL}"
+OUT_DIR="results/data/native/cpu/${CPU_MODEL}"
 mkdir -p "$OUT_DIR"
 OUT="${OUT_DIR}/sweep_montecarlo_${STAMP}.csv"
 

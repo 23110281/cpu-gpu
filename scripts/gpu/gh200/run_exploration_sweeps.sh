@@ -9,7 +9,7 @@ export LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH:-}
 GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader | head -1 | tr ' ' '_')
 STAMP=$(date +%Y%m%d_%H%M%S)
 
-EXPLORE_DIR="results/data/gpu/${GPU_NAME}/exploration/full_fixed_sweeps"
+EXPLORE_DIR="results/data/native/gpu/${GPU_NAME}/exploration/full_fixed_sweeps"
 mkdir -p "$EXPLORE_DIR"
 
 echo "=================================================="

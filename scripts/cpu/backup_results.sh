@@ -34,7 +34,7 @@ if [ -z "$MACHINE_NAME" ]; then
 fi
 [ -n "$MACHINE_NAME" ] || MACHINE_NAME="Unknown_CPU"
 
-LOCAL_DATA_DIR="results/data/cpu/${MACHINE_NAME}"
+LOCAL_DATA_DIR="results/data/native/cpu/${MACHINE_NAME}"
 if [ ! -d "$LOCAL_DATA_DIR" ]; then
     echo "[BACKUP] No data directory found at $LOCAL_DATA_DIR. Nothing to backup."
     exit 0

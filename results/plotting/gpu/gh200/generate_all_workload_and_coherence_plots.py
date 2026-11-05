@@ -57,7 +57,7 @@ plt.rcParams.update({
 })
 
 BASE_DIR = Path(__file__).resolve().parents[4]
-DATA_DIR = BASE_DIR / "results" / "data" / "gpu" / "NVIDIA_GH200_480GB" / "cleaned_for_paper"
+DATA_DIR = BASE_DIR / "results" / "data" / "legacy" / "gpu" / "NVIDIA_GH200_480GB" / "cleaned_for_paper"
 PLOTS_DIR = BASE_DIR / "results" / "plots" / "NVIDIA_GH200_480GB"
 RAW_DIR = BASE_DIR / "results" / "raw"
 
@@ -154,7 +154,7 @@ def plot_workload_standard(w_name, sub_df, out_dir, is_compute=False):
     ax.legend(frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1', loc='best')
     
     # Annotate source
-    fig.text(0.99, 0.01, "Source: results/data/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+    fig.text(0.99, 0.01, "Source: results/data/legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
              fontsize=7, color='#64748b', ha='right', style='italic')
 
     save_fig(fig, out_dir, "fig1_throughput_vs_size")
@@ -212,7 +212,7 @@ def plot_workload_standard(w_name, sub_df, out_dir, is_compute=False):
                  fontweight='bold', pad=12)
     ax.legend(frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1', loc='best', ncol=2)
     
-    fig.text(0.99, 0.01, "Source: results/data/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+    fig.text(0.99, 0.01, "Source: results/data/legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
              fontsize=7, color='#64748b', ha='right', style='italic')
 
     save_fig(fig, out_dir, "fig2_time_breakdown")
@@ -256,7 +256,7 @@ def plot_workload_standard(w_name, sub_df, out_dir, is_compute=False):
                      fontweight='bold', pad=12)
         ax.legend(frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1', loc='best')
         
-        fig.text(0.99, 0.01, "Source: results/data/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+        fig.text(0.99, 0.01, "Source: results/data/legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
                  fontsize=7, color='#64748b', ha='right', style='italic')
 
         save_fig(fig, out_dir, "fig3_speedup_vs_cpu")
@@ -330,7 +330,7 @@ def generate_coherence_plots():
         ax.set_title('96GB HBM3 Oversubscription Cliff: Demand Paging vs Prefetching', fontweight='bold', pad=12)
         ax.legend(frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1')
         
-        fig.text(0.99, 0.01, "Source: results/data/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/clean_uvm_advise_cliff.csv",
+        fig.text(0.99, 0.01, "Source: results/data/legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/clean_uvm_advise_cliff.csv",
                  fontsize=7, color='#64748b', ha='right', style='italic')
         save_fig(fig, uvm_dir, "fig1_96gb_capacity_cliff")
 
@@ -355,7 +355,7 @@ def generate_coherence_plots():
                          fontweight='bold', pad=12)
             ax.legend(frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1')
             
-            fig.text(0.99, 0.01, "Source: results/data/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/clean_cooperative_cpu_gpu.csv",
+            fig.text(0.99, 0.01, "Source: results/data/legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/clean_cooperative_cpu_gpu.csv",
                      fontsize=7, color='#64748b', ha='right', style='italic')
             save_fig(fig, coop_dir, "fig1_workload_partitioning_curves")
 
@@ -407,7 +407,7 @@ def generate_coherence_plots():
                  fontweight='bold', pad=12)
     ax.legend(frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1')
     
-    fig.text(0.99, 0.01, "Source: results/data/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+    fig.text(0.99, 0.01, "Source: results/data/legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
              fontsize=7, color='#64748b', ha='right', style='italic')
     save_fig(fig, cross_dir, "fig1_cross_workload_gpu_vs_cpu_speedup")
 

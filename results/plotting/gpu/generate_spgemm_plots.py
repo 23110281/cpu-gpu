@@ -475,7 +475,7 @@ def plot_power_util(df, out_dir, filename_prefix='fig6_power_util'):
 
 def main():
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))  # -> results/
-    csv_pattern = os.path.join(base_dir, 'data', 'gpu', '*', 'sweep_spgemm*.csv')
+    csv_pattern = os.path.join(base_dir, 'data', 'legacy', 'gpu', '*', 'sweep_spgemm*.csv')
     csv_files = glob.glob(csv_pattern)
     if not csv_files:
         print("No sweep_spgemm CSV files found.")

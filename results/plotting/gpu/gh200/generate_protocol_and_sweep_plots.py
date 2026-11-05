@@ -55,7 +55,7 @@ PALETTE = {
 }
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
-CLEAN_DIR = os.path.join(BASE_DIR, "results/data/gpu/NVIDIA_GH200_480GB/cleaned_for_paper")
+CLEAN_DIR = os.path.join(BASE_DIR, "results/data/legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper")
 RAW_RUN_DIR = os.path.join(BASE_DIR, "results/raw/protocol_rerun_20261030_224002")
 OUT_DIR = os.path.join(BASE_DIR, "results/plots/NVIDIA_GH200_480GB")
 os.makedirs(OUT_DIR, exist_ok=True)

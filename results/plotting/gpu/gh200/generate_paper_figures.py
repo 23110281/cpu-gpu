@@ -6,7 +6,7 @@ Generates publication-grade figures (PDF + PNG) and LaTeX/Markdown master tables
 for the NVIDIA GH200 480GB (Grace Hopper) Superchip residency evaluation.
 
 Reads exclusively from:
-  results/data/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/
+  results/data/legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/
 
 Outputs into:
   results/plots/NVIDIA_GH200_480GB/
@@ -71,7 +71,7 @@ MARKERS = {
 }
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
-DATA_DIR = os.path.join(BASE_DIR, "results/data/gpu/NVIDIA_GH200_480GB/cleaned_for_paper")
+DATA_DIR = os.path.join(BASE_DIR, "results/data/legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper")
 OUT_DIR = os.path.join(BASE_DIR, "results/plots/NVIDIA_GH200_480GB")
 os.makedirs(OUT_DIR, exist_ok=True)
 

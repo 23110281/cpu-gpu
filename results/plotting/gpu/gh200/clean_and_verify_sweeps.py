@@ -8,7 +8,7 @@ Post-processes and cleans all 8 raw benchmark sweeps from NVIDIA GH200 (Grace Ho
 3. Incorporates patch data for thrust_search (64-bit keys & algorithmic BW) and SpGEMM (S=8192..65536).
 4. Incorporates patch data for cooperative execution (72-thread CPU KV offload & accurate residency labels).
 5. Adds both gflops_warm (steady-state) and gflops_e2e (cold-migration inclusive).
-6. Emits verified, deduplicated CSVs into results/data/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/.
+6. Emits verified, deduplicated CSVs into results/data/legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/.
 """
 
 import os
@@ -17,8 +17,8 @@ import glob
 import csv
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
-RAW_DIR = os.path.join(BASE_DIR, "results/data/gpu/NVIDIA_GH200_480GB/residency_sweeps")
-OUT_DIR = os.path.join(BASE_DIR, "results/data/gpu/NVIDIA_GH200_480GB/cleaned_for_paper")
+RAW_DIR = os.path.join(BASE_DIR, "results/data/legacy/gpu/NVIDIA_GH200_480GB/residency_sweeps")
+OUT_DIR = os.path.join(BASE_DIR, "results/data/legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper")
 
 CLEAN_HEADER = [
     "workload", "regime", "precision", "residency_mode", "working_set_bytes",

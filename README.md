@@ -30,13 +30,53 @@ Sixteen workloads, chosen from the paper's compute-, bandwidth- and synchronizat
 - GJK and ray casting: their results are not primarily compute-, bandwidth- or sync-bound.
 - PCA, k-means and SHA-512: redundant with other workloads.
 
-**Where status lives:** [`results/workloads.json`](results/workloads.json) holds each workload's bound class, field and tags, its CPU and GPU implementation status, and its TODO list. The dashboard's ✓ / ⚠ / TODO data cells are *computed* from the CSVs in `results/data/` each time the page is built. They update automatically when new data is committed.
+**Where status lives:** [`results/workloads.json`](results/workloads.json) holds each workload's bound class, field and tags, its CPU and GPU implementation status, and its TODO list. The dashboard's data cells are *computed* from `results/data/` each time the page is built, so they update automatically when new data is committed:
+- ✓ means v2 protocol data exists;
+- prelim means only legacy data exists;
+- ⚠ means the legacy data is invalid;
+- TODO means there is no data.
 
-> **Known-invalid data — do not use for comparisons:**
-> - **GH200 `aes_128_ctr`:** the GPU kernel is a byte XOR, and the Grace path runs 1 AES round instead of 10.
-> - **GH200 `montecarlo`:** evaluates the closed-form Black-Scholes formula, not Monte Carlo paths.
+> **All data collected before the v2 harness is preliminary.** It is frozen in `results/data/legacy/` and never used in the paper; an audit found it does not meet the protocol (mean-only timing, no pinning, unequal CPU/GPU work, partial validation). The dashboard shows these cells as *prelim*.
 >
-> Both are marked ⚠ on the dashboard and are due to be re-implemented.
+> Some legacy data is outright invalid and shows as ⚠:
+> - **GH200 `aes_128_ctr`:** the GPU kernel is a byte XOR, and the Grace path runs 1 AES round instead of 10.
+> - **GH200 `montecarlo`:** evaluates closed-form Black-Scholes, not Monte Carlo paths.
+> - **EPYC SpGEMM:** the OpenBLAS build timed a 10 ms `nanosleep` instead of SpGEMM.
+
+## Publication harness (v2)
+
+Every number in the paper comes from `src/torch/bench/`, which enforces the protocol in [`docs/methodology.md`](docs/methodology.md).
+
+**What the protocol fixes:**
+- **Comparison unit:** one socket against one GPU, with pinned threads and parallel first touch.
+- **Timing:** kernel-only, with adaptive warmup, at least 30 samples and at least 1 s per configuration, and 3 independent process trials.
+- **Statistics:** median, IQR and a bootstrap 95% CI.
+- **Validation:** at full size before timing, with principled tolerances.
+- **Equal work:** CPU and GPU produce the same output, each using its fastest well-known library.
+- **Telemetry:** a sampled telemetry thread.
+- **Provenance:** an environment record and git SHA for every row.
+
+**Status:**
+- Implemented: **B1 SAXPY** and **C1 GEMM**.
+- Pending: the other 14 workloads (see the dashboard and plan Part C).
+
+```bash
+make bench_list                          # registered workloads
+make bench_smoke                         # every workload, smallest configs, short timing (-> results/data/smoke, git-ignored)
+make bench_smoke_cuda                    # same on a GPU node
+make bench_suite_dry DEVICE=INTEL_C6620  # show the job list for a device (configs/devices/<DEVICE>.json)
+make bench_suite     DEVICE=INTEL_C6620  # full collection: every config x placement x 3 trials -> results/data/v2/
+make test_bench                          # harness unit tests (statistics, validators, schema, placement, telemetry)
+# one configuration by hand:
+PYTHONPATH=src/torch python3 -m bench run --workload C1 --device cuda --params '{"precision":"fp32","variant":"base","n":8192}'
+```
+
+**What a sweep writes, per device, under `results/data/v2/<cpu|gpu>/<DEVICE>/`:**
+- one long-format CSV per workload (schema: `src/torch/bench/schema.py`);
+- raw per-sample timings in `samples/`;
+- environment records in `env/`.
+
+Sweeps can be resumed by passing `--campaign <id>`. The native C/CUDA harnesses below are kept as independent **cross-checks** (torch vs native medians must agree within 3%), plus the GH200 residency study. They write to `results/data/native/`.
 
 ## Directory layout
 
@@ -47,17 +87,22 @@ src/
   gpu/         gpu_{gemm,gemv,saxpy,spgemm}_bench.cu   cuBLAS / cuSPARSE / cuSPARSELt, multi-GPU, NVML telemetry
   gpu/gh200/   gpu_c2c_*_bench.cu, protocol_benchmark_suite.cu, torch_c2c_allocator.cu, bench_harness.h
                                                        Grace Hopper residency / NVLink-C2C benchmarks
-  torch/       torch_*_bench.py, torch_telemetry.py, bench_llama32_layers.py
-                                                       PyTorch harnesses (--device cpu|cuda)
+  torch/bench/ v2 publication harness: core (timing/stats), devices (placement), validate, telemetry,
+               env (provenance), schema, sweep; workloads/<id>_<name>.py
+  torch/       torch_*_bench.py, torch_telemetry.py, bench_llama32_layers.py   (pre-v2; being ported)
 scripts/
   cpu/         run_*_sweep.sh, run_all_{intel,amd,torch}.sh, setup_cloudlab_{xeon,epyc}.sh,
                backup_results.sh, walkthrough.md       CloudLab CPU node workflow
   gpu/         run_sweep*.sh, lock_clocks.sh, profile_{ncu,nsys}.sh, install_cuda.sh
   gpu/gh200/   run_exploration_sweeps.sh, run_protocol_five_workloads.py, bench_power_energy_telemetry.py
+configs/devices/         one JSON per core device (placements, scaling sweep; memory auto-detected)
+docs/methodology.md      the measurement protocol
 results/
-  data/cpu/<CPU>/        CPU CSVs: AMD_C6525_100G, INTEL_C6620, INTEL_C6220, INTEL_C220G5, INTEL_M510
-  data/gpu/<GPU>/        GPU CSVs: NVIDIA_A100, NVIDIA_L40S, NVIDIA_GH200_480GB, NVIDIA_A30, Tesla_V100-*, Tesla_P100-*
-                         (NVIDIA_GH200_480GB also holds the Grace CPU rows: residency_mode=cpu_local)
+  data/v2/<cpu|gpu>/<DEVICE>/      publication data (v2 harness): <ID>_<workload>.csv, samples/, env/
+  data/legacy/cpu/<CPU>/           FROZEN pre-protocol CPU CSVs (AMD_C6525_100G, INTEL_*)
+  data/legacy/gpu/<GPU>/           FROZEN pre-protocol GPU CSVs (NVIDIA_*, Tesla_*); NVIDIA_GH200_480GB
+                                   also holds the Grace CPU rows (residency_mode=cpu_local)
+  data/native/<cpu|gpu>/<DEVICE>/  new output of the native C/CUDA cross-check harnesses
   raw/                   GH200 calibration (peaks.json) + protocol re-run logs
   plotting/cpu/          generate_cpu_{gemm,gemv,saxpy,spgemm}_plots.py
   plotting/gpu/          generate_{plots,gemv_plots,saxpy_plots,spgemm_plots,execution_time_plot}.py, gpu_specs.py
@@ -70,11 +115,11 @@ tests/
   common/  cpu/  gpu/
 ```
 
-CPU and GPU data are kept in separate trees, `results/data/cpu/` and `results/data/gpu/`, because the two sides use the same CSV names (`sweep_gemv_*.csv` and so on) with different columns. Each plotting script reads only its own side.
+CPU and GPU data are kept in separate `cpu/` and `gpu/` trees, because the legacy harnesses use the same CSV names (`sweep_gemv_*.csv` and so on) with different columns. The legacy plotting scripts read only `results/data/legacy/`.
 
 ## Build & run
 
-### GPU
+### Native GPU harnesses (cross-check)
 
 You need the CUDA toolkit. `ARCH` defaults to `sm_80`, or `sm_90` on aarch64 (GH200); override it with `make ARCH=sm_89`, for example.
 
@@ -85,14 +130,14 @@ You need the CUDA toolkit. `ARCH` defaults to `sm_80`, or `sm_90` on aarch64 (GH
 | GEMV / SpMV | `make gemv` | `make run_gemv` | `./scripts/gpu/run_sweep_gemv.sh` |
 | SAXPY | `make saxpy` | `make run_saxpy` | `./scripts/gpu/run_sweep_saxpy.sh` |
 
-The sweeps take environment-variable overrides, e.g. `SIZES=512,1024 PRECS=fp32 ./scripts/gpu/run_sweep.sh`. Output goes to `results/data/gpu/<GPU_NAME>/`.
+The sweeps take environment-variable overrides, e.g. `SIZES=512,1024 PRECS=fp32 ./scripts/gpu/run_sweep.sh`. Output goes to `results/data/native/gpu/<GPU_NAME>/`.
 
 **GH200 only:**
 - Build: `make c2c_streaming c2c_compute c2c_fft c2c_irregular c2c_divergence c2c_cooperative c2c_uvm_advise c2c_allocator`
 - Fixed sweeps: `./scripts/gpu/gh200/run_exploration_sweeps.sh`
 - Protocol suite: `python3 scripts/gpu/gh200/run_protocol_five_workloads.py`
 
-### CPU
+### Native CPU harnesses (cross-check)
 
 Pick the BLAS with `make BLAS=mkl|openblas|auto`. The default, `auto`, uses oneMKL if `/opt/intel/oneapi/mkl/latest` exists, and OpenBLAS otherwise. CloudLab node setup is described in [`scripts/cpu/walkthrough.md`](scripts/cpu/walkthrough.md).
 
@@ -105,9 +150,9 @@ Pick the BLAS with `make BLAS=mkl|openblas|auto`. The default, `auto`, uses oneM
 | Monte Carlo | `make cpu_montecarlo` | `make run_cpu_montecarlo` | `make sweep_cpu_montecarlo` |
 | SHA-256 (+ SHA-512) | `make cpu_cryptography` | `make run_cpu_cryptography` | `make sweep_cpu_cryptography` |
 | Whole suite, in background | `make cpu_all` | — | `make intel_suite_bg` or `make amd_suite_bg` |
-| PyTorch CPU suite | — | `make run_torch_gemm` (also `_gemv`, `_saxpy`, `_spgemm`) | `make torch_suite_bg` |
+| v2 harness suite (any device) | — | `make bench_smoke` | `make torch_suite_bg DEVICE=<id>` |
 
-CPU output goes to `results/data/cpu/<CPU_MODEL>/`. The background suites log to `results/logs/`.
+CPU output goes to `results/data/native/cpu/<CPU_MODEL>/`. The background suites log to `results/logs/`.
 
 ### Plots, dashboard and tests
 
@@ -116,7 +161,7 @@ CPU output goes to `results/data/cpu/<CPU_MODEL>/`. The background suites log to
 | All CPU + GPU plots, then the dashboard | `make plots` |
 | Dashboard only (e.g. after editing `results/workloads.json`) | `make index` |
 | View locally | `python3 -m http.server -d results/plots 8765`, then open <http://localhost:8765/> |
-| Unit tests | `make test_gemv_host`, `make test_telemetry` |
+| Unit tests | `make test_bench` (v2 harness), `make test_gemv_host`, `make test_telemetry` |
 
 `make venv` uses [uv](https://github.com/astral-sh/uv) and `requirements.txt`. The pinned versions need Python ≥ 3.11; CI uses 3.12. Benchmark-node extras, such as torch for `src/torch/`, are listed separately in `requirements-bench.txt`.
 

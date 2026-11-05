@@ -258,7 +258,7 @@ def plot_time_distribution(df, out_dir):
 
 def main():
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))  # -> results/
-    csv_pattern = os.path.join(base_dir, 'data', 'gpu', '*', 'sweep_saxpy*.csv')
+    csv_pattern = os.path.join(base_dir, 'data', 'legacy', 'gpu', '*', 'sweep_saxpy*.csv')
     csv_files = glob.glob(csv_pattern)
     if not csv_files:
         return

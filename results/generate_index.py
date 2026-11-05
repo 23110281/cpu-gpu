@@ -7,10 +7,11 @@ Inputs
   results/workloads.json        final workload suite + implementation status / TODOs
   results/raw/calibration/peaks.json     optional GH200 calibration
 
-Data coverage is computed, not hand-edited: a (workload, device) cell is
-'collected' when a CSV matched by one of the workload's data sources has at
-least one usable row for that device; 'invalid' when the only matching data is
-flagged valid=false in workloads.json; otherwise 'missing'.
+Data coverage is computed, not hand-edited. Per (workload, device) cell:
+  'collected'   - v2 harness rows (results/data/v2/..., status ok, not smoke)
+  'preliminary' - only frozen legacy data (results/data/legacy/...), valid
+  'invalid'     - only legacy data flagged valid=false in workloads.json
+  missing       - nothing
 """
 import csv
 import glob
@@ -41,14 +42,16 @@ if plots_dir.exists():
                     if plots:
                         tree[dev][bench_dir.name] = plots
 
-# ── Device classification (results/data/cpu|gpu/<DEVICE>) ───────────────────
+# ── Device classification (results/data/{legacy,v2}/cpu|gpu/<DEVICE>) ──────────
+DATA_TREES = ("v2", "legacy")          # v2 = publication harness; legacy = frozen, preliminary
 device_class = {}
-for side in ("cpu", "gpu"):
-    side_dir = data_dir / side
-    if side_dir.exists():
-        for d in sorted(side_dir.iterdir()):
-            if d.is_dir():
-                device_class[d.name] = side
+for tree_name in DATA_TREES:
+    for side in ("cpu", "gpu"):
+        side_dir = data_dir / tree_name / side
+        if side_dir.exists():
+            for d in sorted(side_dir.iterdir()):
+                if d.is_dir() and not d.name.startswith("smoke_"):
+                    device_class.setdefault(d.name, side)
 
 # Base limits for standard GPUs
 gpu_limits = {
@@ -107,26 +110,31 @@ def _read_rows(path):
     return _csv_cache[path]
 
 
-def _usable(row):
+def _usable(row, v2=False):
     status = row.get("status")
+    if v2:
+        return status == "ok" and "smoke" not in (row.get("flag") or "")
     return status is None or "ok" in status or "l2-bound" in status
 
 
 def _device_of(path, side):
-    rel = Path(path).relative_to(data_dir).parts  # ('cpu'|'gpu', DEVICE, ...)
+    rel = Path(path).relative_to(data_dir).parts  # (tree, 'cpu'|'gpu', DEVICE, ...)
+    if rel and rel[0] in DATA_TREES:
+        rel = rel[1:]
     return rel[1] if len(rel) > 1 and rel[0] == side else None
 
 
 def _source_hits(src, side):
     """Return {device: row_count} for one data source."""
     hits = {}
+    v2 = src["glob"].startswith("v2/")
     for path in sorted(glob.glob(str(data_dir / src["glob"]))):
         rows = _read_rows(path)
         match = src.get("match", {})
-        n = sum(1 for r in rows if _usable(r) and all(r.get(k) in v for k, v in match.items()))
+        n = sum(1 for r in rows if _usable(r, v2) and all(r.get(k) in v for k, v in match.items()))
         if n:
-            dev = src.get("device") or _device_of(path, src["glob"].split("/")[0])
-            if dev:
+            dev = src.get("device") or _device_of(path, side)
+            if dev and dev not in src.get("exclude_devices", ()):
                 hits[dev] = hits.get(dev, 0) + n
     return hits
 
@@ -145,16 +153,20 @@ def build_status(manifest):
         cells = {}
         for side in ("cpu", "gpu"):
             per_dev = {}
-            for src in w["data"].get(side, []):
+            sources = [{"glob": f"v2/{side}/*/{w['id']}_*.csv", "v2": True}] + w["data"].get(side, [])
+            for src in sources:
                 for dev, n in _source_hits(src, side).items():
-                    cell = per_dev.setdefault(dev, {"rows": 0, "valid_rows": 0, "notes": []})
+                    cell = per_dev.setdefault(dev, {"rows": 0, "valid_rows": 0, "v2_rows": 0, "notes": []})
                     cell["rows"] += n
-                    if src.get("valid", True):
+                    if src.get("v2"):
+                        cell["v2_rows"] += n
+                    elif src.get("valid", True):
                         cell["valid_rows"] += n
                     elif src.get("note"):
                         cell["notes"].append(src["note"])
             for dev, c in per_dev.items():
-                c["state"] = "collected" if c["valid_rows"] else "invalid"
+                c["state"] = ("collected" if c["v2_rows"] else
+                              "preliminary" if c["valid_rows"] else "invalid")
             cells[side] = per_dev
         entry = {k: v for k, v in w.items() if k != "data"}
         entry["cells"] = cells

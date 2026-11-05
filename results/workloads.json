@@ -1,5 +1,5 @@
 {
-  "_doc": "Final workload suite + implementation status. Human-maintained: edit 'impl' / 'todo' as work lands. Data coverage per device is NOT edited here: results/generate_index.py computes it from the CSVs matched by each workload's 'data' sources (globs relative to results/data/). Source fields: glob, optional match {column: [values]} (rows must match all columns), optional device (override the device id; default = directory under results/data/<cpu|gpu>/), optional valid=false + note (data exists but is known-wrong and must be re-collected). Rows with a 'status' column only count when status contains 'ok' or 'l2-bound'.",
+  "_doc": "Final workload suite + status. 'impl' = implemented to the v2 measurement protocol (docs/methodology.md) in src/torch/bench/. Data cells are computed by results/generate_index.py: v2 rows (results/data/v2/<cpu|gpu>/<DEVICE>/<ID>_*.csv, status ok, not smoke) -> 'collected'; sources below (all under results/data/legacy/, frozen) -> 'preliminary', or 'invalid' when valid=false. Optional source key exclude_devices skips listed device dirs. Legacy data is never used in the paper.",
   "plan": "Final suite derived from Lee et al., ISCA'10 ('Debunking the 100X GPU vs CPU myth'): every paper kernel that is primarily compute-, bandwidth- or synchronization-bound, plus LLM inference and cryptography. Each workload gets a tuned CPU and a tuned GPU implementation (fastest well-known library, driven from a PyTorch script in src/torch/), run on the same 6-device core matrix.",
   "devices": {
     "cpu": [
@@ -107,27 +107,26 @@
       "tags": [],
       "cpu": {
         "impl": "done",
-        "where": "src/cpu/cpu_saxpy_bench.c (MKL/OpenBLAS), src/torch/torch_saxpy_bench.py"
+        "where": "src/torch/bench/workloads/b1_saxpy.py: ATen in-place add_ (cross-check vs native OpenBLAS axpy: +0.4..+1.4% on EPYC)"
       },
       "gpu": {
-        "impl": "done",
-        "where": "src/gpu/gpu_saxpy_bench.cu (cuBLAS axpy)"
+        "impl": "partial",
+        "where": "src/torch/bench/workloads/b1_saxpy.py: ATen elementwise [CUDA path written, not yet run on a GPU]"
       },
       "todo": [
-        "Run GPU sweep on A100 (no SAXPY CSV yet)",
-        "Run torch_saxpy_bench.py (CPU) on core CPUs",
-        "Add bound/field/tags columns to CSV schema"
+        "Run on GPU nodes (A100, L40S, H100)",
+        "Collect: 6 devices x 3 trials"
       ],
       "data": {
         "cpu": [
           {
-            "glob": "cpu/*/sweep_saxpy_*.csv"
+            "glob": "legacy/cpu/*/sweep_saxpy_*.csv"
           },
           {
-            "glob": "cpu/*/sweep_torch_saxpy_*.csv"
+            "glob": "legacy/cpu/*/sweep_torch_saxpy_*.csv"
           },
           {
-            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "glob": "legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
             "match": {
               "workload": [
                 "saxpy"
@@ -141,10 +140,11 @@
         ],
         "gpu": [
           {
-            "glob": "gpu/*/sweep_saxpy*.csv"
+            "glob": "legacy/gpu/*/sweep_saxpy*.csv"
           }
         ]
-      }
+      },
+      "legacy_note": "legacy CPU: src/cpu/cpu_saxpy_bench.c (MKL/OpenBLAS), src/torch/torch_saxpy_bench.py | legacy GPU: src/gpu/gpu_saxpy_bench.cu (cuBLAS axpy)"
     },
     {
       "id": "B2",
@@ -156,21 +156,23 @@
       ],
       "cpu": {
         "impl": "todo",
-        "where": "src/torch/torch_lbm_bench.py (lbmpy/pystencils OpenMP+SIMD)"
+        "where": "not yet in v2 harness (src/torch/torch_lbm_bench.py (lbmpy/pystencils OpenMP+SIMD))"
       },
       "gpu": {
         "impl": "todo",
-        "where": "src/torch/torch_lbm_bench.py (lbmpy CUDA target)"
+        "where": "not yet in v2 harness (src/torch/torch_lbm_bench.py (lbmpy CUDA target))"
       },
       "todo": [
-        "Write torch_lbm_bench.py (lbmpy, SoA, fused stream-collide)",
-        "Validate mass/momentum conservation",
-        "Sweep 64^3-512^3, report MLUPS + GB/s"
+        "lbmpy/pystencils D3Q19 (SoA, fused stream-collide) CPU+CUDA",
+        "Validate mass/momentum conservation; CPU==GPU fields",
+        "Grid 64^3-512^3; MLUPS + GB/s",
+        "Collect: 6 devices x 3 trials"
       ],
       "data": {
         "cpu": [],
         "gpu": []
-      }
+      },
+      "legacy_note": "legacy CPU: src/torch/torch_lbm_bench.py (lbmpy/pystencils OpenMP+SIMD) | legacy GPU: src/torch/torch_lbm_bench.py (lbmpy CUDA target)"
     },
     {
       "id": "B3",
@@ -183,22 +185,22 @@
       ],
       "cpu": {
         "impl": "done",
-        "where": "src/cpu/cpu_gemv_bench.c --engine sparse (MKL sparse)"
+        "where": "src/torch/bench/workloads/b3_spmv.py: torch CSR mv(out=), int32 idx -> MKL sparse; poisson3d + powerlaw families"
       },
       "gpu": {
-        "impl": "done",
-        "where": "src/gpu/gpu_gemv_bench.cu --engine sparse (cuSPARSE)"
+        "impl": "partial",
+        "where": "src/torch/bench/workloads/b3_spmv.py: cuSPARSE via torch [CUDA path written, not yet run on a GPU]"
       },
       "todo": [
-        "Split into torch_spmv_bench.py",
-        "Add SuiteSparse matrix set (paper used real matrices)",
-        "Grace: check torch CSR >= 60% of STREAM, else ArmPL/NVPL wrapper",
-        "Run sparse GEMV sweep on A100"
+        "Add SuiteSparse matrix set (needs download permission on nodes)",
+        "Run on GPU nodes (A100, L40S, H100)",
+        "Grace: ArmPL/NVPL wrapper if <60% STREAM",
+        "Collect: 6 devices x 3 trials"
       ],
       "data": {
         "cpu": [
           {
-            "glob": "cpu/*/sweep_gemv_*.csv",
+            "glob": "legacy/cpu/*/sweep_gemv_*.csv",
             "match": {
               "engine": [
                 "sparse"
@@ -206,7 +208,7 @@
             }
           },
           {
-            "glob": "cpu/*/sweep_torch_gemv_*.csv",
+            "glob": "legacy/cpu/*/sweep_torch_gemv_*.csv",
             "match": {
               "engine": [
                 "sparse"
@@ -214,7 +216,7 @@
             }
           },
           {
-            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "glob": "legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
             "match": {
               "workload": [
                 "spmv"
@@ -228,7 +230,7 @@
         ],
         "gpu": [
           {
-            "glob": "gpu/*/sweep_gemv*.csv",
+            "glob": "legacy/gpu/*/sweep_gemv*.csv",
             "match": {
               "engine": [
                 "sparse"
@@ -236,7 +238,7 @@
             }
           },
           {
-            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "glob": "legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
             "match": {
               "workload": [
                 "spmv"
@@ -247,7 +249,8 @@
             }
           }
         ]
-      }
+      },
+      "legacy_note": "legacy CPU: src/cpu/cpu_gemv_bench.c --engine sparse (MKL sparse) | legacy GPU: src/gpu/gpu_gemv_bench.cu --engine sparse (cuSPARSE)"
     },
     {
       "id": "B4",
@@ -259,26 +262,36 @@
       ],
       "cpu": {
         "impl": "done",
-        "where": "src/cpu/cpu_spgemm_bench.c (MKL mkl_sparse_spmm), src/torch/torch_spgemm_bench.py"
+        "where": "src/torch/bench/workloads/b4_spgemm.py: torch.sparse.mm csr@csr -> MKL; exact multiply count"
       },
       "gpu": {
-        "impl": "done",
-        "where": "src/gpu/gpu_spgemm_bench.cu (cuSPARSE SpGEMM)"
+        "impl": "partial",
+        "where": "src/torch/bench/workloads/b4_spgemm.py: cuSPARSE via torch [CUDA path written, not yet run on a GPU]"
       },
       "todo": [
-        "Run GPU sweep on A100",
-        "Add SuiteSparse matrix set"
+        "Add SuiteSparse subset",
+        "Run on GPU nodes (A100, L40S, H100)",
+        "Delete CPU nanosleep fallback in native bench (fabricated rows)",
+        "Collect: 6 devices x 3 trials"
       ],
       "data": {
         "cpu": [
           {
-            "glob": "cpu/*/sweep_spgemm_*.csv"
+            "glob": "legacy/cpu/*/sweep_spgemm_*.csv",
+            "exclude_devices": [
+              "AMD_C6525_100G"
+            ]
           },
           {
-            "glob": "cpu/*/sweep_torch_spgemm_*.csv"
+            "glob": "legacy/cpu/AMD_C6525_100G/sweep_spgemm_*.csv",
+            "valid": false,
+            "note": "fabricated: OpenBLAS build timed a 10 ms nanosleep instead of SpGEMM (cpu_spgemm_bench.c:212-220)"
           },
           {
-            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "glob": "legacy/cpu/*/sweep_torch_spgemm_*.csv"
+          },
+          {
+            "glob": "legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
             "match": {
               "workload": [
                 "spgemm"
@@ -292,10 +305,11 @@
         ],
         "gpu": [
           {
-            "glob": "gpu/*/sweep_spgemm*.csv"
+            "glob": "legacy/gpu/*/sweep_spgemm*.csv"
           }
         ]
-      }
+      },
+      "legacy_note": "legacy CPU: src/cpu/cpu_spgemm_bench.c (MKL mkl_sparse_spmm), src/torch/torch_spgemm_bench.py | legacy GPU: src/gpu/gpu_spgemm_bench.cu (cuSPARSE SpGEMM)"
     },
     {
       "id": "C1",
@@ -307,26 +321,27 @@
       ],
       "cpu": {
         "impl": "done",
-        "where": "src/cpu/cpu_gemm_bench.c (MKL/OpenBLAS), src/torch/torch_gemm_bench.py"
+        "where": "src/torch/bench/workloads/c1_gemm.py: torch(MKL) | OpenBLAS | BLIS via CBLAS, fastest kept (EPYC: BLIS fastest)"
       },
       "gpu": {
-        "impl": "done",
-        "where": "src/gpu/gpu_gemm_bench.cu (cuBLAS / cuSPARSELt)"
+        "impl": "partial",
+        "where": "src/torch/bench/workloads/c1_gemm.py: cuBLAS, TF32 off; bf16 ff variant [CUDA path written, not yet run on a GPU]"
       },
       "todo": [
-        "Run torch_gemm_bench.py on core CPUs (bf16 AMX on SPR)",
-        "Pin allow_tf32 per precision for fp32 headline"
+        "Explain native fp64 N=8192 gap (open item, methodology)",
+        "Run on GPU nodes (A100, L40S, H100)",
+        "Collect: 6 devices x 3 trials"
       ],
       "data": {
         "cpu": [
           {
-            "glob": "cpu/*/sweep_gemm_*.csv"
+            "glob": "legacy/cpu/*/sweep_gemm_*.csv"
           },
           {
-            "glob": "cpu/*/sweep_torch_gemm_*.csv"
+            "glob": "legacy/cpu/*/sweep_torch_gemm_*.csv"
           },
           {
-            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "glob": "legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
             "match": {
               "workload": [
                 "gemm"
@@ -340,10 +355,11 @@
         ],
         "gpu": [
           {
-            "glob": "gpu/*/sweep_20*.csv"
+            "glob": "legacy/gpu/*/sweep_20*.csv"
           }
         ]
-      }
+      },
+      "legacy_note": "legacy CPU: src/cpu/cpu_gemm_bench.c (MKL/OpenBLAS), src/torch/torch_gemm_bench.py | legacy GPU: src/gpu/gpu_gemm_bench.cu (cuBLAS / cuSPARSELt)"
     },
     {
       "id": "C2",
@@ -354,26 +370,27 @@
         "tx"
       ],
       "cpu": {
-        "impl": "partial",
-        "where": "src/cpu/cpu_montecarlo_bench.c (real GBM path MC, never run); torch_montecarlo_bench.py todo"
+        "impl": "todo",
+        "where": "not yet in v2 harness (src/cpu/cpu_montecarlo_bench.c (real GBM path MC, never run); torch_montecarlo_bench.py todo)"
       },
       "gpu": {
-        "impl": "partial",
-        "where": "src/gpu/gh200/gpu_c2c_compute_bench.cu computes closed-form Black-Scholes, not path MC"
+        "impl": "todo",
+        "where": "not yet in v2 harness (src/gpu/gh200/gpu_c2c_compute_bench.cu computes closed-form Black-Scholes, not path MC)"
       },
       "todo": [
-        "Run cpu_montecarlo_bench sweep on core CPUs",
-        "Write torch_montecarlo_bench.py (torch.compile fused Philox + exp + payoff)",
-        "Replace GH200 closed-form Black-Scholes with path-simulation MC",
-        "Validate vs Black-Scholes closed form"
+        "torch.compile fused Philox->Box-Muller->GBM->payoff (fp64), CPU+GPU",
+        "Validate within 4 SE of Black-Scholes; RNG independent of thread count",
+        "Native C cross-check: counter-based RNG, 4-SE tolerance",
+        "Delete GH200 closed-form \"montecarlo\"",
+        "Collect: 6 devices x 3 trials"
       ],
       "data": {
         "cpu": [
           {
-            "glob": "cpu/*/sweep_montecarlo_*.csv"
+            "glob": "legacy/cpu/*/sweep_montecarlo_*.csv"
           },
           {
-            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "glob": "legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
             "match": {
               "workload": [
                 "montecarlo"
@@ -389,7 +406,7 @@
         ],
         "gpu": [
           {
-            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "glob": "legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
             "match": {
               "workload": [
                 "montecarlo"
@@ -402,7 +419,8 @@
             "note": "closed-form Black-Scholes, not Monte Carlo paths"
           }
         ]
-      }
+      },
+      "legacy_note": "legacy CPU: src/cpu/cpu_montecarlo_bench.c (real GBM path MC, never run); torch_montecarlo_bench.py todo | legacy GPU: src/gpu/gh200/gpu_c2c_compute_bench.cu computes closed-form Black-Scholes, not path MC"
     },
     {
       "id": "C3",
@@ -413,22 +431,21 @@
         "cache"
       ],
       "cpu": {
-        "impl": "partial",
-        "where": "GH200 cpu_local path only; torch_conv_bench.py (oneDNN) todo"
+        "impl": "done",
+        "where": "src/torch/bench/workloads/c3_conv.py: torch/oneDNN | OpenCV filter2D (3.4x faster on EPYC)"
       },
       "gpu": {
         "impl": "partial",
-        "where": "src/gpu/gh200/gpu_c2c_fft_bench.cu conv2d (GH200 only); torch_conv_bench.py (cuDNN) todo"
+        "where": "src/torch/bench/workloads/c3_conv.py: cuDNN (benchmark autotune in warmup) [CUDA path written, not yet run on a GPU]"
       },
       "todo": [
-        "Write torch_conv_bench.py (F.conv2d: oneDNN / cuDNN)",
-        "Image-filter shapes 3/5/7, grayscale + RGB depthwise",
-        "Run on x86 CPUs, A100, L40S"
+        "Run on GPU nodes (A100, L40S, H100)",
+        "Collect: 6 devices x 3 trials"
       ],
       "data": {
         "cpu": [
           {
-            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "glob": "legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
             "match": {
               "workload": [
                 "conv2d"
@@ -442,7 +459,7 @@
         ],
         "gpu": [
           {
-            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "glob": "legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
             "match": {
               "workload": [
                 "conv2d"
@@ -453,7 +470,8 @@
             }
           }
         ]
-      }
+      },
+      "legacy_note": "legacy CPU: GH200 cpu_local path only; torch_conv_bench.py (oneDNN) todo | legacy GPU: src/gpu/gh200/gpu_c2c_fft_bench.cu conv2d (GH200 only); torch_conv_bench.py (cuDNN) todo"
     },
     {
       "id": "C4",
@@ -464,21 +482,22 @@
         "cache"
       ],
       "cpu": {
-        "impl": "partial",
-        "where": "FFTW3 path in src/gpu/gh200/gpu_c2c_fft_bench.cu (Grace only); torch_fft_bench.py todo"
+        "impl": "done",
+        "where": "src/torch/bench/workloads/c4_fft.py: torch.fft -> MKL DFTI (planning inside call: documented deviation)"
       },
       "gpu": {
         "impl": "partial",
-        "where": "cuFFT in src/gpu/gh200/gpu_c2c_fft_bench.cu (GH200 only)"
+        "where": "src/torch/bench/workloads/c4_fft.py: cuFFT (plan cache) [CUDA path written, not yet run on a GPU]"
       },
       "todo": [
-        "Write torch_fft_bench.py (torch.fft vs pyFFTW on CPU, cuFFT on GPU)",
-        "Run on x86 CPUs, A100, L40S"
+        "Add pyFFTW (FFTW_MEASURE, reusable plans) CPU variant",
+        "Run on GPU nodes (A100, L40S, H100)",
+        "Collect: 6 devices x 3 trials"
       ],
       "data": {
         "cpu": [
           {
-            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "glob": "legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
             "match": {
               "workload": [
                 "cufft_1d",
@@ -493,7 +512,7 @@
         ],
         "gpu": [
           {
-            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "glob": "legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
             "match": {
               "workload": [
                 "cufft_1d",
@@ -505,7 +524,8 @@
             }
           }
         ]
-      }
+      },
+      "legacy_note": "legacy CPU: FFTW3 path in src/gpu/gh200/gpu_c2c_fft_bench.cu (Grace only); torch_fft_bench.py todo | legacy GPU: cuFFT in src/gpu/gh200/gpu_c2c_fft_bench.cu (GH200 only)"
     },
     {
       "id": "C5",
@@ -518,21 +538,22 @@
       ],
       "cpu": {
         "impl": "todo",
-        "where": "src/torch/torch_bilateral_bench.py (OpenCV cv2.bilateralFilter)"
+        "where": "not yet in v2 harness (src/torch/torch_bilateral_bench.py (OpenCV cv2.bilateralFilter))"
       },
       "gpu": {
         "impl": "todo",
-        "where": "src/torch/torch_bilateral_bench.py (OpenCV CUDA; torch.compile fallback)"
+        "where": "not yet in v2 harness (src/torch/torch_bilateral_bench.py (OpenCV CUDA; torch.compile fallback))"
       },
       "todo": [
-        "Write torch_bilateral_bench.py",
-        "Precise vs fast exp toggle (isolates SFU effect)",
-        "Validate CPU vs GPU output (PSNR)"
+        "OpenCV bilateralFilter (CPU reference) + torch.compile kernel on CPU and GPU",
+        "precise vs fast exp toggle (SFU effect); PSNR>=60 dB CPU vs GPU",
+        "Collect: 6 devices x 3 trials"
       ],
       "data": {
         "cpu": [],
         "gpu": []
-      }
+      },
+      "legacy_note": "legacy CPU: src/torch/torch_bilateral_bench.py (OpenCV cv2.bilateralFilter) | legacy GPU: src/torch/torch_bilateral_bench.py (OpenCV CUDA; torch.compile fallback)"
     },
     {
       "id": "C6",
@@ -545,22 +566,21 @@
         "int"
       ],
       "cpu": {
-        "impl": "partial",
-        "where": "OpenMP merge sort in src/gpu/gh200/gpu_c2c_divergence_bench.cu (Grace only); torch_sort_bench.py todo"
+        "impl": "done",
+        "where": "src/torch/bench/workloads/c6_sort.py: ATen | libstdc++ parallel mode | oneTBB (GNU parallel ~2x ATen on EPYC)"
       },
       "gpu": {
         "impl": "partial",
-        "where": "CUB DeviceRadixSort in gpu_c2c_divergence_bench.cu (GH200 only)"
+        "where": "src/torch/bench/workloads/c6_sort.py: CUB radix sort via torch.sort [CUDA path written, not yet run on a GPU]"
       },
       "todo": [
-        "Write torch_sort_bench.py (torch.sort vs numpy x86-simd-sort / VQSort)",
-        "uint32 keys + int32 values, uniform + skewed",
-        "Run on x86 CPUs, A100, L40S"
+        "Run on GPU nodes (A100, L40S, H100)",
+        "Collect: 6 devices x 3 trials"
       ],
       "data": {
         "cpu": [
           {
-            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "glob": "legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
             "match": {
               "workload": [
                 "cub_radix_sort"
@@ -574,7 +594,7 @@
         ],
         "gpu": [
           {
-            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "glob": "legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
             "match": {
               "workload": [
                 "cub_radix_sort"
@@ -585,7 +605,8 @@
             }
           }
         ]
-      }
+      },
+      "legacy_note": "legacy CPU: OpenMP merge sort in src/gpu/gh200/gpu_c2c_divergence_bench.cu (Grace only); torch_sort_bench.py todo | legacy GPU: CUB DeviceRadixSort in gpu_c2c_divergence_bench.cu (GH200 only)"
     },
     {
       "id": "C7",
@@ -597,22 +618,21 @@
         "cache"
       ],
       "cpu": {
-        "impl": "partial",
-        "where": "Grace cpu_local path in gpu_c2c_irregular_bench.cu; torch_search_bench.py todo"
+        "impl": "done",
+        "where": "src/torch/bench/workloads/c7_search.py: torch.searchsorted, keys 64 KB-2 GB"
       },
       "gpu": {
         "impl": "partial",
-        "where": "thrust::lower_bound (GH200 only); Eytzinger variant in protocol_benchmark_suite.cu"
+        "where": "src/torch/bench/workloads/c7_search.py: torch.searchsorted CUDA [CUDA path written, not yet run on a GPU]"
       },
       "todo": [
-        "Write torch_search_bench.py (torch.searchsorted)",
-        "Sweep tree size from L2-resident to 10x LLC (C to B crossover)",
-        "Run on x86 CPUs, A100, L40S"
+        "Run on GPU nodes (A100, L40S, H100)",
+        "Collect: 6 devices x 3 trials"
       ],
       "data": {
         "cpu": [
           {
-            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "glob": "legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
             "match": {
               "workload": [
                 "thrust_search"
@@ -626,7 +646,7 @@
         ],
         "gpu": [
           {
-            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "glob": "legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
             "match": {
               "workload": [
                 "thrust_search"
@@ -637,7 +657,8 @@
             }
           }
         ]
-      }
+      },
+      "legacy_note": "legacy CPU: Grace cpu_local path in gpu_c2c_irregular_bench.cu; torch_search_bench.py todo | legacy GPU: thrust::lower_bound (GH200 only); Eytzinger variant in protocol_benchmark_suite.cu"
     },
     {
       "id": "C8",
@@ -649,23 +670,24 @@
         "int"
       ],
       "cpu": {
-        "impl": "broken",
-        "where": "Grace path in gpu_c2c_divergence_bench.cu runs 1 AESE/AESMC round, not 10"
+        "impl": "todo",
+        "where": "not yet in v2 harness (Grace path in gpu_c2c_divergence_bench.cu runs 1 AESE/AESMC round, not 10)"
       },
       "gpu": {
-        "impl": "broken",
-        "where": "gpu_aes_ctr_kernel is a byte XOR (memcpy); gpu_aes_coop_kernel is rotate/XOR"
+        "impl": "todo",
+        "where": "not yet in v2 harness (gpu_aes_ctr_kernel is a byte XOR (memcpy); gpu_aes_coop_kernel is rotate/XOR)"
       },
       "todo": [
-        "Write torch_aes_bench.py: CPU via 'cryptography' (OpenSSL AES-NI/VAES/ARMv8-CE) + hw-crypto-disabled variant",
-        "Write real FIPS-197 T-table GPU kernel (load_inline / CuPy RawKernel)",
-        "Validate with NIST SP 800-38A CTR vectors",
-        "Discard existing AES results"
+        "CPU: cryptography/OpenSSL EVP AES-128-CTR (+ hw-crypto-disabled variant)",
+        "GPU: FIPS-197 T-table kernel (load_inline)",
+        "NIST SP 800-38A vectors; CPU and GPU ciphertext byte-identical",
+        "Delete both stub AES kernels",
+        "Collect: 6 devices x 3 trials"
       ],
       "data": {
         "cpu": [
           {
-            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "glob": "legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
             "match": {
               "workload": [
                 "aes_128_ctr"
@@ -681,7 +703,7 @@
         ],
         "gpu": [
           {
-            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "glob": "legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
             "match": {
               "workload": [
                 "aes_128_ctr"
@@ -694,7 +716,8 @@
             "note": "kernel is a byte XOR, not AES"
           }
         ]
-      }
+      },
+      "legacy_note": "legacy CPU: Grace path in gpu_c2c_divergence_bench.cu runs 1 AESE/AESMC round, not 10 | legacy GPU: gpu_aes_ctr_kernel is a byte XOR (memcpy); gpu_aes_coop_kernel is rotate/XOR"
     },
     {
       "id": "C9",
@@ -706,26 +729,29 @@
         "int"
       ],
       "cpu": {
-        "impl": "partial",
-        "where": "src/cpu/cpu_cryptography_bench.c (pure C, never run); torch_sha256_bench.py (hashlib/OpenSSL SHA-NI) todo"
+        "impl": "todo",
+        "where": "not yet in v2 harness (src/cpu/cpu_cryptography_bench.c (pure C, never run); torch_sha256_bench.py (hashlib/OpenSSL SHA-NI) todo)"
       },
       "gpu": {
         "impl": "todo",
-        "where": "custom one-message-per-thread kernel (no well-known GPU library)"
+        "where": "not yet in v2 harness (custom one-message-per-thread kernel (no well-known GPU library))"
       },
       "todo": [
-        "Run cpu_cryptography_bench on core CPUs",
-        "Write torch_sha256_bench.py (hashlib thread pool)",
-        "Write GPU SHA-256 kernel, validate digests vs hashlib"
+        "CPU: hashlib (OpenSSL SHA-NI/ARMv8) multi-buffer thread pool",
+        "GPU: one-message-per-thread kernel with padding",
+        "FIPS 180-4 vectors; digests identical CPU vs GPU",
+        "Delete cpu_cryptography_bench.c (no chaining, DCE risk)",
+        "Collect: 6 devices x 3 trials"
       ],
       "data": {
         "cpu": [
           {
-            "glob": "cpu/*/sweep_cryptography_*.csv"
+            "glob": "legacy/cpu/*/sweep_cryptography_*.csv"
           }
         ],
         "gpu": []
-      }
+      },
+      "legacy_note": "legacy CPU: src/cpu/cpu_cryptography_bench.c (pure C, never run); torch_sha256_bench.py (hashlib/OpenSSL SHA-NI) todo | legacy GPU: custom one-message-per-thread kernel (no well-known GPU library)"
     },
     {
       "id": "S1",
@@ -736,23 +762,23 @@
         "gs"
       ],
       "cpu": {
-        "impl": "partial",
-        "where": "Grace cpu_local path in gpu_c2c_divergence_bench.cu; torch_hist_bench.py todo"
+        "impl": "done",
+        "where": "src/torch/bench/workloads/s1_histogram.py: histc in exact 2^24 chunks (17x scaling) | bincount"
       },
       "gpu": {
         "impl": "partial",
-        "where": "CUB histogram + cluster-DSM variant (GH200 only)"
+        "where": "src/torch/bench/workloads/s1_histogram.py: histc / bincount (atomics) [CUDA path written, not yet run on a GPU]"
       },
       "todo": [
-        "Write torch_hist_bench.py (torch.histc vs CuPy/CUB HistogramEven)",
-        "256 / 64K bins x uniform / Zipf skew",
-        "Thread-count sweep to expose reduction scaling",
-        "Run on x86 CPUs, A100, L40S"
+        "Sync ablation variant (no-merge private histograms)",
+        "CuPy/CUB HistogramEven GPU variant",
+        "Run on GPU nodes (A100, L40S, H100)",
+        "Collect: 6 devices x 3 trials"
       ],
       "data": {
         "cpu": [
           {
-            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "glob": "legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
             "match": {
               "workload": [
                 "cub_histogram"
@@ -766,7 +792,7 @@
         ],
         "gpu": [
           {
-            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "glob": "legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
             "match": {
               "workload": [
                 "cub_histogram"
@@ -777,7 +803,8 @@
             }
           }
         ]
-      }
+      },
+      "legacy_note": "legacy CPU: Grace cpu_local path in gpu_c2c_divergence_bench.cu; torch_hist_bench.py todo | legacy GPU: CUB histogram + cluster-DSM variant (GH200 only)"
     },
     {
       "id": "S2",
@@ -789,21 +816,22 @@
       ],
       "cpu": {
         "impl": "todo",
-        "where": "src/torch/torch_solver_bench.py (graph-colored batches, torch.compile)"
+        "where": "not yet in v2 harness (src/torch/torch_solver_bench.py (graph-colored batches, torch.compile))"
       },
       "gpu": {
         "impl": "todo",
-        "where": "src/torch/torch_solver_bench.py (kernel-per-batch, CUDA Graphs)"
+        "where": "not yet in v2 harness (src/torch/torch_solver_bench.py (kernel-per-batch, CUDA Graphs))"
       },
       "todo": [
-        "Write torch_solver_bench.py",
-        "Sweep constraints per batch (task granularity)",
-        "Report us per barrier; validate residual decreases"
+        "Batched PGS: graph-coloured batches; torch.compile (CPU), CUDA Graph per iteration (GPU)",
+        "Sweep constraints-per-batch; residual CPU vs GPU within 1e-6",
+        "Collect: 6 devices x 3 trials"
       ],
       "data": {
         "cpu": [],
         "gpu": []
-      }
+      },
+      "legacy_note": "legacy CPU: src/torch/torch_solver_bench.py (graph-colored batches, torch.compile) | legacy GPU: src/torch/torch_solver_bench.py (kernel-per-batch, CUDA Graphs)"
     },
     {
       "id": "A1",
@@ -815,23 +843,23 @@
         "gs"
       ],
       "cpu": {
-        "impl": "partial",
-        "where": "src/torch/bench_llama32_layers.py (cpu_local on Grace only); llama.cpp e2e todo"
+        "impl": "todo",
+        "where": "not yet in v2 harness (src/torch/bench_llama32_layers.py (cpu_local on Grace only); llama.cpp e2e todo)"
       },
       "gpu": {
-        "impl": "partial",
-        "where": "src/torch/bench_llama32_layers.py (GH200 only); llama.cpp CUDA / vLLM e2e todo"
+        "impl": "todo",
+        "where": "not yet in v2 harness (src/torch/bench_llama32_layers.py (GH200 only); llama.cpp CUDA / vLLM e2e todo)"
       },
       "todo": [
-        "Add --device cpu path to bench_llama32_layers.py for x86 CPUs",
-        "Add llama_e2e_bench.sh (llama.cpp llama-bench pp512/tg128) on all 6 devices",
-        "vLLM reference on GPUs",
-        "Run per-layer sweep on A100, L40S"
+        "Port per-layer bench to harness: real RoPE, causal SDPA, real KV length, LM-head bytes",
+        "Same precision both sides (fp32 + native bf16); logits vs HF reference",
+        "llama.cpp llama-bench e2e (CPU + CUDA builds), vLLM GPU reference",
+        "Collect: 6 devices x 3 trials"
       ],
       "data": {
         "cpu": [
           {
-            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "glob": "legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
             "match": {
               "workload": [
                 "llama32_embedding",
@@ -853,7 +881,7 @@
         ],
         "gpu": [
           {
-            "glob": "gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
+            "glob": "legacy/gpu/NVIDIA_GH200_480GB/cleaned_for_paper/gh200_paper_master_clean.csv",
             "match": {
               "workload": [
                 "llama32_embedding",
@@ -872,16 +900,20 @@
             }
           }
         ]
-      }
+      },
+      "legacy_note": "legacy CPU: src/torch/bench_llama32_layers.py (cpu_local on Grace only); llama.cpp e2e todo | legacy GPU: src/torch/bench_llama32_layers.py (GH200 only); llama.cpp CUDA / vLLM e2e todo"
     }
   ],
   "infra_todo": [
-    "Unify CSV schema: add bound / field / tags / library / metric_name / metric_value columns to every harness",
-    "Replace 4-regime enum in src/gpu/gh200/bench_harness.h and figure labels with bound + tags",
-    "Parameterize scripts/gpu/lock_clocks.sh per device (hard-coded to A100 1410 MHz)",
-    "Measured STREAM + peak FLOP/OP calibration for all 6 core devices",
-    "results/plotting/generate_roofline.py + paper-style Figure 1 (GPU/CPU ratio per workload, geomean) and Table 3",
-    "Add lbmpy, pystencils, cupy, pyfftw, opencv, cryptography, llama.cpp, vllm to requirements-bench.txt / node setup scripts"
+    "M1 GPU half: run cross-check + smoke on a GPU node (CPU half done on EPYC: SAXPY +0.4/+1.4%, GEMM 2 of 4 within 3%; see results/crosscheck/AMD_C6525_100G.json)",
+    "M2: calibration on all 6 devices (BabelStream Triad, peak GEMM) -> results/calibration/<device>.json; EPYC pending BabelStream download permission",
+    "M2: telemetry verified vs turbostat on EPYC (200.6 vs 200-203 W; 3295 vs 3280-3302 MHz); repeat on Intel, Grace, GPUs",
+    "Commit harness, then collect from a clean tree (rows from a dirty tree are flagged dirty_tree)",
+    "Native benches: per-iteration samples + v2 schema, status from validation, fix RAPL MSRs, mkl_version label under OpenBLAS",
+    "GH200 residency axis: single t_e2e definition, kernel-only pct_peak, NVML + validation; build protocol suite via Makefile",
+    "Parameterize scripts/gpu/lock_clocks.sh per device (locked-clock sensitivity study)",
+    "Delete PCA / k-means / cpu_cryptography benches and old torch_gemv/torch_spgemm once superseded",
+    "Plotting v2 (results/plotting/v2/): ratio-of-medians with bootstrap CI, rooflines, bound verification; make paper-figures"
   ],
   "dropped": [
     {

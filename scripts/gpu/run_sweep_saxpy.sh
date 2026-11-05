@@ -13,8 +13,8 @@ command -v nvidia-smi >/dev/null || { echo "nvidia-smi missing — reboot to loa
 NGPU=$(nvidia-smi --query-gpu=count --format=csv,noheader | head -1 | tr -d ' ')
 STAMP=$(date +%Y%m%d_%H%M%S)
 GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader | head -1 | tr ' ' '_')
-mkdir -p "results/data/gpu/${GPU_NAME}"
-OUT="results/data/gpu/${GPU_NAME}/sweep_saxpy_${STAMP}.csv"
+mkdir -p "results/data/native/gpu/${GPU_NAME}"
+OUT="results/data/native/gpu/${GPU_NAME}/sweep_saxpy_${STAMP}.csv"
 SIZES="${SIZES:-33554432,67108864,134217728,268435456,536870912,1073741824}"
 PRECS="${PRECS:-fp32,fp64}"
 GPUS="${GPUS:-$(seq -s, 1 "$NGPU")}"

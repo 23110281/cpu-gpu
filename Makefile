@@ -474,46 +474,22 @@ amd_suite_bg:
 epyc_suite: amd_suite
 epyc_suite_bg: amd_suite_bg
 
-# ── PyTorch CPU Benchmarks ──────────────────────────────────────────────────
+# ── PyTorch suite = v2 publication harness (see "v2 publication harness" below) ──
+# The pre-v2 torch_*_bench.py sweeps were retired: they crashed on the 2nd config and
+# did not meet docs/methodology.md. torch_gemv/torch_spgemm remain only as porting refs.
 PYTHON ?= python3
 
-run_torch_gemm:
-	$(PYTHON) src/torch/torch_gemm_bench.py --sizes 512,1024,2048 --threads 1,2,4,8 --validate --iters 10
-
-sweep_torch_gemm:
-	bash ./scripts/cpu/run_torch_gemm_sweep.sh
-
-run_torch_gemv:
-	$(PYTHON) src/torch/torch_gemv_bench.py --sizes 1024,2048,4096 --threads 1,2,4,8 --validate --iters 10
-
-sweep_torch_gemv:
-	bash ./scripts/cpu/run_torch_gemv_sweep.sh
-
-run_torch_saxpy:
-	$(PYTHON) src/torch/torch_saxpy_bench.py --sizes 1048576,4194304,16777216 --threads 1,2,4,8 --validate --iters 10
-
-sweep_torch_saxpy:
-	bash ./scripts/cpu/run_torch_saxpy_sweep.sh
-
-run_torch_spgemm:
-	$(PYTHON) src/torch/torch_spgemm_bench.py --sizes 1024,2048 --threads 1,2,4,8 --validate --iters 5
-
-sweep_torch_spgemm:
-	bash ./scripts/cpu/run_torch_spgemm_sweep.sh
-
 torch_suite:
-	bash ./scripts/cpu/run_all_torch.sh
+	@test -n "$(DEVICE)" || { echo "usage: make torch_suite DEVICE=<id in configs/devices/>"; exit 2; }
+	PYTHONPATH=src/torch $(PYTHON) -m bench sweep --device-config configs/devices/$(DEVICE).json --trials 3
 
 torch_suite_bg:
+	@test -n "$(DEVICE)" || { echo "usage: make torch_suite_bg DEVICE=<id in configs/devices/>"; exit 2; }
 	@mkdir -p results/logs
-	@nohup bash ./scripts/cpu/run_all_torch.sh > /dev/null 2>&1 & \
-	 echo "==> PyTorch Suite launched in background! You can safely close your terminal/laptop." && \
-	 echo "==> Live monitor with: tail -f results/logs/suite_torch_latest.log"
-
-torch_intel_suite: torch_suite
-torch_intel_suite_bg: torch_suite_bg
-torch_amd_suite: torch_suite
-torch_amd_suite_bg: torch_suite_bg
+	@nohup env PYTHONPATH=src/torch $(PYTHON) -m bench sweep --device-config configs/devices/$(DEVICE).json \
+	   --trials 3 > results/logs/bench_$(DEVICE).log 2>&1 & \
+	 echo "==> v2 sweep for $(DEVICE) launched in background." && \
+	 echo "==> Live monitor with: tail -f results/logs/bench_$(DEVICE).log"
 
 test_telemetry: $(CPU_TELEM_TEST)
 	./$(CPU_TELEM_TEST)
@@ -523,6 +499,32 @@ $(CPU_TELEM_TEST): tests/cpu/test_cpu_telemetry.c src/cpu/cpu_telemetry.h
 	@mkdir -p bin
 	$(CC) -std=c11 -O2 -Wall -I src/cpu -o $@ tests/cpu/test_cpu_telemetry.c -lm
 	@echo "built $@"
+
+# ── v2 publication harness (src/torch/bench, protocol: docs/methodology.md) ──
+BENCH := PYTHONPATH=src/torch $(PYTHON) -m bench
+DEVICE ?=
+
+bench_list:
+	$(BENCH) list
+
+# Every registered workload, smallest configs, short timing -> results/data/smoke (git-ignored)
+bench_smoke:
+	$(BENCH) smoke --device cpu
+
+bench_smoke_cuda:
+	$(BENCH) smoke --device cuda
+
+# Full collection on this node:  make bench_suite DEVICE=INTEL_C6620   (configs/devices/<DEVICE>.json)
+bench_suite:
+	@test -n "$(DEVICE)" || { echo "usage: make bench_suite DEVICE=<id in configs/devices/>"; exit 2; }
+	$(BENCH) sweep --device-config configs/devices/$(DEVICE).json --trials 3
+
+bench_suite_dry:
+	@test -n "$(DEVICE)" || { echo "usage: make bench_suite_dry DEVICE=<id>"; exit 2; }
+	$(BENCH) sweep --device-config configs/devices/$(DEVICE).json --trials 3 --dry-run
+
+test_bench:
+	$(PYTHON) -m pytest -q tests/torch
 
 # ── Common header unit test ─────────────────────────────────────────────────
 test_gemv_host: tests/common/test_gemv_host.c src/common/gemv_host.h

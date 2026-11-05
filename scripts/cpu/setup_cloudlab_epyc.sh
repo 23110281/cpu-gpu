@@ -64,6 +64,15 @@ sudo apt-get install -y --no-install-recommends \
     libopenblas-openmp-dev
 
 ok "OpenBLAS installed (headers in /usr/include/x86_64-linux-gnu or /usr/include)."
+# apt makes the *pthread* OpenBLAS the default. Its worker threads inherit the affinity of
+# the calling thread, which OpenMP binding (OMP_PROC_BIND, used by the v2 harness) pins to
+# ONE core -> all BLAS threads share a core (measured: 80 vs 1760 GFLOP/s, 24 cores).
+# Select the OpenMP build so BLAS threads are OpenMP threads that honour OMP_PLACES.
+for alt in libblas.so.3 liblapack.so.3 libopenblas.so.0; do
+    target="/usr/lib/x86_64-linux-gnu/openblas-openmp/${alt}"
+    [ -e "$target" ] && sudo update-alternatives --set "${alt}-x86_64-linux-gnu" "$target" >/dev/null \
+        && ok "${alt} -> OpenMP OpenBLAS"
+done
 
 log "Installing PyTorch CPU wheel (~180MB lightweight package)"
 python3 -m pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu || {
@@ -96,6 +105,30 @@ if [ -d /sys/class/powercap ]; then
 fi
 
 # ── 4. Set Performance Frequency Governor ───────────────────────────────────
+# v2 harness telemetry (docs/methodology.md §11):
+#  * powercap entries under /sys/class are symlinks, so `chmod -R` above does not reach
+#    the real energy_uj files (root-only since CVE-2020-8694) -> chmod the resolved files.
+#  * APERF/MPERF/TSC frequency and AMD RAPL MSRs need CAP_SYS_RAWIO, not just file mode:
+#    grant it to the interpreter that runs the harness (disposable testbed node only).
+for f in /sys/class/powercap/intel-rapl*/energy_uj /sys/class/powercap/intel-rapl*/*/energy_uj; do
+    [ -e "$f" ] && sudo chmod a+r "$(readlink -f "$f")" 2>/dev/null || true
+done
+PY_REAL="$(readlink -f "$(command -v python3)")"
+if command -v setcap >/dev/null 2>&1; then
+    sudo setcap cap_sys_rawio+ep "$PY_REAL" && ok "CAP_SYS_RAWIO granted to $PY_REAL (MSR telemetry)." \
+        || warn "setcap failed; CPU frequency telemetry will fall back to cpufreq."
+fi
+python3 -m pip install --no-cache-dir -q pytest scipy || warn "pytest/scipy install failed"
+# v2 harness: jemalloc (CPU allocator reuse, methodology §4) and BLIS (fastest-BLAS candidate)
+sudo apt-get install -y --no-install-recommends libjemalloc2 libblis3-openmp libtbb-dev python3-dev \
+    || warn "jemalloc/BLIS/TBB/python3-dev install failed (affected variants report 'unsupported')"
+# CAP_SYS_RAWIO (above) puts ld.so in secure mode, which ignores LD_PRELOAD unless the
+# library is named without a slash, lives in a standard directory and is set-user-ID.
+JEMALLOC_SO=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
+[ -e "$JEMALLOC_SO" ] && sudo chmod u+s "$(readlink -f "$JEMALLOC_SO")" && ok "jemalloc preloadable under secure mode"
+# ninja: builds the C++ extension for the parallel CPU sorts; OpenCV: fastest image filter
+python3 -m pip install --no-cache-dir -q ninja opencv-python-headless || warn "ninja/opencv install failed"
+
 log "Step 4/4: Setting CPU Frequency Governor to 'performance'"
 if command -v cpupower >/dev/null 2>&1; then
     sudo cpupower frequency-set -g performance >/dev/null 2>&1 || true

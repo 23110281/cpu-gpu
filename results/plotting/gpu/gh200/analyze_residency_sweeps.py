@@ -15,7 +15,7 @@ import glob
 import pandas as pd
 import numpy as np
 
-DATA_DIR = "results/data/gpu/NVIDIA_GH200_480GB/residency_sweeps"
+DATA_DIR = "results/data/legacy/gpu/NVIDIA_GH200_480GB/residency_sweeps"
 
 def analyze():
     csv_files = sorted(glob.glob(os.path.join(DATA_DIR, "sweep_cycle*.csv")))

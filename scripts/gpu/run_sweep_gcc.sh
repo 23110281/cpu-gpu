@@ -15,8 +15,8 @@ command -v nvidia-smi >/dev/null || { echo "nvidia-smi missing — reboot to loa
 NGPU=$(nvidia-smi --query-gpu=count --format=csv,noheader | head -1 | tr -d ' ')
 STAMP=$(date +%Y%m%d_%H%M%S)
 GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader | head -1 | tr ' ' '_')
-mkdir -p "results/data/gpu/${GPU_NAME}"
-OUT="results/data/gpu/${GPU_NAME}/sweep_gcc_${STAMP}.csv"
+mkdir -p "results/data/native/gpu/${GPU_NAME}"
+OUT="results/data/native/gpu/${GPU_NAME}/sweep_gcc_${STAMP}.csv"
 
 # GCC build default starts at 512, but can run 256..65536.
 SIZES="${SIZES:-256,512,1024,2048,4096,8192,16384,32768,65536}"

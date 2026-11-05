@@ -1,0 +1,36 @@
+{
+  "device_id": "AMD_C6525_100G",
+  "device_class": "cpu",
+  "label": "AMD EPYC 7402P (Zen 2, 24C/48T, 1 socket) \u2014 CloudLab c6525-100g",
+  "placements": [
+    "socket0",
+    "socket0-smt"
+  ],
+  "scaling": {
+    "workloads": [
+      "B1",
+      "C1"
+    ],
+    "base": "socket0",
+    "threads": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      32
+    ]
+  },
+  "_note": "max_mem_gb omitted: detected at sweep time (CPU MemTotal/sockets*0.8, GPU nvidia-smi*0.9). Placements resolving to the same CPU set and scaling counts >= the socket's cores are dropped automatically.",
+  "datasheet": {
+    "bandwidth_gbps": 204.8,
+    "peak_gflops": {
+      "fp64": 1075.2,
+      "fp32": 2150.4
+    },
+    "derivation": {
+      "bandwidth": "8 channels x DDR4-3200 x 8 B = 204.8 GB/s (dmidecode: 8x16 GB DDR4-3200, DIMMs A1-A8, one per channel)",
+      "compute": "24 cores x 2.8 GHz base x 16 FP64 FLOP/cycle (2x 256-bit FMA pipes, Zen 2) = 1075.2; fp32 = 2x. All-core boost observed 3.3 GHz (APERF/MPERF) is NOT used for the datasheet figure."
+    }
+  }
+}

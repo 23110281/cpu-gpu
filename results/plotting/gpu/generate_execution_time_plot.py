@@ -100,7 +100,7 @@ def plot_execution_time_comparison(csv_file, out_dir):
 
 if __name__ == '__main__':
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))  # -> results/
-    csv_pattern = os.path.join(base_dir, 'data', 'gpu', '*', 'sweep_20*.csv')
+    csv_pattern = os.path.join(base_dir, 'data', 'legacy', 'gpu', '*', 'sweep_20*.csv')
     csv_files = glob.glob(csv_pattern)
     for csv_file in csv_files:
         gpu_name = os.path.basename(os.path.dirname(csv_file))

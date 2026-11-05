@@ -125,8 +125,8 @@ echo "======================================================================"
 echo " [SUCCESS] ALL 8 INTEL WORKLOAD SWEEPS COMPLETED IN ${ELAPSED}s"
 echo " Finished at: $(date)"
 echo "======================================================================"
-echo "Generated CSV results in results/data/cpu/:"
-ls -lh results/data/cpu/*/*.csv 2>/dev/null || true
+echo "Generated CSV results in results/data/native/cpu/:"
+ls -lh results/data/native/cpu/*/*.csv 2>/dev/null || true
 echo "======================================================================"
 
 # 4. Autonomous offsite backup (pushes only this machine's CSVs to GitHub backup repo)

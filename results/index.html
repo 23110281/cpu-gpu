@@ -325,6 +325,7 @@
         td.cell { text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
         .c-collected { color: var(--ok); }
         .c-invalid { color: var(--warn); }
+        .c-prelim { color: #94a3b8; font-weight: 600; font-size: 0.72rem; }
         .c-missing { color: var(--todo); opacity: 0.8; font-weight: 600; font-size: 0.72rem; }
         .dot { width: 0.6rem; height: 0.6rem; border-radius: 50%; display: inline-block; }
         tr.detail td { background: rgba(5, 11, 20, 0.6); padding: 0.9rem 1.2rem 1.1rem; }
@@ -553,9 +554,12 @@
             const c = (w.cells && w.cells[side] || {})[dev];
             if (!c) return `<td class="cell c-missing" title="No data yet for ${esc(dev)}">TODO</td>`;
             if (c.state === 'invalid') {
-                return `<td class="cell c-invalid" title="${esc(c.rows)} rows, invalid: ${esc(c.notes.join('; '))}">⚠</td>`;
+                return `<td class="cell c-invalid" title="${esc(c.rows)} legacy rows, invalid: ${esc(c.notes.join('; '))}">⚠</td>`;
             }
-            return `<td class="cell c-collected" title="${esc(c.valid_rows)} valid rows">✓</td>`;
+            if (c.state === 'preliminary') {
+                return `<td class="cell c-prelim" title="${esc(c.valid_rows)} legacy rows (frozen, pre-protocol): preliminary, not for the paper">prelim</td>`;
+            }
+            return `<td class="cell c-collected" title="${esc(c.v2_rows)} v2 rows (publication protocol)">✓</td>`;
         }
 
         function workloadFacts(w, devs) {
@@ -567,7 +571,9 @@
                 cpuCore, gpuCore, missingCore,
                 ratioReady: cpuCore > 0 && gpuCore > 0,
                 cpuTodo: w.cpu.impl !== 'done', gpuTodo: w.gpu.impl !== 'done',
-                legacy: has('cpu', devs.cpu.filter(d => !d.core)) + has('gpu', devs.gpu.filter(d => !d.core)),
+                // legacy devices are pre-protocol by definition: count any data (v2 or preliminary)
+                legacy: ['cpu', 'gpu'].reduce((n, side) => n + devs[side].filter(d => !d.core && w.cells[side][d.id]
+                        && w.cells[side][d.id].state !== 'invalid').length, 0),
                 legacyTotal: devs.cpu.filter(d => !d.core).length + devs.gpu.filter(d => !d.core).length,
             };
         }
@@ -591,6 +597,8 @@
             const ci = implCount('cpu'), gi = implCount('gpu');
             const coreCells = S.workloads.length * (core.cpu.length + core.gpu.length);
             const coreDone = Object.values(facts).reduce((n, f) => n + f.cpuCore + f.gpuCore, 0);
+            const corePrelim = S.workloads.reduce((n, w) => n + [...core.cpu.map(d => (w.cells.cpu[d.id] || {}).state),
+                ...core.gpu.map(d => (w.cells.gpu[d.id] || {}).state)].filter(s => s === 'preliminary').length, 0);
             const ratioReady = Object.values(facts).filter(f => f.ratioReady).length;
             const implLine = c => ['done', 'partial', 'todo', 'broken'].filter(k => c[k]).map(k => `${c[k]} ${IMPL_LABEL[k].toLowerCase()}`).join(' · ');
 
@@ -603,15 +611,16 @@
                     <div class="tile"><div class="k">GPU implementations</div><div class="v" style="color:#34d399">${gi.done || 0}<span style="font-size:1rem;color:var(--text-muted)"> / ${S.workloads.length}</span></div>
                         <div class="s">${implLine(gi)}</div></div>
                     <div class="tile"><div class="k">Core-device data</div><div class="v">${coreDone}<span style="font-size:1rem;color:var(--text-muted)"> / ${coreCells}</span></div>
-                        <div class="s">workload × device cells on the ${core.cpu.length + core.gpu.length} core devices</div></div>
+                        <div class="s">collected under the v2 protocol · ${corePrelim} more cells have only preliminary (legacy) data</div></div>
                     <div class="tile"><div class="k">CPU/GPU ratio ready</div><div class="v">${ratioReady}<span style="font-size:1rem;color:var(--text-muted)"> / ${S.workloads.length}</span></div>
-                        <div class="s">≥1 core CPU and ≥1 core GPU with valid data</div></div>
+                        <div class="s">≥1 core CPU and ≥1 core GPU with v2 data</div></div>
                 </div>
                 <div class="toolbar">
                     ${Object.entries(FILTERS).map(([k, [label]]) => `<button class="chip${statusFilter === k ? ' on' : ''}" data-filter="${k}">${label}</button>`).join('')}
                     <div class="legend">
-                        <span><b class="c-collected">✓</b> data collected</span>
-                        <span><b class="c-invalid">⚠</b> data exists but invalid</span>
+                        <span><b class="c-collected">✓</b> collected (v2 protocol)</span>
+                        <span><b class="c-prelim">prelim</b> legacy data only (pre-protocol, not for the paper)</span>
+                        <span><b class="c-invalid">⚠</b> legacy data invalid</span>
                         <span><b class="c-missing">TODO</b> not collected</span>
                     </div>
                 </div>

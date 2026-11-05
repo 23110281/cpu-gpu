@@ -33,7 +33,26 @@ if [ "$KIND" = cpu ]; then
     python3 -m pip install -q --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
         || warn "torch (CPU wheel) install failed"
 else
-    python3 -m pip install -q --no-cache-dir torch || warn "torch (CUDA wheel) install failed"
+    # The torch wheel must match the node's nvcc MAJOR version: torch.utils.cpp_extension raises
+    # RuntimeError on a major mismatch, and every native CUDA kernel (B2 C2 C3 C5 C8 C9 S2) would
+    # be recorded 'unsupported'. Plain `pip install torch` brings the newest CUDA (13.x) wheel,
+    # while scripts/gpu/install_cuda.sh installs a 12.x toolkit.
+    NVCC="$(command -v nvcc || echo /usr/local/cuda/bin/nvcc)"
+    NVCC_VER="$("$NVCC" --version 2>/dev/null | sed -n 's/.*release \([0-9]*\)\.\([0-9]*\).*/\1.\2/p' || true)"
+    case "${NVCC_VER%%.*}" in
+        13) IDX="cu130" ;;
+        12) IDX="cu129 cu128 cu126" ;;
+        *)  IDX="" ; warn "nvcc version '${NVCC_VER}' not recognised: installing the default torch wheel" ;;
+    esac
+    ok_torch=0
+    for i in $IDX; do
+        python3 -m pip install -q --no-cache-dir torch --index-url "https://download.pytorch.org/whl/$i" \
+            && { ok_torch=1; log "torch wheel from $i (nvcc ${NVCC_VER})"; break; }
+    done
+    [ "$ok_torch" = 1 ] || python3 -m pip install -q --no-cache-dir torch || warn "torch (CUDA wheel) install failed"
+    TORCH_CUDA="$(python3 -c 'import torch; print(torch.version.cuda or "")' 2>/dev/null || true)"
+    [ "${TORCH_CUDA%%.*}" = "${NVCC_VER%%.*}" ] \
+        || warn "torch CUDA ${TORCH_CUDA} vs nvcc ${NVCC_VER}: major versions differ -> native CUDA kernels will NOT build"
     python3 -m pip install -q --no-cache-dir nvidia-ml-py || warn "pynvml install failed (GPU power telemetry)"
 fi
 python3 -m pip install -q --no-cache-dir numpy scipy pytest ninja opencv-python-headless cryptography \

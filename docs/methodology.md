@@ -17,7 +17,7 @@ The protocol follows the comparison principle of Lee et al. (ISCA'10): compare *
   - Persistence mode on; default application clocks.
   - ECC state and power limit recorded.
 
-**Clock sensitivity:** SAXPY, GEMM and Histogram are repeated with clocks locked (`scripts/gpu/lock_clocks.sh`), and reported separately.
+**Clock sensitivity (planned, not yet collected):** SAXPY, GEMM and Histogram repeated with clocks locked (`scripts/gpu/lock_clocks.sh`, still to be parameterised) and reported separately. Until collected, all results are at default clocks only.
 
 ## 3. Threads and memory placement (`bench/devices.py`)
 - **Pinning.** `OMP_PLACES=cores`, `OMP_PROC_BIND=close`, `MKL_DYNAMIC=FALSE`, and `OMP_NUM_THREADS` = the thread count. `torch.set_num_threads` / `set_num_interop_threads(1)` are each called exactly **once per process**. Each configuration runs in its own process (`bench/sweep.py`).
@@ -82,7 +82,7 @@ The protocol follows the comparison principle of Lee et al. (ISCA'10): compare *
 - Headline precision is fp32; Monte Carlo is fp64, as in the paper.
 - Reduced-precision or fixed-function variants (bf16 tensor cores, AMX, TF32) are separate rows with `variant=ff`. They run only where the hardware supports them natively (`devices.native_bf16`); elsewhere the row is `status=unsupported` and emulated results are never reported.
 
-## 10. Metrics (`bench/workloads/*`, `bench/metrics.py`)
+## 10. Metrics (`bench/workloads/*`, `Workload.work()`)
 - Each workload defines its FLOP count, its **compulsory** bytes and one headline metric in paper units. A column never carries a unit other than its name.
 - `pct_measured_peak` is relative to the device's calibrated ceilings in `results/calibration/<device>.json`:
   - Bandwidth workloads: BabelStream Triad.
@@ -121,7 +121,9 @@ Any deviation from this protocol, such as a library that cannot exclude its own 
 | C4 FFT (CPU) | MKL DFTI descriptors are created inside every `torch.fft` call, so CPU samples include planning time. | ATen does not expose plan reuse. pyFFTW with reusable plans is the planned alternative CPU library. |
 | B4 SpGEMM | The symbolic (structure) phase and output allocation are inside every call, on both devices. | `torch.sparse.mm` has no separable phases. It is identical on CPU and GPU. |
 | A1 Llama-3 | Exact Llama-3.2-1B/3B and Llama-3-8B architectures with **random** weights (N(0, 0.02)). | The official checkpoints are gated by licence and token. Dense fp32/bf16 kernel time does not depend on weight values. Correctness is checked against fp64 on a 2-layer instance. End-to-end llama.cpp/vLLM rows with real weights are future work. |
-| B2 LBM, C2 MC, C5 bilateral, S2 solver | Native kernels (C++/OpenMP and CUDA), one algorithm for both devices, instead of a library. | No well-known library implements these exact kernels for both devices. Each is validated against an fp64 reference, and its vectorization was verified with compiler reports. |
+| B2 LBM, C2 MC, C3 conv (`lib=native`), C5 bilateral, S2 solver | Native kernels (C++/OpenMP and CUDA), one algorithm for both devices, instead of a library. | No well-known library implements these exact kernels for both devices. Each is validated against an fp64 reference, and its vectorization was verified with compiler reports. |
+| A1 Llama-3 (CPU, fp32) | Linear layers are also timed through OpenBLAS and BLIS (`lib` key, as C1); the fastest library is kept. Batch-1 decode calls `?gemv` directly. | Batch-1 decode is pure GEMV; on EPYC torch/MKL streamed ~20 GB/s of a 125 GB/s socket (pitfall 11). |
+| B2 LBM (CPU) | Non-temporal (streaming) stores on x86/AVX; normal stores elsewhere (Grace). | The 19 destination arrays are write-only; a normal store reads each line first (write-allocate), +50% DRAM traffic. |
 | C5 bilateral (OpenCV) | OpenCV approximates the range weights with a lookup table, so it is validated with tolerance 1e-2 instead of 1e-4. | It is a library approximation. Native exact kernels are 7× faster on EPYC anyway. |
 | Size grids | GEMM ≤ 8192, conv ≤ 8192², sort ≤ 2²⁷ pairs; the thread-scaling sweep uses the median size. | The larger sizes cost hours per device without new information: the GEMM peak is already reached at 8192, and every bandwidth workload still has rows ≥ 4× LLC. |
 | C3 conv2d (torch) | `F.conv2d` allocates its output on every call. | It has no `out=` variant. The GPU caching allocator reuses the block. On the CPU, glibc vs jemalloc (verified loaded) measured 1552 vs 1552 ms (1 channel) and 6143 vs 6306 ms (3 channels) at 16K², so allocation inside the call is not a bottleneck. Default: glibc; jemalloc is opt-in (`BENCH_ALLOCATOR=jemalloc`, row flag `alloc=jemalloc`). |
@@ -150,7 +152,11 @@ Each of these would have silently produced a weak CPU baseline. The harness or s
 8. **OpenSSL 3 one-shot `SHA256()` has per-call provider overhead and global locks.** It reached 82 MB/s per core with 24 threads. The low-level API gives 35 GB/s (1 KB messages) and 13.3 GB/s (64 B), a 17–100× difference.
 9. **Root-only counters.** RAPL `energy_uj` is root-only and `/sys/class/powercap` entries are symlinks, so `chmod -R` misses them. APERF/MPERF MSRs need `CAP_SYS_RAWIO`. Both are fixed in the setup script.
 
+10. **LBM was not vectorised** (110–118 MLUPS, 27% of bandwidth). The x loop kept the 19 populations in an `f[19]` array read through a table of row pointers; GCC vectorised only the 19-direction inner loops. The kernel is now generated as 19 named scalars with constants folded (x loop vectorised, checked with `-fopt-info-vec`) and writes through streaming stores. Laptop check (4 threads, AVX2): 56 → 198 MLUPS fp32, 57 → 99 fp64; to be re-measured on EPYC.
+11. **LLM decode on EPYC ran at single-core bandwidth.** Every A1 decode row streamed 13–22 GB/s (10–18% of the socket), even at batch 1, where the step is almost pure GEMV over the weights; the same torch/MKL GEMV runs at the full read rate on Intel. Suspected cause: MKL's GEMV path on AMD. A1 now also times OpenBLAS/BLIS; confirm the cause on the next AMD node.
+
 ## Open items
+- **Thread-scaling evidence for S rows:** S1 and S2 are now in every CPU config's scaling list (before, only B1 and C1 were, so the S-bound check had no data).
 - **Native C GEMM fp64 at N=8192:** 1600 ms native vs 1237 ms through the harness, with the same OpenBLAS `.so`, the same clock (turbostat) and the same power.
   - Ruled out: alignment, transparent huge pages, the timed loop, OpenMP binding.
   - The harness value is fully validated and cannot be an under-measurement, because the call is synchronous. To be explained with perf counters before publication.

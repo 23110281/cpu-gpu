@@ -20,7 +20,7 @@ from ..validate import exact
 from . import _common as C
 from . import _cpusort
 
-SIZES = [1 << 20, 1 << 24, 1 << 27, 1 << 30]
+SIZES = [1 << 20, 1 << 24, 1 << 27]   # 2^27 pairs = 2 GB working set (>= 4x LLC)
 
 
 class Sort(Workload):

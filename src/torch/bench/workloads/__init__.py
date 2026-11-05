@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import importlib
 
-_MODULES = ["b1_saxpy", "b3_spmv", "b4_spgemm", "c1_gemm", "c2_montecarlo", "c3_conv", "c4_fft", "c5_bilateral", "c6_sort", "c7_search", "c8_aes", "c9_sha256", "s1_histogram", "s2_solver"]
+_MODULES = ["a1_llama", "b1_saxpy", "b2_lbm", "b3_spmv", "b4_spgemm", "c1_gemm", "c2_montecarlo", "c3_conv", "c4_fft", "c5_bilateral", "c6_sort", "c7_search", "c8_aes", "c9_sha256", "s1_histogram", "s2_solver"]
 
 
 def registry() -> dict:

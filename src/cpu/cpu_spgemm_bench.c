@@ -209,15 +209,16 @@ static void run_cpu_spgemm(const cfg_t *c, FILE *csv, const char *host, const ch
     mkl_sparse_destroy(csrA);
     mkl_sparse_destroy(csrB);
 #else
-    /* Fallback estimation */
-    cpu_telemetry_start(telem);
-    struct timespec t0, t1;
-    clock_gettime(CLOCK_MONOTONIC_RAW, &t0);
-    struct timespec req = {0, 10000000L};
-    nanosleep(&req, NULL);
-    clock_gettime(CLOCK_MONOTONIC_RAW, &t1);
-    cpu_telemetry_stop(telem);
-    nnzC = (long)(density * (double)S * (double)S);
+    /* No MKL: there is no sparse x sparse kernel to time. This branch previously timed a
+     * 10 ms nanosleep and reported it as an SpGEMM result (fabricated rows). Report the
+     * configuration as unsupported instead; use the v2 harness (torch.sparse) for SpGEMM. */
+    (void)nnzC;
+    struct timespec t0 = {0, 0}, t1 = {0, 0};   /* keeps the (unreachable) tail compiling */
+    (void)t0; (void)t1;
+    printf("%-5s %-3d %6ld %6.2f  unsupported (built without MKL)\n", pn, T, S, density);
+    if (csv) fprintf(csv, "%s,%ld,%s,%s,%s,%d,%ld,%.4f,%ld,%ld,0,%d,%d,0,0,0,0,0,0,0,0,0,-1.0,unsupported\n",
+                     c->tag, (long)time(NULL), host, mkl_info, pn, T, S, density, nnzA, nnzB, c->iters, c->warmup);
+    return;
 #endif
 
     double wall_sec = (double)(t1.tv_sec - t0.tv_sec) + (double)(t1.tv_nsec - t0.tv_nsec) * 1e-9;
@@ -256,6 +257,8 @@ static void run_cpu_spgemm(const cfg_t *c, FILE *csv, const char *host, const ch
 }
 
 /* ── Main Entry Point ─────────────────────────────────────────────────────── */
+__attribute__((weak)) char *openblas_get_config(void);
+
 int main(int argc, char **argv) {
     cfg_t c;
     memset(&c, 0, sizeof(c));
@@ -325,11 +328,14 @@ int main(int argc, char **argv) {
     char host[128] = "Unknown_CPU";
     gethostname(host, sizeof(host));
 
-    char mkl_info[128] = "oneMKL";
+    char mkl_info[128] = "unknown_BLAS";
 #if HAVE_MKL
     mkl_get_version_string(mkl_info, sizeof(mkl_info));
-    for (int i = 0; mkl_info[i]; i++) if (mkl_info[i] == ',' || mkl_info[i] == ' ') mkl_info[i] = '_';
+#else
+    /* label the library actually linked (was hard-coded "oneMKL" under OpenBLAS) */
+    snprintf(mkl_info, sizeof(mkl_info), "%s", openblas_get_config ? openblas_get_config() : "OpenBLAS");
 #endif
+    for (int i = 0; mkl_info[i]; i++) if (mkl_info[i] == ',' || mkl_info[i] == ' ') mkl_info[i] = '_';
 
     cpu_telemetry_t telem;
     cpu_telemetry_init(&telem);

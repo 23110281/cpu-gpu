@@ -400,52 +400,7 @@ run_cpu_montecarlo: $(CPU_MONTECARLO_BIN)
 sweep_cpu_montecarlo: $(CPU_MONTECARLO_BIN)
 	bash ./scripts/cpu/run_montecarlo_sweep.sh
 
-# ── CPU Cryptography (SHA-256 / SHA-512) ────────────────────────────────────
-CPU_CRYPTOGRAPHY_BIN := bin/cpu_cryptography_bench
-
-cpu_cryptography: $(CPU_CRYPTOGRAPHY_BIN)
-$(CPU_CRYPTOGRAPHY_BIN): src/cpu/cpu_cryptography_bench.c src/cpu/cpu_telemetry.h
-	@mkdir -p bin
-	$(CC) $(CPU_CFLAGS) $(CPU_LDFLAGS) -o $@ $< $(CPU_LDLIBS) -lm
-	@echo "built $@"
-
-run_cpu_cryptography: $(CPU_CRYPTOGRAPHY_BIN)
-	./$(CPU_CRYPTOGRAPHY_BIN) --sizes 67108864,268435456 --threads 1,2,4,8 --validate --iters 5
-
-sweep_cpu_cryptography: $(CPU_CRYPTOGRAPHY_BIN)
-	bash ./scripts/cpu/run_cryptography_sweep.sh
-
-# ── CPU Principal Component Analysis (PCA) ──────────────────────────────────
-CPU_PCA_BIN := bin/cpu_pca_bench
-
-cpu_pca: $(CPU_PCA_BIN)
-$(CPU_PCA_BIN): src/cpu/cpu_pca_bench.c src/cpu/cpu_telemetry.h
-	@mkdir -p bin
-	$(CC) $(CPU_CFLAGS) $(CPU_LDFLAGS) -o $@ $< $(CPU_LDLIBS) -lm
-	@echo "built $@"
-
-run_cpu_pca: $(CPU_PCA_BIN)
-	./$(CPU_PCA_BIN) --sizes 100000,500000 --features 64 --components 8 --threads 1,2,4,8 --validate --iters 5
-
-sweep_cpu_pca: $(CPU_PCA_BIN)
-	bash ./scripts/cpu/run_pca_sweep.sh
-
-# ── CPU K-Means Clustering ──────────────────────────────────────────────────
-CPU_KMEANS_BIN := bin/cpu_kmeans_bench
-
-cpu_kmeans: $(CPU_KMEANS_BIN)
-$(CPU_KMEANS_BIN): src/cpu/cpu_kmeans_bench.c src/cpu/cpu_telemetry.h
-	@mkdir -p bin
-	$(CC) $(CPU_CFLAGS) $(CPU_LDFLAGS) -o $@ $< $(CPU_LDLIBS) -lm
-	@echo "built $@"
-
-run_cpu_kmeans: $(CPU_KMEANS_BIN)
-	./$(CPU_KMEANS_BIN) --sizes 200000,1000000 --clusters 32 --features 32 --threads 1,2,4,8 --validate --iters 5
-
-sweep_cpu_kmeans: $(CPU_KMEANS_BIN)
-	bash ./scripts/cpu/run_kmeans_sweep.sh
-
-cpu_all: cpu_gemm cpu_gemv cpu_saxpy cpu_spgemm cpu_montecarlo cpu_cryptography cpu_pca cpu_kmeans
+cpu_all: cpu_gemm cpu_gemv cpu_saxpy cpu_spgemm cpu_montecarlo   # native cross-check benches
 
 
 # ── Intel Xeon Benchmark Suite ──────────────────────────────────────────────

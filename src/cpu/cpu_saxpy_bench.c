@@ -284,11 +284,12 @@ static void run_cpu_saxpy(const cfg_t *c, FILE *csv, const char *host, const cha
             "%s,%ld,%s,%s,split,%s,%d,%ld,%d,%d,"
             "%.2f,%.5f,%.3f,%.3f,"
             "%.1f,%.1f,%.1f,"
-            "%.3f,%d,%.3e,ok\n",
+            "%.3f,%d,%.3e,%s\n",
             c->tag, ts, host, mkl_info, pn, T, N, c->iters, c->warmup,
             agg_gbps, agg_tflops, comp_ms, wall_sec * 1000.0,
             telem->avg_freq_mhz, telem->avg_power_watts, telem->max_temp_c,
-            mem_gb, validated, max_rel);
+            mem_gb, validated, max_rel,
+            (validated && max_rel > 1e-2) ? "validation_failed" : "ok");
         fflush(csv);
     }
 
@@ -297,6 +298,8 @@ static void run_cpu_saxpy(const cfg_t *c, FILE *csv, const char *host, const cha
 }
 
 /* ── Main Entry Point ─────────────────────────────────────────────────────── */
+__attribute__((weak)) char *openblas_get_config(void);
+
 int main(int argc, char **argv) {
     cfg_t c;
     memset(&c, 0, sizeof(c));
@@ -360,11 +363,14 @@ int main(int argc, char **argv) {
     char host[128] = "Unknown_CPU";
     gethostname(host, sizeof(host));
 
-    char mkl_info[128] = "oneMKL";
+    char mkl_info[128] = "unknown_BLAS";
 #if HAVE_MKL
     mkl_get_version_string(mkl_info, sizeof(mkl_info));
-    for (int i = 0; mkl_info[i]; i++) if (mkl_info[i] == ',' || mkl_info[i] == ' ') mkl_info[i] = '_';
+#else
+    /* label the library actually linked (was hard-coded "oneMKL" under OpenBLAS) */
+    snprintf(mkl_info, sizeof(mkl_info), "%s", openblas_get_config ? openblas_get_config() : "OpenBLAS");
 #endif
+    for (int i = 0; mkl_info[i]; i++) if (mkl_info[i] == ',' || mkl_info[i] == ' ') mkl_info[i] = '_';
 
     cpu_telemetry_t telem;
     cpu_telemetry_init(&telem);

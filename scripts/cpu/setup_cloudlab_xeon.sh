@@ -156,3 +156,6 @@ cat <<'EOF'
       numactl --hardware
 ──────────────────────────────────────────────────────────────────────────────
 EOF
+
+# ── v2 publication harness requirements (shared with GPU nodes) ──────────────
+bash "$(dirname "$0")/../setup_v2_harness.sh" cpu

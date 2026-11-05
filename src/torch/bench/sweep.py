@@ -66,14 +66,15 @@ def _jobs(dcfg: dict, selected, smoke: bool):
         for w in selected:
             if w.id not in sc.get("workloads", []):
                 continue
-            largest = {}
-            for c in w.configs(cls):                 # largest config per (precision, variant, lib)
-                key = (c.get("precision"), c.get("variant"), c.get("lib"))
-                if key not in largest or w.working_set_bytes(c) > w.working_set_bytes(largest[key]):
-                    largest[key] = c
+            # MEDIAN-size config per (precision, variant, lib): thread scaling at the largest size
+            # is prohibitively long at 1 thread (e.g. fp64 GEMM 8192^3) and adds no information
+            groups = {}
+            for c in w.configs(cls):
+                groups.setdefault((c.get("precision"), c.get("variant"), c.get("lib")), []).append(c)
+            chosen = [sorted(g, key=w.working_set_bytes)[len(g) // 2] for g in groups.values()]
             base = sc.get("base", "socket0")
             avail = devices.resolve_placement(base).threads
-            for c in largest.values():
+            for c in chosen:
                 for t in sorted({t for t in sc["threads"] if t < avail}):  # t == avail is the headline row
                     jobs.append((w, c, f"{base}:{t}"))
     return jobs

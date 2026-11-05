@@ -21,7 +21,7 @@ from ..core import Ctx, Unsupported, Workload
 from ..validate import normwise, tol_reduction
 from . import _common as C
 
-IMAGES = [1024, 4096, 16384]
+IMAGES = [1024, 4096, 8192]        # 8192^2 = 64x LLC on EPYC; 16384 added hours without new information
 KERNELS = [3, 5, 7]
 CHANNELS = [1, 3]
 

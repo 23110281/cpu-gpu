@@ -155,17 +155,16 @@
         "gs"
       ],
       "cpu": {
-        "impl": "todo",
-        "where": "not yet in v2 harness (src/torch/torch_lbm_bench.py (lbmpy/pystencils OpenMP+SIMD))"
+        "impl": "done",
+        "where": "src/torch/bench/workloads/b2_lbm.py: native D3Q19 BGK, OpenMP+SIMD, SoA, fused pull-stream-collide"
       },
       "gpu": {
-        "impl": "todo",
-        "where": "not yet in v2 harness (src/torch/torch_lbm_bench.py (lbmpy CUDA target))"
+        "impl": "partial",
+        "where": "src/torch/bench/workloads/b2_lbm.py: native CUDA, one thread per cell [CUDA path written, not yet run on a GPU]"
       },
       "todo": [
-        "lbmpy/pystencils D3Q19 (SoA, fused stream-collide) CPU+CUDA",
-        "Validate mass/momentum conservation; CPU==GPU fields",
-        "Grid 64^3-512^3; MLUPS + GB/s",
+        "Optional: lbmpy-generated kernels as alternative library",
+        "Run on GPU nodes (A100, L40S, H100)",
         "Collect: 6 devices x 3 trials"
       ],
       "data": {
@@ -195,8 +194,7 @@
         "Add SuiteSparse matrix set (needs download permission on nodes)",
         "Run on GPU nodes (A100, L40S, H100)",
         "Grace: ArmPL/NVPL wrapper if <60% STREAM",
-        "Collect: 6 devices x 3 trials",
-        "Delete old src/torch/torch_gemv_bench.py / torch_spgemm_bench.py (superseded)"
+        "Collect: 6 devices x 3 trials"
       ],
       "data": {
         "cpu": [
@@ -273,8 +271,7 @@
         "Add SuiteSparse subset",
         "Run on GPU nodes (A100, L40S, H100)",
         "Delete CPU nanosleep fallback in native bench (fabricated rows)",
-        "Collect: 6 devices x 3 trials",
-        "Delete old src/torch/torch_gemv_bench.py / torch_spgemm_bench.py (superseded)"
+        "Collect: 6 devices x 3 trials"
       ],
       "data": {
         "cpu": [
@@ -734,7 +731,6 @@
         "where": "src/torch/bench/workloads/c9_sha256.py: custom one-message-per-thread kernel [CUDA path written, not yet run on a GPU]"
       },
       "todo": [
-        "Delete src/cpu/cpu_cryptography_bench.c",
         "Run on GPU nodes (A100, L40S, H100)",
         "Collect: 6 devices x 3 trials"
       ],
@@ -837,17 +833,16 @@
         "gs"
       ],
       "cpu": {
-        "impl": "todo",
-        "where": "not yet in v2 harness (src/torch/bench_llama32_layers.py (cpu_local on Grace only); llama.cpp e2e todo)"
+        "impl": "done",
+        "where": "src/torch/bench/workloads/a1_llama.py: full Llama-3 forward (1B/3B/8B shapes, random weights), prefill + decode, oneDNN"
       },
       "gpu": {
-        "impl": "todo",
-        "where": "not yet in v2 harness (src/torch/bench_llama32_layers.py (GH200 only); llama.cpp CUDA / vLLM e2e todo)"
+        "impl": "partial",
+        "where": "src/torch/bench/workloads/a1_llama.py: same, cuBLAS + SDPA [CUDA path written, not yet run on a GPU]"
       },
       "todo": [
-        "Port per-layer bench to harness: real RoPE, causal SDPA, real KV length, LM-head bytes",
-        "Same precision both sides (fp32 + native bf16); logits vs HF reference",
-        "llama.cpp llama-bench e2e (CPU + CUDA builds), vLLM GPU reference",
+        "Real weights (gated on HF) + llama.cpp/vLLM end-to-end rows: needs HF token",
+        "Run on GPU nodes (A100, L40S, H100)",
         "Collect: 6 devices x 3 trials"
       ],
       "data": {
@@ -902,12 +897,11 @@
     "M1 GPU half: run cross-check + smoke on a GPU node (CPU half done on EPYC: SAXPY +0.4/+1.4%, GEMM 2 of 4 within 3%; see results/crosscheck/AMD_C6525_100G.json)",
     "M2: calibration on all 6 devices (BabelStream Triad, peak GEMM) -> results/calibration/<device>.json; EPYC pending BabelStream download permission",
     "M2: telemetry verified vs turbostat on EPYC (200.6 vs 200-203 W; 3295 vs 3280-3302 MHz); repeat on Intel, Grace, GPUs",
-    "Commit harness, then collect from a clean tree (rows from a dirty tree are flagged dirty_tree)",
-    "Native benches: per-iteration samples + v2 schema, status from validation, fix RAPL MSRs, mkl_version label under OpenBLAS",
     "GH200 residency axis: single t_e2e definition, kernel-only pct_peak, NVML + validation; build protocol suite via Makefile",
     "Parameterize scripts/gpu/lock_clocks.sh per device (locked-clock sensitivity study)",
-    "Delete PCA / k-means / cpu_cryptography benches and old torch_gemv/torch_spgemm once superseded",
-    "Plotting v2 (results/plotting/v2/): ratio-of-medians with bootstrap CI, rooflines, bound verification; make paper-figures"
+    "Plotting v2 (results/plotting/v2/): ratio-of-medians with bootstrap CI, rooflines, bound verification; make paper-figures",
+    "Native cross-checks: per-iteration samples + v2 schema (status/label/MSR/fabricated-SpGEMM already fixed)",
+    "GH200 C2C residency benches: remove stub AES / closed-form 'montecarlo' / unmerged sort paths (needs a GH200 to test)"
   ],
   "dropped": [
     {

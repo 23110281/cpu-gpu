@@ -56,9 +56,14 @@ Every number in the paper comes from `src/torch/bench/`, which enforces the prot
 - **Telemetry:** a sampled telemetry thread.
 - **Provenance:** an environment record and git SHA for every row.
 
-**Status:**
-- Implemented: **B1 SAXPY** and **C1 GEMM**.
-- Pending: the other 14 workloads (see the dashboard and plan Part C).
+**Status:** all 16 workloads are implemented in the v2 harness, and the CPU paths are validated on an EPYC 7402P. The CUDA paths are written but have not yet run on a GPU: the first session on each GPU type is a validation run.
+
+**Node setup:**
+- CPU: `scripts/cpu/setup_cloudlab_epyc.sh` or `scripts/cpu/setup_cloudlab_xeon.sh`.
+- GPU: `scripts/gpu/setup_gpu_node.sh`.
+- All three share `scripts/setup_v2_harness.sh`.
+- Calibration: `python3 scripts/calibrate.py --device-config configs/devices/<DEVICE>.json`.
+- Native cross-check: `python3 scripts/crosscheck_native.py --device-id <DEVICE>`.
 
 ```bash
 make bench_list                          # registered workloads
@@ -89,7 +94,7 @@ src/
                                                        Grace Hopper residency / NVLink-C2C benchmarks
   torch/bench/ v2 publication harness: core (timing/stats), devices (placement), validate, telemetry,
                env (provenance), schema, sweep; workloads/<id>_<name>.py
-  torch/       torch_*_bench.py, torch_telemetry.py, bench_llama32_layers.py   (pre-v2; being ported)
+
 scripts/
   cpu/         run_*_sweep.sh, run_all_{intel,amd,torch}.sh, setup_cloudlab_{xeon,epyc}.sh,
                backup_results.sh, walkthrough.md       CloudLab CPU node workflow
@@ -148,7 +153,6 @@ Pick the BLAS with `make BLAS=mkl|openblas|auto`. The default, `auto`, uses oneM
 | SAXPY | `make cpu_saxpy` | `make run_cpu_saxpy` | `make sweep_cpu_saxpy` |
 | SpGEMM | `make cpu_spgemm` | `make run_cpu_spgemm` | `make sweep_cpu_spgemm` |
 | Monte Carlo | `make cpu_montecarlo` | `make run_cpu_montecarlo` | `make sweep_cpu_montecarlo` |
-| SHA-256 (+ SHA-512) | `make cpu_cryptography` | `make run_cpu_cryptography` | `make sweep_cpu_cryptography` |
 | Whole suite, in background | `make cpu_all` | — | `make intel_suite_bg` or `make amd_suite_bg` |
 | v2 harness suite (any device) | — | `make bench_smoke` | `make torch_suite_bg DEVICE=<id>` |
 

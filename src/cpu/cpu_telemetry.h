@@ -29,8 +29,8 @@
 #include <errno.h>
 
 #define CPU_TELEM_MAX_PACKAGES 8
-#define AMD_MSR_PWR_UNIT       0xC0010061
-#define AMD_MSR_PKG_ENERGY     0xC0010299
+#define AMD_MSR_PWR_UNIT       0xC0010299   /* RAPL_PWR_UNIT (was 0xC0010061, a P-state register) */
+#define AMD_MSR_PKG_ENERGY     0xC001029B   /* PKG_ENERGY_STAT (was 0xC0010299, the unit register) */
 #define INTEL_MSR_PWR_UNIT     0x00000606
 #define INTEL_MSR_PKG_ENERGY   0x00000611
 

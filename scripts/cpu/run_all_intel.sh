@@ -67,55 +67,37 @@ echo ""
 echo ">> Smoke Test: Monte Carlo Option Pricing..."
 make run_cpu_montecarlo
 
-echo ""
-echo ">> Smoke Test: Cryptography (SHA-256 / SHA-512)..."
-make run_cpu_cryptography
 
-echo ""
-echo ">> Smoke Test: Principal Component Analysis (PCA)..."
-make run_cpu_pca
 
-echo ""
-echo ">> Smoke Test: K-Means Clustering..."
-make run_cpu_kmeans
 
 # 3. Execute full parameter sweeps
 echo ""
 echo "======================================================================"
-echo "─── [3/3] Executing Full Parameter Sweeps (All 8 Workloads) ───"
+echo "─── [3/3] Executing Full Parameter Sweeps (native cross-check benches) ───"
 echo "======================================================================"
 
 echo ""
-echo ">>> [Sweep 1/8] Starting GEMM Sweep..."
+echo ">>> [Sweep 1/5] Starting GEMM Sweep..."
 make sweep_cpu_gemm
 
 echo ""
-echo ">>> [Sweep 2/8] Starting GEMV / SpMV Sweep..."
+echo ">>> [Sweep 2/5] Starting GEMV / SpMV Sweep..."
 make sweep_cpu_gemv
 
 echo ""
-echo ">>> [Sweep 3/8] Starting SAXPY Sweep..."
+echo ">>> [Sweep 3/5] Starting SAXPY Sweep..."
 make sweep_cpu_saxpy
 
 echo ""
-echo ">>> [Sweep 4/8] Starting SpGEMM Sweep..."
+echo ">>> [Sweep 4/5] Starting SpGEMM Sweep..."
 make sweep_cpu_spgemm
 
 echo ""
-echo ">>> [Sweep 5/8] Starting Monte Carlo Sweep..."
+echo ">>> [Sweep 5/5] Starting Monte Carlo Sweep..."
 make sweep_cpu_montecarlo
 
-echo ""
-echo ">>> [Sweep 6/8] Starting Cryptography Sweep..."
-make sweep_cpu_cryptography
 
-echo ""
-echo ">>> [Sweep 7/8] Starting PCA Sweep..."
-make sweep_cpu_pca
 
-echo ""
-echo ">>> [Sweep 8/8] Starting K-Means Sweep..."
-make sweep_cpu_kmeans
 
 END_TOTAL=$(date +%s)
 ELAPSED=$((END_TOTAL - START_TOTAL))

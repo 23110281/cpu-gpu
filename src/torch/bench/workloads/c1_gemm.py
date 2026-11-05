@@ -22,7 +22,7 @@ from . import _blas
 from . import _common as C
 from ._blas import CPU_LIBS
 
-SIZES = [1024, 2048, 4096, 8192, 16384]
+SIZES = [1024, 2048, 4096, 8192]   # 16384 dropped: ~10 s/call fp64, peak already reached at 8192
 
 
 class Gemm(Workload):

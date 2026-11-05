@@ -10,8 +10,9 @@
                             -- e.g. EPYC 7402P: Triad 91.2 -> 121.6, Copy 83.4 -> 125.0, Dot 123.8.
                             GPU ceiling = reported Triad (no write-allocate for full-line stores).
                             Raw per-kernel rates are stored in provenance.
-  measured.peak_gflops[p]   best C1 GEMM median throughput over the two largest sizes,
-                            measured by the v2 harness itself (publication policy).
+  measured.peak_gflops[p]   best C1 GEMM median throughput at N=8192 over every BLAS library
+                            on the node (torch/OpenBLAS/BLIS on CPU, cuBLAS on GPU), measured by
+                            the v2 harness itself (publication policy).
   datasheet.*               copied from configs/devices/<DEVICE>.json "datasheet" with derivation.
 Writes results/calibration/<DEVICE>.json (raw BabelStream output kept for provenance).
 
@@ -80,10 +81,10 @@ def dram_traffic_gbps(rates: dict, device_class: str) -> float:
     return max(rates[k] * WRITE_ALLOCATE[k] for k in rates)
 
 
-def run_gemm(dev: dict, n: int, precision: str, placement: str) -> float:
+def run_gemm(dev: dict, n: int, precision: str, placement: str, lib: str = "torch") -> float:
     env = dict(os.environ, PYTHONPATH=str(REPO / "src" / "torch"))
     prefix = []
-    args = ["--workload", "C1", "--params", json.dumps({"precision": precision, "variant": "base", "n": n}),
+    args = ["--workload", "C1", "--params", json.dumps({"precision": precision, "variant": "base", "n": n, "lib": lib}),
             "--device-id", dev["device_id"], "--out", str(REPO / "results" / "calibration" / "_runs")]
     if dev["device_class"] == "cpu":
         p = devices.resolve_placement(placement)
@@ -151,9 +152,16 @@ def main():
     # ── compute: best GEMM from the harness ─────────────────────────────────
     if not a.skip_gemm:
         peaks = {}
+        libs = ("torch", "openblas", "blis") if cls == "cpu" else ("torch",)
         for prec in ("fp32", "fp64"):
-            vals = {sz: run_gemm(dev, sz, prec, a.placement) for sz in (8192, 16384)}
-            peaks[prec] = max(vals.values())
+            vals = {}
+            for lib in libs:                       # peak = best well-known library at N=8192
+                try:
+                    vals[lib] = run_gemm(dev, 8192, prec, a.placement, lib)
+                except Exception as e:  # library absent on this node
+                    vals[lib] = f"unavailable: {str(e)[:80]}"
+            nums = [v for v in vals.values() if isinstance(v, float)]
+            peaks[prec] = max(nums)
             rec["provenance"][f"gemm_{prec}"] = vals
             print(f"GEMM {prec}: {vals} -> peak {peaks[prec]:.0f} GFLOP/s")
         rec["measured"]["peak_gflops"] = peaks

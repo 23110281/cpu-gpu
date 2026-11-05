@@ -273,7 +273,12 @@ plots: venv
 	SOURCE_DATE_EPOCH=0 .venv/bin/python results/plotting/cpu/generate_cpu_gemv_plots.py
 	SOURCE_DATE_EPOCH=0 .venv/bin/python results/plotting/cpu/generate_cpu_saxpy_plots.py
 	SOURCE_DATE_EPOCH=0 .venv/bin/python results/plotting/cpu/generate_cpu_spgemm_plots.py
+	SOURCE_DATE_EPOCH=0 .venv/bin/python results/plotting/v2/analyze.py
 	.venv/bin/python results/generate_index.py
+
+# v2 analysis only: headline tables, library comparison, bound checks, ratios, plots
+analysis:
+	$(PYTHON) results/plotting/v2/analyze.py
 
 # Regenerate only the dashboard (index.html + workload status/TODO matrix)
 index: venv

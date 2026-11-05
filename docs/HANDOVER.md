@@ -135,7 +135,7 @@ Rows marked *fixed 2026-11-06* were changed after that campaign and need re-meas
 
 ## 9. Next work, in priority order
 1. **CPU node test session** (user will book): setup, `pytest` (all 38 must pass, including the new B2/C3/A1 native and BLAS tests), smoke, calibration, full sweep, pull, `make analysis`, review `bounds.csv` (B2 >= 60% bandwidth? C3 % of peak? A1 decode GB/s by library? S1/S2 scaling).
-2. **GPU node test session**: same, plus `make bench_smoke_cuda`. First hour = fix any CUDA build/launch issue (none of B2, C2, C3, C5, C8, C9, S2 CUDA code has ever been compiled). Check C8/C9 CPU vs GPU byte-identical output.
+2. **GPU node test session**: same, plus `make bench_smoke_cuda`. `setup_v2_harness.sh gpu` now installs the torch wheel matching nvcc's CUDA major version (a mismatch makes torch refuse to build every native CUDA kernel); check its log line. First hour = fix any CUDA build/launch issue (none of B2, C2, C3, C5, C8, C9, S2 CUDA code has ever been compiled). Check C8/C9 CPU vs GPU byte-identical output.
 3. Group A (user deferred): automated run + periodic copy-back.
 4. GEMM cross-check outliers (perf counters); native benches per-iteration samples; `lock_clocks.sh` (decide keep/drop); GH200 C2C study (decide keep/drop).
 5. SuiteSparse for B3/B4; pyFFTW for C4; llama.cpp rows.

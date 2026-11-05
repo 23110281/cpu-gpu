@@ -82,3 +82,34 @@ def gemm_fn(name: str, dtype_name: str):
         fn(CBLAS_ROW_MAJOR, CBLAS_NO_TRANS, CBLAS_NO_TRANS, n, m, k, one,
            A.data_ptr(), k, B.data_ptr(), m, zero, C.data_ptr(), m)
     return f
+
+
+CBLAS_TRANS = 112
+
+
+def linear_fn(name: str, dtype_name: str):
+    """Returns f(X, W, Y) computing Y = X @ W.T (an nn.Linear without bias) for contiguous
+    row-major X [M, K], W [N, K], Y [M, N]. M == 1 (LLM decode at batch 1) calls ?gemv
+    directly -- not every library forwards a 1-row GEMM to its GEMV kernel."""
+    lib, _ = load(name)
+    if dtype_name == "fp32":
+        mm, mv, scal = lib.cblas_sgemm, lib.cblas_sgemv, ctypes.c_float
+    elif dtype_name == "fp64":
+        mm, mv, scal = lib.cblas_dgemm, lib.cblas_dgemv, ctypes.c_double
+    else:
+        raise Unsupported(f"{name}: no {dtype_name} GEMM")
+    i, p = ctypes.c_int, ctypes.c_void_p
+    mm.argtypes = [i, i, i, i, i, i, scal, p, i, p, i, scal, p, i]
+    mv.argtypes = [i, i, i, i, scal, p, i, p, i, scal, p, i]
+    mm.restype = mv.restype = None
+    one, zero = scal(1.0), scal(0.0)
+
+    def f(X, W, Y):
+        m, k = X.shape
+        n = W.shape[0]
+        if m == 1:
+            mv(CBLAS_ROW_MAJOR, CBLAS_NO_TRANS, n, k, one, W.data_ptr(), k, X.data_ptr(), 1, zero, Y.data_ptr(), 1)
+        else:
+            mm(CBLAS_ROW_MAJOR, CBLAS_NO_TRANS, CBLAS_TRANS, m, n, k, one,
+               X.data_ptr(), k, W.data_ptr(), k, zero, Y.data_ptr(), n)
+    return f

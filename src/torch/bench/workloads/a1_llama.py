@@ -12,6 +12,10 @@ Equal work: identical shapes, seeds, precision and token inputs on both devices.
 Library: torch eager -- matmuls via oneDNN/MKL (CPU) / cuBLAS (GPU),
 F.scaled_dot_product_attention (flash/mem-efficient on GPU, flash CPU kernel), GQA via
 enable_gqa. Precision: fp32 everywhere; bf16 (variant ff) only where native.
+CPU fp32 linear layers (config key `lib`, as in C1): torch (MKL on x86 wheels), OpenBLAS,
+BLIS -- the fastest is kept. Batch-1 decode is pure GEMV over the weights; on EPYC 7402P
+torch/MKL streamed only ~20 GB/s (one core's worth of the 125 GB/s socket), while the same
+call on Intel runs at the full read rate, so the alternative CBLAS libraries are timed too.
 Validation: a 2-layer instance of the same configuration (same code path per layer) is run
 in the benchmark precision and in fp64 on the CPU; normwise error of the logits
 (tol: fp32 1e-4, bf16 5e-2). Timing always uses the full model.
@@ -24,8 +28,9 @@ import math
 import torch
 import torch.nn.functional as F
 
-from ..core import Ctx, Workload
+from ..core import Ctx, Unsupported, Workload
 from ..validate import normwise
+from . import _blas
 from . import _common as C
 
 MODELS = {   # hidden, layers, heads, kv_heads, intermediate, vocab, tied embedding/LM head (as released)
@@ -86,9 +91,25 @@ def apply_rope(x, cos, sin):
     return x * c + torch.cat([-x2, x1], -1) * s
 
 
-def forward(model: Model, tokens, kv_cache=None, pos0=0):
+def torch_linear(x, w):
+    return x @ w.T
+
+
+def blas_linear(lib: str, prec: str):
+    """x [..., K] @ w[N, K].T through a CBLAS library (CPU, contiguous tensors)."""
+    f = _blas.linear_fn(lib, prec)
+
+    def mm(x, w):
+        x2 = x.reshape(-1, x.shape[-1]).contiguous()
+        y = torch.empty(x2.shape[0], w.shape[0], dtype=x.dtype)
+        f(x2, w, y)
+        return y.view(*x.shape[:-1], w.shape[0])
+    return mm
+
+
+def forward(model: Model, tokens, kv_cache=None, pos0=0, mm=torch_linear):
     """tokens [B, S]. kv_cache: list of (k, v) [B, kv, P, hd] (decode) or None (prefill).
-    Returns logits of the last position [B, V]."""
+    mm(x, w) = x @ w.T for every linear layer. Returns logits of the last position [B, V]."""
     m, hd = model.m, model.hd
     B, S = tokens.shape
     x = model.emb[tokens]
@@ -96,9 +117,9 @@ def forward(model: Model, tokens, kv_cache=None, pos0=0):
     cos, sin = rope_tables(positions, hd, x.dtype, x.device)
     for li, l in enumerate(model.layers):
         h = rmsnorm(x, l["n1"])
-        q = (h @ l["wq"].T).view(B, S, m["h"], hd).transpose(1, 2)
-        k = (h @ l["wk"].T).view(B, S, m["kv"], hd).transpose(1, 2)
-        v = (h @ l["wv"].T).view(B, S, m["kv"], hd).transpose(1, 2)
+        q = mm(h, l["wq"]).view(B, S, m["h"], hd).transpose(1, 2)
+        k = mm(h, l["wk"]).view(B, S, m["kv"], hd).transpose(1, 2)
+        v = mm(h, l["wv"]).view(B, S, m["kv"], hd).transpose(1, 2)
         q, k = apply_rope(q, cos, sin), apply_rope(k, cos, sin)
         if kv_cache is not None:
             kc, vc = kv_cache[li]
@@ -107,24 +128,28 @@ def forward(model: Model, tokens, kv_cache=None, pos0=0):
             a = F.scaled_dot_product_attention(q, k, v, enable_gqa=True)        # new token sees all past
         else:
             a = F.scaled_dot_product_attention(q, k, v, is_causal=True, enable_gqa=True)
-        x = x + a.transpose(1, 2).reshape(B, S, m["h"] * hd) @ l["wo"].T
+        x = x + mm(a.transpose(1, 2).reshape(B, S, m["h"] * hd), l["wo"])
         h = rmsnorm(x, l["n2"])
-        x = x + (F.silu(h @ l["wg"].T) * (h @ l["wu"].T)) @ l["wd"].T
+        x = x + mm(F.silu(mm(h, l["wg"])) * mm(h, l["wu"]), l["wd"])
     x = rmsnorm(x[:, -1], model.norm)
-    return x @ model.lm.T
+    return mm(x, model.lm)
 
 
 class Llama(Workload):
     id, name, bound, field_ = "A1", "llama3", "A", "LLM / AI"
 
     def configs(self, device_class=None):
+        cpu_libs = _blas.CPU_LIBS if device_class in (None, "cpu") else ("torch",)
         out = []
-        for prec, var in (("fp32", "base"), ("bf16", "ff")):
-            for mdl in MODELS:
-                for S in (512, 2048):
-                    out.append({"precision": prec, "variant": var, "model": mdl, "phase": "prefill", "batch": 1, "seq": S})
-                for B in (1, 8, 32):
-                    out.append({"precision": prec, "variant": var, "model": mdl, "phase": "decode", "batch": B, "seq": 1})
+        for prec, var, libs in (("fp32", "base", cpu_libs), ("bf16", "ff", ("torch",))):
+            for lib in libs:
+                for mdl in MODELS:
+                    for S in (512, 2048):
+                        out.append({"precision": prec, "variant": var, "model": mdl, "phase": "prefill",
+                                    "batch": 1, "seq": S, "lib": lib})
+                    for B in (1, 8, 32):
+                        out.append({"precision": prec, "variant": var, "model": mdl, "phase": "decode",
+                                    "batch": B, "seq": 1, "lib": lib})
         return out
 
     def _kv_bytes(self, p):
@@ -149,6 +174,14 @@ class Llama(Workload):
     def library(self, ctx):
         return C.library_tag(ctx, "llama-eager/sdpa+" + ("oneDNN" if ctx.device_class == "cpu" else "cuBLAS"))
 
+    def _library_for(self, p, ctx):
+        lib = p.get("lib", "torch")
+        if lib == "torch":
+            return self.library(ctx)
+        if ctx.device_class != "cpu":
+            raise Unsupported(f"{lib} is a CPU library")
+        return f"llama-eager/sdpa+linear={lib}/{_blas.version(lib)}"
+
     def _inputs(self, p, m, device, dtype, gen):
         B, S = p["batch"], p["seq"]
         tokens = torch.randint(0, m["V"], (B, S), generator=gen, device=device)
@@ -162,22 +195,29 @@ class Llama(Workload):
 
     def setup(self, p, ctx: Ctx):
         C.require_native(p, ctx)
+        lib = p.get("lib", "torch")
+        if lib == "torch":
+            mm = torch_linear
+        elif ctx.device_class != "cpu":
+            raise Unsupported(f"{lib} is a CPU library")
+        else:
+            mm = blas_linear(lib, p["precision"])
         m, dt = MODELS[p["model"]], C.DTYPE[p["precision"]]
         model = Model(m, m["L"], dt, ctx.device, ctx.generator(1))
         tokens, cache = self._inputs(p, m, ctx.device, dt, ctx.generator(2))
         pos0 = KV_LEN if p["phase"] == "decode" else 0
         torch.set_grad_enabled(False)
-        return {"model": model, "tokens": tokens, "cache": cache, "pos0": pos0, "p": p, "dt": dt}
+        return {"model": model, "tokens": tokens, "cache": cache, "pos0": pos0, "p": p, "dt": dt, "mm": mm}
 
     def call(self, s):
-        s["out"] = forward(s["model"], s["tokens"], s["cache"], s["pos0"])
+        s["out"] = forward(s["model"], s["tokens"], s["cache"], s["pos0"], s["mm"])
 
     def validate(self, s, ctx):
         p, m = s["p"], MODELS[s["p"]["model"]]
         small = Model(m, 2, s["dt"], ctx.device, ctx.generator(1))
         tokens = s["tokens"]
         cache = None if s["cache"] is None else s["cache"][:2]
-        got = forward(small, tokens, cache, s["pos0"]).float().cpu()
+        got = forward(small, tokens, cache, s["pos0"], s["mm"]).float().cpu()
         ref = forward(small.to(torch.float64, "cpu"), tokens.cpu(),
                       None if cache is None else [(k.double().cpu(), v.double().cpu()) for k, v in cache],
                       s["pos0"])

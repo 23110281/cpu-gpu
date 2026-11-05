@@ -38,56 +38,109 @@ _C_TABLE = "\n".join([
     "static const double WQ[19] = {" + ",".join(repr(w) for w in WEIGHTS) + "};",
 ])
 
-_CPU_SRC = r"""
-#include <torch/extension.h>
+def _cell_code(xm: str, x: str, xp: str, out: str) -> str:
+    """Fully unrolled pull + BGK collide of one cell as straight-line C++ on 19 named scalars
+    (no f[19] array, no loops over direction tables): GCC vectorises the x loop around it.
+    `out` is a format string for the destination of direction i, e.g. "t[{i}][x - x0]"."""
+    L = []
+    for i, (cx, cy, cz) in enumerate(CVEC):
+        L.append(f"const T f{i} = r{i}[{xm if cx > 0 else xp if cx < 0 else x}];")
+    L.append("const T rho = " + " + ".join(f"f{i}" for i in range(19)) + ";")
+    L.append("const T inv = T(1) / rho;")
+    for ax, name in enumerate(("ux", "uy", "uz")):
+        pos = [f"f{i}" for i, c in enumerate(CVEC) if c[ax] > 0]
+        neg = [f"f{i}" for i, c in enumerate(CVEC) if c[ax] < 0]
+        L.append(f"const T {name} = (({' + '.join(pos)}) - ({' + '.join(neg)})) * inv;")
+    L.append("const T usq = T(1.5) * (ux * ux + uy * uy + uz * uz);")
+    for i, c in enumerate(CVEC):
+        terms = [("+" if v > 0 else "-") + n for v, n in zip(c, ("ux", "uy", "uz")) if v]
+        w = repr(WEIGHTS[i])
+        if terms:
+            L.append(f"{{ const T cu = T(3) * ({' '.join(terms).lstrip('+')}); "
+                     f"{out.format(i=i)} = f{i} - omega * (f{i} - T({w}) * rho * (T(1) + cu + T(0.5) * cu * cu - usq)); }}")
+        else:
+            L.append(f"{out.format(i=i)} = f{i} - omega * (f{i} - T({w}) * rho * (T(1) - usq));")
+    return "\n        ".join(L)
+
+
+def _cpu_core() -> str:
+    """Torch-free C++ core (also compiled stand-alone by the vectorisation check).
+    Per (z, y) row: 19 restrict source-row pointers; x in chunks of LBM_CHUNK cells computed
+    into an L1-resident buffer by a vectorised loop (edges x=0, x=n-1 wrap, done scalar),
+    then written with non-temporal (streaming) stores on x86/AVX: dst is write-only, so a
+    normal store would first read every line (write-allocate), +50% DRAM traffic."""
+    ptrs = "\n      ".join(
+        f"const T* __restrict r{i} = src + {i} * N3 + (((z - ({c[2]}) + n) % n) * n + (y - ({c[1]}) + n) % n) * n;"
+        for i, c in enumerate(CVEC))
+    return r"""
+#include <cstdint>
+#include <cstring>
 #include <omp.h>
-""" + _C_TABLE + r"""
+#if defined(__AVX__) && !defined(LBM_NO_STREAM)
+#define LBM_STREAM 1
+#include <immintrin.h>
+#endif
+#define LBM_CHUNK 64
+
+static inline void lbm_store_row(float* __restrict d, const float* __restrict s, int64_t len) {
+#if defined(LBM_STREAM)
+  if ((reinterpret_cast<uintptr_t>(d) & 31) == 0 && len % 8 == 0) {
+    for (int64_t k = 0; k < len; k += 8) _mm256_stream_ps(d + k, _mm256_load_ps(s + k));
+    return;
+  }
+#endif
+  std::memcpy(d, s, len * sizeof(float));
+}
+static inline void lbm_store_row(double* __restrict d, const double* __restrict s, int64_t len) {
+#if defined(LBM_STREAM)
+  if ((reinterpret_cast<uintptr_t>(d) & 31) == 0 && len % 4 == 0) {
+    for (int64_t k = 0; k < len; k += 4) _mm256_stream_pd(d + k, _mm256_load_pd(s + k));
+    return;
+  }
+#endif
+  std::memcpy(d, s, len * sizeof(double));
+}
+
 template <typename T>
-static inline void collide(T f[19], T omega) {
-  T rho = 0, ux = 0, uy = 0, uz = 0;
-  for (int i = 0; i < 19; ++i) { rho += f[i]; ux += f[i] * CX[i]; uy += f[i] * CY[i]; uz += f[i] * CZ[i]; }
-  const T inv = T(1) / rho; ux *= inv; uy *= inv; uz *= inv;
-  const T usq = T(1.5) * (ux * ux + uy * uy + uz * uz);
-  for (int i = 0; i < 19; ++i) {
-    const T cu = T(3) * (CX[i] * ux + CY[i] * uy + CZ[i] * uz);
-    const T feq = T(WQ[i]) * rho * (T(1) + cu + T(0.5) * cu * cu - usq);
-    f[i] -= omega * (f[i] - feq);
+static void lbm_step(const T* __restrict src, T* __restrict dst, int64_t n, T omega) {
+  const int64_t N3 = n * n * n;
+  #pragma omp parallel
+  {
+    alignas(64) T t[19][LBM_CHUNK];
+    #pragma omp for collapse(2) schedule(static)
+    for (int64_t z = 0; z < n; ++z)
+      for (int64_t y = 0; y < n; ++y) {
+      """ + ptrs + r"""
+      const int64_t orow = (z * n + y) * n;
+      for (int64_t x0 = 0; x0 < n; x0 += LBM_CHUNK) {
+        const int64_t len = (n - x0 < LBM_CHUNK) ? (n - x0) : LBM_CHUNK;
+        const int64_t lo = x0 > 1 ? x0 : 1, hi = (x0 + len < n - 1) ? (x0 + len) : (n - 1);
+        #pragma omp simd
+        for (int64_t x = lo; x < hi; ++x) {
+        """ + _cell_code("x - 1", "x", "x + 1", "t[{i}][x - x0]") + r"""
+        }
+        if (x0 == 0) { const int64_t x = 0, xm = n - 1, xp = 1;
+        """ + _cell_code("xm", "x", "xp", "t[{i}][x - x0]") + r"""
+        }
+        if (x0 + len == n) { const int64_t x = n - 1, xm = n - 2, xp = 0;
+        """ + _cell_code("xm", "x", "xp", "t[{i}][x - x0]") + r"""
+        }
+        for (int i = 0; i < 19; ++i) lbm_store_row(dst + i * N3 + orow + x0, t[i], len);
+      }
+    }
+#if defined(LBM_STREAM)
+    _mm_sfence();          // streaming stores are weakly ordered: fence before the step ends
+#endif
   }
 }
-template <typename T>
-static void step(const T* __restrict src, T* __restrict dst, int64_t n, T omega) {
-  const int64_t N3 = n * n * n;
-  #pragma omp parallel for collapse(2) schedule(static)
-  for (int64_t z = 0; z < n; ++z)
-    for (int64_t y = 0; y < n; ++y) {
-      const T* rows[19];
-      for (int i = 0; i < 19; ++i) {
-        const int64_t zz = (z - CZ[i] + n) % n, yy = (y - CY[i] + n) % n;
-        rows[i] = src + i * N3 + (zz * n + yy) * n;
-      }
-      T* out = dst + (z * n + y) * n;
-      auto cell = [&](int64_t x, int64_t xm, int64_t xp) {
-        T f[19];
-        for (int i = 0; i < 19; ++i) f[i] = rows[i][CX[i] > 0 ? xm : (CX[i] < 0 ? xp : x)];
-        collide(f, omega);
-        for (int i = 0; i < 19; ++i) out[i * N3 + x] = f[i];
-      };
-      cell(0, n - 1, 1);
-      #pragma omp simd
-      for (int64_t x = 1; x < n - 1; ++x) {
-        T f[19];
-        #pragma GCC unroll 19
-        for (int i = 0; i < 19; ++i) f[i] = rows[i][x - CX[i]];
-        collide(f, omega);
-        #pragma GCC unroll 19
-        for (int i = 0; i < 19; ++i) out[i * N3 + x] = f[i];
-      }
-      cell(n - 1, n - 2, 0);
-    }
-}
+"""
+
+
+CPU_CORE = _cpu_core()
+_CPU_SRC = "#include <torch/extension.h>\n" + CPU_CORE + r"""
 void lbm_step_cpu(torch::Tensor src, torch::Tensor dst, int64_t n, double omega) {
-  if (src.scalar_type() == torch::kFloat64) step<double>(src.data_ptr<double>(), dst.data_ptr<double>(), n, omega);
-  else step<float>(src.data_ptr<float>(), dst.data_ptr<float>(), n, (float)omega);
+  if (src.scalar_type() == torch::kFloat64) lbm_step<double>(src.data_ptr<double>(), dst.data_ptr<double>(), n, omega);
+  else lbm_step<float>(src.data_ptr<float>(), dst.data_ptr<float>(), n, (float)omega);
 }
 """
 
@@ -136,7 +189,7 @@ def _cpu_ext():
     from ._cpusort import _ensure_ninja_on_path
     _ensure_ninja_on_path()
     try:
-        return load_inline(name="bench_lbm_cpu_v1", cpp_sources=_CPU_SRC, functions=["lbm_step_cpu"],
+        return load_inline(name="bench_lbm_cpu_v2", cpp_sources=_CPU_SRC, functions=["lbm_step_cpu"],
                            extra_cflags=["-O3", "-march=native", "-fopenmp"], extra_ldflags=["-fopenmp"])
     except Exception as e:
         raise Unsupported(f"LBM CPU extension build failed: {str(e)[:140]}") from e

@@ -229,3 +229,94 @@ def test_search_keys_fit_int32_and_are_sorted():
     st = WORKLOAD.setup({"keys": 1 << 14, "queries": 1 << 10, "order": "random", "precision": "int32",
                          "variant": "base"}, ctx)
     assert bool((st["keys"][1:] > st["keys"][:-1]).all())
+
+
+# ── native kernels and library variants added for the weak CPU baselines (B2, C3, A1) ──
+def _cpu_ctx(threads=2):
+    from bench.core import Ctx
+    return Ctx("cpu", torch.device("cpu"), "t", 1, "node", 0, threads, False, 32 << 20)
+
+
+@pytest.mark.parametrize("n", [20, 64])
+@pytest.mark.parametrize("prec", ["fp32", "fp64"])
+def test_lbm_cpu_kernel_matches_reference(n, prec):
+    """Generated scalar-variable D3Q19 kernel (vectorised x loop, streaming stores) == fp64 reference.
+    n=20 exercises the partial chunk and the unaligned (non-streaming) store path."""
+    from bench.core import Unsupported
+    from bench.workloads import b2_lbm as M
+    try:
+        ext = M._cpu_ext()
+    except Unsupported as e:
+        pytest.skip(str(e))
+    dt = torch.float32 if prec == "fp32" else torch.float64
+    f = M.initial_state(n, dt, "cpu", torch.Generator().manual_seed(1))
+    out = torch.empty_like(f)
+    ext.lbm_step_cpu(f, out, n, 1.0 / M.TAU)
+    ref = M.reference_step(f, 1.0 / M.TAU)
+    err = float((out.double() - ref).norm() / ref.norm())
+    assert err <= (1e-5 if prec == "fp32" else 1e-12)
+
+
+@pytest.mark.parametrize("k", [3, 5, 7])
+@pytest.mark.parametrize("c", [1, 3])
+def test_conv_native_cpu_validates(k, c):
+    from bench.core import Unsupported
+    from bench.workloads.c3_conv import WORKLOAD
+    p = {"precision": "fp32", "variant": "base", "hw": 37, "k": k, "c": c, "lib": "native"}
+    try:
+        s = WORKLOAD.setup(p, _cpu_ctx())
+    except Unsupported as e:
+        pytest.skip(str(e))
+    assert WORKLOAD.validate(s, _cpu_ctx()).ok
+
+
+@pytest.mark.parametrize("lib", ["openblas", "blis"])
+def test_llama_blas_linear_matches_torch(lib, monkeypatch):
+    """A1 CPU library variants: CBLAS gemv (decode B=1) / gemm (B>1, prefill) == torch matmul."""
+    from bench.core import Unsupported
+    from bench.workloads import _blas, a1_llama as A
+    try:
+        _blas.load(lib)
+    except Unsupported as e:
+        pytest.skip(str(e))
+    tiny = dict(d=64, L=2, h=4, kv=2, ff=128, V=257, tied=False)
+    monkeypatch.setitem(A.MODELS, "tiny", tiny)
+    monkeypatch.setattr(A, "KV_LEN", 16)
+    for phase, B, S in (("decode", 1, 1), ("decode", 8, 1), ("prefill", 1, 12)):
+        p = {"precision": "fp32", "variant": "base", "model": "tiny", "phase": phase, "batch": B, "seq": S, "lib": lib}
+        s = A.WORKLOAD.setup(p, _cpu_ctx())
+        assert A.WORKLOAD.validate(s, _cpu_ctx()).ok
+        want = A.forward(s["model"], s["tokens"], s["cache"], s["pos0"])
+        got = A.forward(s["model"], s["tokens"], s["cache"], s["pos0"], s["mm"])
+        assert float((got - want).norm() / want.norm()) < 1e-5
+
+
+def test_llama_configs_cpu_libs_fp32_only():
+    from bench.workloads.a1_llama import WORKLOAD
+    cpu, gpu = WORKLOAD.configs("cpu"), WORKLOAD.configs("gpu")
+    assert {c["lib"] for c in cpu if c["precision"] == "bf16"} == {"torch"}
+    assert {c["lib"] for c in cpu if c["precision"] == "fp32"} == {"torch", "openblas", "blis"}
+    assert {c["lib"] for c in gpu} == {"torch"}
+
+
+def test_analysis_library_label():
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "results" / "plotting" / "v2"))
+        import analyze
+    except Exception as e:                       # pandas missing/broken on this machine
+        pytest.skip(f"analysis deps unavailable: {e}")
+    assert analyze.lib_label('{"lib": "blis", "n": 4}', "blis/BLIS 0.9") == "blis"
+    assert analyze.lib_label('{"n": 64}', "native C++/OpenMP+SIMD D3Q19 BGK") == "native"
+    assert analyze.lib_label('{"n": 64}', "torch2.14.0/add_/blas=mkl") == "torch"
+    assert analyze.lib_label('{"bytes": 1}', "OpenSSL 3.0.13 EVP") == "openssl"
+
+
+def test_preflight_oom_row_has_provenance(tmp_path):
+    from bench import sweep
+    from bench.workloads import get
+    w = get("B1")
+    c = w.configs("cpu")[0]
+    dcfg = {"device_id": "TEST", "device_class": "cpu", "max_mem_gb": 0.0}
+    sweep._preflight_oom_row(w, c, dcfg, "socket0", 1, "cTEST", tmp_path)
+    rows = schema.read_rows(schema.output_paths(tmp_path, "cpu", "TEST", w.id, w.name)["rows"])
+    assert rows[0]["status"] == "oom" and len(rows[0]["git_sha"]) >= 7

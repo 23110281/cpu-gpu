@@ -173,3 +173,44 @@ def test_config_grids_identical_across_devices():
     for w in registry().values():
         assert w.configs() == w.configs()
         assert all("precision" in c and "variant" in c for c in w.configs())
+
+
+# ── C2 Monte Carlo RNG: Philox4x32-10 known-answer tests (Random123 kat_vectors) ──
+PHILOX_KAT = [
+    ((0, 0, 0, 0), (0, 0), (0x6627e8d5, 0xe169c58d, 0xbc57ac4c, 0x9b00dbd8)),
+    ((0xffffffff,) * 4, (0xffffffff, 0xffffffff), (0x408f276d, 0x41c83b0e, 0xa20bc7c6, 0x6d5451fd)),
+]
+
+
+def _philox_py(c, k):
+    """Independent pure-Python Philox4x32-10 (reference for the C++/CUDA kernels)."""
+    M0, M1, W0, W1, m = 0xD2511F53, 0xCD9E8D57, 0x9E3779B9, 0xBB67AE85, 0xFFFFFFFF
+    c0, c1, c2, c3 = c
+    k0, k1 = k
+    for _ in range(10):
+        p0, p1 = M0 * c0, M1 * c2
+        c0, c1, c2, c3 = ((p1 >> 32) ^ c1 ^ k0) & m, p1 & m, ((p0 >> 32) ^ c3 ^ k1) & m, p0 & m
+        k0, k1 = (k0 + W0) & m, (k1 + W1) & m
+    return (c0, c1, c2, c3)
+
+
+@pytest.mark.parametrize("ctr,key,expect", PHILOX_KAT)
+def test_philox_python_reference_kat(ctr, key, expect):
+    assert _philox_py(ctr, key) == expect
+
+
+@pytest.mark.parametrize("ctr,key,expect", PHILOX_KAT)
+def test_philox_cpu_kernel_kat(ctr, key, expect):
+    from bench.core import Unsupported
+    from bench.workloads import _mc_ext
+    try:
+        ext = _mc_ext.cpu()
+    except Unsupported as e:
+        pytest.skip(str(e))
+    assert tuple(v & 0xFFFFFFFF for v in ext.philox_kat(*ctr, *key)) == expect
+
+
+def test_black_scholes_reference():
+    from bench.workloads.c2_montecarlo import black_scholes_call
+    # textbook value: S=100, K=105, r=5%, sigma=20%, T=1  ->  8.0214 (Hull)
+    assert black_scholes_call(100, 105, 0.05, 0.2, 1.0) == pytest.approx(8.02135, abs=1e-4)

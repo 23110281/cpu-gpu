@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 """M2: per-device ceilings for pct_measured_peak (docs/methodology.md §10, plan A12).
 
-  measured.bandwidth_gbps   BabelStream (UoB-HPC, well-known) Triad, OpenMP backend on CPU
-                            (CUDA backend on GPU), arrays >= 32x LLC, pinned like the harness,
-                            median of `--reps` independent runs (each = BabelStream's own 100 iters).
+  measured.bandwidth_gbps   BabelStream (UoB-HPC, well-known), OpenMP backend on CPU (CUDA on GPU),
+                            arrays >= 32x LLC, pinned like the harness, median of `--reps` runs.
+                            Expressed as ACTUAL DRAM traffic, the convention the workloads use
+                            (compulsory bytes). BabelStream/STREAM count Triad as 3 arrays, but on
+                            CPUs a normal store first reads the line (write-allocate), so Triad
+                            moves 4 arrays and Copy 3: CPU ceiling = max(Dot, Triad*4/3, Copy*3/2)
+                            -- e.g. EPYC 7402P: Triad 91.2 -> 121.6, Copy 83.4 -> 125.0, Dot 123.8.
+                            GPU ceiling = reported Triad (no write-allocate for full-line stores).
+                            Raw per-kernel rates are stored in provenance.
   measured.peak_gflops[p]   best C1 GEMM median throughput over the two largest sizes,
                             measured by the v2 harness itself (publication policy).
   datasheet.*               copied from configs/devices/<DEVICE>.json "datasheet" with derivation.
@@ -54,14 +60,24 @@ def build_babelstream(model: str) -> Path:
     return exe
 
 
-def run_babelstream(exe: Path, n_elems: int, env: dict, prefix: list[str]) -> tuple[float, str]:
+def run_babelstream(exe: Path, n_elems: int, env: dict, prefix: list[str]) -> tuple[dict, str]:
+    """Returns {kernel: GB/s as reported by BabelStream} and the raw output."""
     out = sh(prefix + [str(exe), "-s", str(n_elems), "-n", "100"], env=env).stdout
-    m = re.search(r"^Triad\s+([\d.]+)", out, re.M)
-    if not m:
+    scale = 1e-3 if "MBytes/sec" in out else 1.0
+    rates = {k: float(v) * scale for k, v in re.findall(r"^(Copy|Mul|Add|Triad|Dot)\s+([\d.]+)", out, re.M)}
+    if "Triad" not in rates:
         raise RuntimeError("could not parse BabelStream output:\n" + out)
-    unit_mb = "MBytes/sec" in out
-    v = float(m.group(1))
-    return (v / 1e3 if unit_mb else v), out    # -> GB/s
+    return rates, out
+
+
+# extra write-allocate traffic factor per kernel on CPUs (reads of the written line)
+WRITE_ALLOCATE = {"Copy": 3 / 2, "Mul": 3 / 2, "Add": 4 / 3, "Triad": 4 / 3, "Dot": 1.0}
+
+
+def dram_traffic_gbps(rates: dict, device_class: str) -> float:
+    if device_class == "gpu":
+        return rates["Triad"]
+    return max(rates[k] * WRITE_ALLOCATE[k] for k in rates)
 
 
 def run_gemm(dev: dict, n: int, precision: str, placement: str) -> float:
@@ -113,19 +129,24 @@ def main():
     n = 1 << 25
     while 3 * 8 * n < 32 * llc:     # 3 fp64 arrays >= 32 x LLC
         n <<= 1
-    triads, raw = [], []
+    runs, raw = [], []
     for _ in range(a.reps):
-        v, out = run_babelstream(exe, n, env, prefix)
-        triads.append(v)
+        rates, out = run_babelstream(exe, n, env, prefix)
+        runs.append(rates)
         raw.append(out)
-    bw = statistics.median(triads)
+    med = {k: statistics.median(r[k] for r in runs) for k in runs[0]}
+    bw = dram_traffic_gbps(med, cls)
     rec["measured"]["bandwidth_gbps"] = bw
+    rec["measured"]["bandwidth_convention"] = ("actual DRAM traffic incl. write-allocate (CPU)" if cls == "cpu"
+                                              else "BabelStream Triad as reported (GPU)")
     rec["provenance"]["babelstream"] = {
         "url": BABEL_URL, "tag": BABEL_TAG, "model": model, "array_elems": n,
         "array_bytes_total": 3 * 8 * n, "ws_over_llc": 3 * 8 * n / llc,
-        "triad_gbps_runs": triads, "command": " ".join(prefix + [str(exe), "-s", str(n), "-n", "100"]),
-        "raw_output_last": raw[-1]}
-    print(f"BabelStream Triad: median {bw:.1f} GB/s over {a.reps} runs {['%.1f' % t for t in triads]}")
+        "reported_gbps_median": med, "reported_gbps_runs": runs,
+        "write_allocate_factors": WRITE_ALLOCATE if cls == "cpu" else None,
+        "command": " ".join(prefix + [str(exe), "-s", str(n), "-n", "100"]), "raw_output_last": raw[-1]}
+    print("BabelStream (reported, GB/s): " + ", ".join(f"{k} {v:.1f}" for k, v in med.items()))
+    print(f"-> bandwidth ceiling {bw:.1f} GB/s ({rec['measured']['bandwidth_convention']})")
 
     # ── compute: best GEMM from the harness ─────────────────────────────────
     if not a.skip_gemm:

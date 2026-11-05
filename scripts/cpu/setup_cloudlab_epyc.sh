@@ -120,14 +120,14 @@ if command -v setcap >/dev/null 2>&1; then
 fi
 python3 -m pip install --no-cache-dir -q pytest scipy || warn "pytest/scipy install failed"
 # v2 harness: jemalloc (CPU allocator reuse, methodology §4) and BLIS (fastest-BLAS candidate)
-sudo apt-get install -y --no-install-recommends libjemalloc2 libblis3-openmp libtbb-dev python3-dev \
+sudo apt-get install -y --no-install-recommends libjemalloc2 libblis3-openmp libtbb-dev python3-dev libssl-dev \
     || warn "jemalloc/BLIS/TBB/python3-dev install failed (affected variants report 'unsupported')"
 # CAP_SYS_RAWIO (above) puts ld.so in secure mode, which ignores LD_PRELOAD unless the
 # library is named without a slash, lives in a standard directory and is set-user-ID.
 JEMALLOC_SO=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 [ -e "$JEMALLOC_SO" ] && sudo chmod u+s "$(readlink -f "$JEMALLOC_SO")" && ok "jemalloc preloadable under secure mode"
 # ninja: builds the C++ extension for the parallel CPU sorts; OpenCV: fastest image filter
-python3 -m pip install --no-cache-dir -q ninja opencv-python-headless || warn "ninja/opencv install failed"
+python3 -m pip install --no-cache-dir -q ninja opencv-python-headless cryptography || warn "ninja/opencv install failed"
 
 log "Step 4/4: Setting CPU Frequency Governor to 'performance'"
 if command -v cpupower >/dev/null 2>&1; then

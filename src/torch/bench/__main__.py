@@ -13,8 +13,13 @@ from pathlib import Path
 
 
 def _cmd_run(a) -> int:
+    import os
+    early = json.loads(a.params) if a.params else {}
+    for k, v in early.get("_env", {}).items():     # before torch / libcrypto initialise
+        if os.environ.get(k) != v:
+            os.environ[k] = v
     from . import devices, env, schema
-    flags: list[str] = []
+    flags: list[str] = [f"env:{k}" for k in early.get("_env", {})]
     placement = None
     if a.device == "cpu":
         placement = devices.resolve_placement(a.placement)

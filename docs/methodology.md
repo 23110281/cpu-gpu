@@ -88,6 +88,10 @@ The protocol follows the comparison principle of Lee et al. (ISCA'10): compare *
   - Bandwidth workloads: BabelStream Triad.
   - Compute workloads: measured GEMM peak for the same precision.
 - `pct_datasheet_peak` is reported separately.
+- **Bandwidth ceiling convention.** Workloads count compulsory bytes, i.e. real DRAM traffic. STREAM and BabelStream count Triad as 3 arrays, but a normal CPU store first reads the target line (write-allocate), so Triad really moves 4 arrays and Copy 3.
+  - CPU ceiling = max(Dot, Triad·4/3, Copy·3/2, …). On EPYC 7402P: Triad 91.2 → 121.6, Copy 83.4 → 125.0, Dot 123.8 GB/s, consistent with SAXPY's 121 GB/s. SAXPY needs no correction because its output array is also an input.
+  - GPU ceiling = reported Triad.
+  - Raw per-kernel rates are kept in the calibration file.
 
 ## 11. Telemetry (`bench/telemetry.py`)
 - A background sampler runs during the measured window:
@@ -135,7 +139,12 @@ Each of these would have silently produced a weak CPU baseline. The harness or s
    - This invalidated a first glibc-vs-jemalloc comparison, which turned out to be glibc vs glibc.
    - Fix: preload by bare name with the set-user-ID bit on the library.
    - Whether jemalloc is active is now read from `/proc/self/maps`, not from the environment variable.
-7. **Root-only counters.** RAPL `energy_uj` is root-only and `/sys/class/powercap` entries are symlinks, so `chmod -R` misses them. APERF/MPERF MSRs need `CAP_SYS_RAWIO`. Both are fixed in the setup script.
+7. **Monte Carlo was not vectorized** (0.72 → 2.39 Gpaths/s once fixed). Three things each blocked AVX2 vectorization of the path loop, found with `-fopt-info-vec` and by checking libmvec `_ZGV*` symbols:
+   - GCC fuses `sin(θ)`/`cos(θ)` into a scalar `sincos`; the fix computes the second normal as `cos(θ − π/2)`;
+   - an array-based Philox state;
+   - `omp parallel for simd` per-lane reduction arrays.
+8. **OpenSSL 3 one-shot `SHA256()` has per-call provider overhead and global locks.** It reached 82 MB/s per core with 24 threads. The low-level API gives 35 GB/s (1 KB messages) and 13.3 GB/s (64 B), a 17–100× difference.
+9. **Root-only counters.** RAPL `energy_uj` is root-only and `/sys/class/powercap` entries are symlinks, so `chmod -R` misses them. APERF/MPERF MSRs need `CAP_SYS_RAWIO`. Both are fixed in the setup script.
 
 ## Open items
 - **Native C GEMM fp64 at N=8192:** 1600 ms native vs 1237 ms through the harness, with the same OpenBLAS `.so`, the same clock (turbostat) and the same power.

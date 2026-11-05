@@ -145,6 +145,7 @@ def _command(w, c, pl, dcfg, trial, campaign, out_root, smoke):
         args += ["--device", "cuda", "--gpu", str(dcfg.get("gpu_index", 0))]
     if smoke:
         args.append("--smoke")
+    env.update(c.get("_env", {}))     # e.g. OpenSSL capability masks: must precede library init
     return prefix + [sys.executable, "-m", "bench", "run"] + args, env
 
 

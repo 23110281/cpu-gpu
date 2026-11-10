@@ -7,29 +7,57 @@ Inputs : results/analysis/<DEVICE>_libraries.csv   (written by analyze.py; every
          configs/library_notes.json                 (curated explanations; optional)
 Outputs: results/analysis/library_report.csv        one row per (device, problem) with >= 2 libraries
          results/analysis/library_summary.csv       per (device, workload, precision, library): wins, ties, speed vs winner
-         results/analysis/library_report.json       the same, structured (dashboard)
+         results/analysis/variant_effects.csv       base vs each variant (fast-math, hardware-off, ...): not libraries
+         results/analysis/library_report.json       the same, structured (dashboard "Library analysis" page)
          results/analysis/library_report.md         readable tables, winners in bold, notes
+         README.md (with --readme README.md)        the block between the library-table markers
 
 Rules:
   - A library's entry for a problem is its BEST placement (placement is a separate choice).
   - Winner = highest metric (all metrics are higher-is-better rates).
   - tie = the winner's 95% CI overlaps the runner-up's: not a statistically real win.
   - Notes are only shown as written in library_notes.json; nothing is inferred automatically.
+  - COMPARE_IGNORING lets libraries tied to an input type compete (S1: histc needs float input,
+    bincount integer input -- same samples, same bins, same exact counts).
+  - Variants (`variant` != base, same precision) are not libraries: reported as variant effects.
+Only devices with full campaigns appear: the inputs come from results/data/<cpu|gpu>/ (analyze.py),
+never from results/data/sessions/.
 """
 from __future__ import annotations
 
+import argparse
 import fnmatch
 import glob
 import json
 import os
+import sys
 from pathlib import Path
 
 import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from figures import LIB_NAMES  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = Path(os.environ.get("ANALYSIS_OUT", ROOT / "results" / "analysis"))
 CAL = Path(os.environ.get("ANALYSIS_CAL", ROOT / "results" / "calibration"))
 NOTES = Path(os.environ.get("LIBRARY_NOTES", ROOT / "configs" / "library_notes.json"))
+MANIFEST = ROOT / "configs" / "workloads.json"
+COMPARE_IGNORING = {"S1": ("precision",)}
+VARIANT_NAMES = {"ff": "fast-math / fixed-function variant (C5: __expf instead of expf)",
+                 "sw": "hardware crypto instructions disabled (AES-NI / SHA-NI off)"}
+MARK_START, MARK_END = "<!-- library-table:start -->", "<!-- library-table:end -->"
+
+
+def compare_key(wid: str, problem: str) -> str:
+    drop = COMPARE_IGNORING.get(wid)
+    if not drop:
+        return problem
+    return json.dumps({k: v for k, v in sorted(json.loads(problem).items()) if k not in drop}, sort_keys=True)
+
+
+def lib_name(lib: str) -> str:
+    return LIB_NAMES.get(lib, lib)
 
 
 def _calibration(dev: str) -> dict:
@@ -70,8 +98,9 @@ def build() -> tuple[pd.DataFrame, pd.DataFrame]:
     if not frames:
         return pd.DataFrame(), pd.DataFrame()
     df = pd.concat(frames, ignore_index=True)
+    df["cmp"] = [compare_key(w, p) for w, p in zip(df["workload_id"], df["problem"])]
     rows = []
-    for (dev, wid, prob), g in df.groupby(["device", "workload_id", "problem"]):
+    for (dev, wid, prob), g in df.groupby(["device", "workload_id", "cmp"]):
         best = g.sort_values("metric", ascending=False).groupby("lib", as_index=False).first()
         if len(best) < 2:
             continue                                   # single-library problem: nothing to compare
@@ -79,7 +108,7 @@ def build() -> tuple[pd.DataFrame, pd.DataFrame]:
         best = best.sort_values("metric", ascending=False).reset_index(drop=True)
         w, ru = best.iloc[0], best.iloc[1]
         rec = {"device": dev, "workload_id": wid, "workload": w["workload"], "bound": w["bound"],
-               "precision": w["precision"], "variant": w["variant"], "problem": prob,
+               "precision": "/".join(sorted(set(best["precision"]))), "variant": w["variant"], "problem": prob,
                "regime": w["regime"], "ws_over_llc": w["ws_over_llc"], "metric_name": w["metric_name"],
                "winner": w["lib"], "winner_metric": w["metric"], "winner_placement": w["placement"],
                "winner_library_detail": w["library_detail"], "winner_pct_measured_peak": _pct_peak(w, cal),
@@ -109,6 +138,97 @@ def build() -> tuple[pd.DataFrame, pd.DataFrame]:
                          "clear_wins": int((won & ~g["tie"]).sum()), "tied_wins": int((won & g["tie"]).sum()),
                          "median_speed_vs_winner": float(vs.median()), "worst_speed_vs_winner": float(vs.min())})
     return report, pd.DataFrame(summ)
+
+
+def variant_effects() -> pd.DataFrame:
+    """Best base implementation vs best implementation of each variant, same problem otherwise
+    (same precision): e.g. C5 __expf (ff) vs expf, C8/C9 hardware crypto off (sw) vs on."""
+    frames = [pd.read_csv(f).assign(device=Path(f).name[: -len("_libraries.csv")])
+              for f in sorted(glob.glob(str(OUT / "*_libraries.csv")))]
+    if not frames:
+        return pd.DataFrame()
+    df = pd.concat(frames, ignore_index=True)
+    df["base_key"] = [json.dumps({k: v for k, v in sorted(json.loads(p).items()) if k != "variant"}, sort_keys=True)
+                      for p in df["problem"]]
+    rows = []
+    for (dev, wid, key), g in df.groupby(["device", "workload_id", "base_key"]):
+        if "base" not in set(g["variant"]) or g["variant"].nunique() < 2:
+            continue
+        b = g[g["variant"] == "base"].sort_values("metric").iloc[-1]
+        for var, gv in g[g["variant"] != "base"].groupby("variant"):
+            v = gv.sort_values("metric").iloc[-1]
+            rows.append({"device": dev, "workload_id": wid, "workload": b["workload"], "variant": var, "problem": key,
+                         "base_lib": b["lib"], "variant_lib": v["lib"], "metric_name": b["metric_name"],
+                         "base_metric": b["metric"], "variant_metric": v["metric"],
+                         "variant_over_base": v["metric"] / b["metric"] if b["metric"] > 0 else float("nan")})
+    return pd.DataFrame(rows)
+
+
+def _order() -> list[str]:
+    try:
+        return [w["id"] for w in json.loads(MANIFEST.read_text())["workloads"]]
+    except (OSError, ValueError, KeyError):
+        return []
+
+
+def readme_block(summ: pd.DataFrame, var: pd.DataFrame, notes: list[dict]) -> str:
+    """Markdown for README.md: rows = workload (precision), columns = devices with full campaigns."""
+    devs = sorted(summ["device"].unique())
+    order = _order()
+    keys = sorted({(w, p, n) for w, p, n in zip(summ["workload_id"], summ["precision"], summ["workload"])},
+                  key=lambda k: (order.index(k[0]) if k[0] in order else 99, k[1]))
+    L = [MARK_START,
+         "_Generated by `make readme` from the campaign data (`analysis/library_report.py`); do not edit by hand._",
+         "Each cell: **fastest implementation**, sizes it won / sizes compared, then the others at their median speed",
+         "relative to the winner (1.00× = as fast). ‘tie’ = the 95% confidence intervals overlap.", "",
+         "| Workload | " + " | ".join(d.replace("_", " ") for d in devs) + " |",
+         "|---|" + "---|" * len(devs)]
+    used_notes = []
+    for wid, prec, wname in keys:
+        cells = []
+        for dev in devs:
+            g = summ[(summ["device"] == dev) & (summ["workload_id"] == wid) & (summ["precision"] == prec)]
+            if g.empty:
+                cells.append("—")
+                continue
+            g = g.sort_values(["wins", "median_speed_vs_winner"], ascending=False)
+            w, rest = g.iloc[0], g.iloc[1:]
+            cell = f"**{lib_name(w['library'])}** {w['wins']}/{w['problems']}"
+            if w["tied_wins"]:
+                cell += f" ({w['tied_wins']} tie)"
+            if len(rest):
+                cell += "; " + ", ".join(f"{lib_name(r['library'])} {r['median_speed_vs_winner']:.2f}×" for _, r in rest.iterrows())
+            for n in notes_for(dev, wid, w["library"], notes):
+                if n not in used_notes:
+                    used_notes.append(n)
+                cell += f" [{used_notes.index(n) + 1}]"
+            cells.append(cell)
+        L.append(f"| {wid} {wname} ({prec}) | " + " | ".join(cells) + " |")
+    if len(var):
+        L += ["", "Variants (not library choices):"]
+        for (dev, wid, v), g in var.groupby(["device", "workload_id", "variant"]):
+            r = g["variant_over_base"]
+            L.append(f"- {dev.replace('_', ' ')}, {wid} — {VARIANT_NAMES.get(v, v)}: {r.min():.2f}–{r.max():.2f}× "
+                     f"the base implementation ({len(g)} sizes).")
+    if used_notes:
+        L += ["", "Notes:"]
+        for i, n in enumerate(used_notes, 1):
+            tag = "" if n.get("status") == "verified" else " _(hypothesis)_"
+            L.append(f"{i}. {n['note']}{tag}")
+    L.append(MARK_END)
+    return "\n".join(L)
+
+
+def write_readme(path: Path, block: str):
+    text = path.read_text()
+    if MARK_START not in text or MARK_END not in text:
+        raise SystemExit(f"{path}: library-table markers not found ({MARK_START} ... {MARK_END})")
+    head, rest = text.split(MARK_START, 1)
+    _, tail = rest.split(MARK_END, 1)
+    new = head + block + tail
+    if new != text:
+        path.write_text(new)
+    print(f"{path}: library table {'updated' if new != text else 'unchanged'}")
 
 
 def _md(report: pd.DataFrame, summ: pd.DataFrame, notes: list[dict]) -> str:
@@ -143,16 +263,24 @@ def _md(report: pd.DataFrame, summ: pd.DataFrame, notes: list[dict]) -> str:
 
 
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--readme", type=Path, help="also rewrite the library-table block of this README")
+    a = ap.parse_args()
     report, summ = build()
     if report.empty:
         print("no multi-library problems found under", OUT)
         return
     notes = _notes()
+    var = variant_effects()
     report.to_csv(OUT / "library_report.csv", index=False)
     summ.to_csv(OUT / "library_summary.csv", index=False)
+    var.to_csv(OUT / "variant_effects.csv", index=False)
+    if a.readme:
+        write_readme(a.readme, readme_block(summ, var, notes))
     payload = {"summary": summ.to_dict(orient="records"),
                "problems": json.loads(report.to_json(orient="records")),
-               "notes": notes}
+               "variants": json.loads(var.to_json(orient="records")) if len(var) else [],
+               "notes": notes, "order": _order(), "lib_names": LIB_NAMES, "variant_names": VARIANT_NAMES}
     (OUT / "library_report.json").write_text(json.dumps(payload, indent=1) + "\n")
     (OUT / "library_report.md").write_text(_md(report, summ, notes))
     print(f"library report: {len(report)} multi-library problems on {report['device'].nunique()} device(s), "

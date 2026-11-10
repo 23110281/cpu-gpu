@@ -365,6 +365,26 @@ def test_analysis_library_label():
     assert analyze.lib_label('{"bytes": 1}', "OpenSSL 3.0.13 EVP") == "openssl"
 
 
+def test_library_report_compare_rule_and_readme_block(tmp_path):
+    """S1's histc (fp32 input) and bincount (int32 input) are compared as one problem; the README
+    block is written only between its markers, and rewriting it is idempotent."""
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "analysis"))
+        import library_report as LR
+    except Exception as e:
+        pytest.skip(f"analysis deps unavailable: {e}")
+    a = LR.compare_key("S1", '{"bins": 256, "n": 16, "precision": "fp32"}')
+    b = LR.compare_key("S1", '{"bins": 256, "n": 16, "precision": "int32"}')
+    assert a == b and "precision" not in a
+    assert "precision" in LR.compare_key("C3", '{"k": 3, "precision": "fp32"}')
+    readme = tmp_path / "README.md"
+    readme.write_text(f"intro\n{LR.MARK_START}\nold\n{LR.MARK_END}\noutro\n")
+    LR.write_readme(readme, f"{LR.MARK_START}\nnew table\n{LR.MARK_END}")
+    once = readme.read_text()
+    LR.write_readme(readme, f"{LR.MARK_START}\nnew table\n{LR.MARK_END}")
+    assert readme.read_text() == once == f"intro\n{LR.MARK_START}\nnew table\n{LR.MARK_END}\noutro\n"
+
+
 def test_preflight_oom_row_has_provenance(tmp_path):
     from bench import sweep
     from bench.workloads import get

@@ -44,10 +44,10 @@
       "status": "verified",
       "date": "2026-11-10",
       "note": "The native direct convolution (filter size a compile-time constant, all K*K taps unrolled, vectorised x loop) wins every size: neural-network convolution libraries are not built for one small filter over a large image.",
-      "evidence": "r6615 ctest_r6615: native wins 18/18 problems at 15-45% of measured GEMM peak; next best OpenCV at 0.04-0.71x of native."
+      "evidence": "r6615 ctest_r6615: native wins 18/18 problems at 15-45% of measured GEMM peak; next best OpenCV at 0.04-0.71x of native. V100 c_v100_20261110: native wins 18/18 vs cuDNN (median 0.42x)."
     },
     {
-      "device": "*",
+      "device": "AMD_*",
       "workload": "C3",
       "library": "torch",
       "status": "hypothesis",

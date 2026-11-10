@@ -358,6 +358,11 @@
         .meter { display: inline-block; width: 64px; height: 6px; border-radius: 3px; background: var(--border); vertical-align: middle; margin-left: 0.45rem; overflow: hidden; }
         .meter i { display: block; height: 100%; background: #3987e5; border-radius: 3px; }
         .card.wide { grid-column: 1 / -1; }
+        table.libmx td.lib { cursor: pointer; min-width: 220px; line-height: 1.45; }
+        table.libmx td.lib:hover { background: rgba(51, 65, 85, 0.35); }
+        table.libmx td.lib.open { background: rgba(56, 189, 248, 0.08); }
+        table.libmx .others { color: var(--text-muted); font-size: 0.74rem; }
+        .linklike { color: var(--primary); cursor: pointer; text-decoration: underline; }
         .card-img-wrap.fig { height: auto; min-height: 220px; padding: 0.4rem; }
         .card-img-wrap.fig .card-img { width: 100%; height: auto; max-height: none; }
         .card-caption { color: var(--text-muted); font-size: 0.74rem; line-height: 1.45; padding: 0 1rem 0.9rem; }
@@ -401,6 +406,10 @@
             <div id="hardware-limits" class="hardware-panel" style="display: none;"></div>
         </div>
         
+        <div id="library-view" hidden>
+            <!-- Populated by JS (renderLibrary) -->
+        </div>
+
         <div id="status-view" hidden>
             <!-- Populated by JS (renderStatus) -->
         </div>
@@ -431,7 +440,8 @@
         let currentGpu = Object.keys(pages)[0] || '';
         let currentFig = 'all';      // 'all' = summary + every figure, else one figure file
         // 'status' = workload status / TODO matrix (landing view), 'gallery' = one device's page
-        let currentView = (workloadStatus.workloads && location.hash !== '#plots') || !currentGpu ? 'status' : 'gallery';
+        let currentView = location.hash === '#library' ? 'library'
+            : (workloadStatus.workloads && location.hash !== '#plots') || !currentGpu ? 'status' : 'gallery';
         let statusFilter = 'all';
         const openRows = new Set();
 
@@ -452,6 +462,15 @@
                 el.innerHTML = `Workload Status &amp; TODO <span class="count-pill">${countTodos()}</span>`;
                 el.title = 'Final workload suite: implementation + data-collection status per CPU / GPU';
                 el.onclick = () => { currentView = 'status'; updateView(); };
+                statusNav.appendChild(el);
+            }
+            if ((libraryReport.summary || []).length) {
+                const el = document.createElement('div');
+                el.className = 'nav-item status-item' + (currentView === 'library' ? ' active' : '');
+                const n = new Set(libraryReport.summary.map(r => r.device + r.workload_id + r.precision)).size;
+                el.innerHTML = `Library analysis <span class="count-pill">${n}</span>`;
+                el.title = 'Which library / implementation is fastest for each workload on each machine';
+                el.onclick = () => { currentView = 'library'; updateView(); };
                 statusNav.appendChild(el);
             }
 
@@ -482,7 +501,7 @@
             benchCatContainer.innerHTML = '';
             const benchNav = document.getElementById('bench-nav');
             benchNav.querySelector('.nav-title').innerText = 'Figures';
-            benchNav.hidden = (currentView === 'status' || !pages[currentGpu]);
+            benchNav.hidden = (currentView !== 'gallery' || !pages[currentGpu]);
             if (benchNav.hidden) return;
             const group = document.createElement('div');
             group.className = 'cat-group';
@@ -508,7 +527,9 @@
                 <div class="tiles">${(page.tiles || []).map(t => `<div class="tile"><div class="k">${esc(t.k)}</div>
                     <div class="v">${esc(t.v)}</div><div class="s">${esc(t.s)}</div></div>`).join('')}</div>
                 <div class="panel"><h3>Key results</h3>
-                    <ul class="statements">${(page.statements || []).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
+                    <ul class="statements">${(page.statements || []).map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+                    ${(libraryReport.summary || []).some(r => r.device === currentGpu) ? `<p class="muted" style="margin:0.6rem 0 0">Per-size library comparison:
+                        <span class="linklike" onclick="currentView='library'; updateView();">Library analysis →</span></p>` : ''}</div>
                 ${(page.findings || []).length ? `<div class="panel"><h3>Findings &amp; caveats</h3><div class="findings">
                     ${page.findings.map(f => `<div class="finding"><h4><span>${esc(f.title)}</span>${findingBadge(f.status)}</h4>
                         <p>${esc(f.text)}</p><div class="date">last checked ${esc(f.date || '')}</div></div>`).join('')}
@@ -672,6 +693,79 @@
             });
         }
 
+        // ── Library analysis: fastest implementation per workload x machine ──────────
+        let libOpen = null;
+        const libName = l => (libraryReport.lib_names || {})[l] || l;
+        const probText = p => { try { return Object.entries(JSON.parse(p)).filter(([k]) => k !== 'variant')
+            .map(([k, v]) => `${k}=${v}`).join(' '); } catch (e) { return p; } };
+
+        function renderLibrary() {
+            const R = libraryReport, view = document.getElementById('library-view');
+            const summ = R.summary || [], order = R.order || [];
+            const devs = [...new Set(summ.map(r => r.device))].sort();
+            const keys = [...new Map(summ.map(r => [r.workload_id + '|' + r.precision, r])).values()]
+                .sort((a, b) => (order.indexOf(a.workload_id) - order.indexOf(b.workload_id)) || a.precision.localeCompare(b.precision));
+            // a note is shown only for a library that was actually compared on that machine
+            const compared = (dev, wid) => new Set(summ.filter(r => r.device === dev && r.workload_id === wid).map(r => r.library));
+            const notesFor = (dev, wid, lib) => (R.notes || []).filter(n => {
+                if (n.library !== '*' && !compared(dev, wid).has(n.library)) return false;
+                const re = new RegExp('^' + (n.device || '*').replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$');
+                return re.test(dev) && [wid, '*'].includes(n.workload) && [lib, '*'].includes(n.library); });
+            let html = `<div class="panel"><p class="muted" style="margin:0">Where a workload can run on several libraries or
+                implementations, every one is timed on the same inputs and the fastest is kept for the headline numbers.
+                Each cell shows the <b>fastest</b>, how many problem sizes it won, and the others at their median speed
+                relative to the winner (1.00× = as fast). Only machines with full campaigns are shown. Click a cell for the per-size detail.</p></div>
+                <div class="table-wrap"><table class="status libmx"><thead><tr><th>Workload</th>
+                ${devs.map(d => `<th>${esc(d.replace(/_/g, ' '))}</th>`).join('')}</tr></thead><tbody>`;
+            keys.forEach(k => {
+                html += `<tr><td class="name"><b>${esc(k.workload_id)}</b> ${esc(k.workload)} <span class="tag">${esc(k.precision)}</span></td>`;
+                devs.forEach(dev => {
+                    const g = summ.filter(r => r.device === dev && r.workload_id === k.workload_id && r.precision === k.precision)
+                        .sort((a, b) => (b.wins - a.wins) || (b.median_speed_vs_winner - a.median_speed_vs_winner));
+                    if (!g.length) { html += '<td style="color:var(--text-muted)">—</td>'; return; }
+                    const w = g[0], id = `${dev}|${k.workload_id}|${k.precision}`;
+                    const nn = notesFor(dev, k.workload_id, w.library);
+                    html += `<td class="lib${libOpen === id ? ' open' : ''}" data-cell="${esc(id)}"><b>${esc(libName(w.library))}</b>
+                        ${w.wins}/${w.problems}${w.tied_wins ? ` <small>(${w.tied_wins} tie)</small>` : ''}
+                        <div class="others">${g.slice(1).map(o => `${esc(libName(o.library))} ${o.median_speed_vs_winner.toFixed(2)}×`).join(' · ')}</div>
+                        ${nn.length ? `<div class="others">${nn.map(n => n.status === 'verified' ? '✓ note' : '? hypothesis').join(' · ')}</div>` : ''}</td>`;
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
+            if (libOpen) {
+                const [dev, wid, prec] = libOpen.split('|');
+                const probs = (R.problems || []).filter(p => p.device === dev && p.workload_id === wid && p.precision === prec);
+                const libs = [...new Set(probs.flatMap(p => Object.keys(p).filter(c => c.startsWith('vs_winner[') && p[c] !== null).map(c => c.slice(10, -1))))];
+                html += `<div class="panel"><h3>${esc(wid)} on ${esc(dev.replace(/_/g, ' '))}: every size</h3><div class="table-wrap" style="margin-bottom:0">
+                    <table class="results"><thead><tr><th>Problem</th><th>Winner</th><th style="text-align:right">Margin</th><th>Tie?</th>
+                    <th style="text-align:right">Winner % of peak</th>${libs.map(l => `<th style="text-align:right">${esc(libName(l))}</th>`).join('')}</tr></thead><tbody>
+                    ${probs.map(p => `<tr><td class="prob">${esc(probText(p.problem))}</td><td><b>${esc(libName(p.winner))}</b></td>
+                        <td class="num">+${p.margin_pct.toFixed(1)}%</td><td>${p.tie ? 'tie' : ''}</td>
+                        <td class="num">${p.winner_pct_measured_peak === null ? '—' : p.winner_pct_measured_peak.toFixed(0) + '%'}</td>
+                        ${libs.map(l => `<td class="num">${p['vs_winner[' + l + ']'] === null || p['vs_winner[' + l + ']'] === undefined ? '—' : p['vs_winner[' + l + ']'].toFixed(2) + '×'}</td>`).join('')}</tr>`).join('')}
+                    </tbody></table></div></div>`;
+            }
+            const notes = (R.notes || []).filter(n => devs.some(d => compared(d, n.workload).size && notesFor(d, n.workload, n.library).includes(n)));
+            if ((R.variants || []).length) {
+                const groups = {};
+                R.variants.forEach(v => { (groups[v.device + '|' + v.workload_id + '|' + v.variant] ||= []).push(v.variant_over_base); });
+                html += `<div class="panel"><h3>Variants (not library choices)</h3><ul class="statements">${Object.entries(groups).map(([k, r]) => {
+                    const [dev, wid, v] = k.split('|');
+                    return `<li>${esc(dev.replace(/_/g, ' '))}, ${esc(wid)} — ${esc((R.variant_names || {})[v] || v)}: ${Math.min(...r).toFixed(2)}–${Math.max(...r).toFixed(2)}× the base implementation (${r.length} sizes)</li>`;
+                }).join('')}</ul></div>`;
+            }
+            if (notes.length) {
+                html += `<div class="panel"><h3>Why the winner wins (curated notes)</h3><div class="findings">${notes.map(n => `<div class="finding">
+                    <h4><span>${esc(n.workload)} · ${esc(n.library === '*' ? 'all libraries' : libName(n.library))} · ${esc(n.device === '*' ? 'all machines' : n.device)}</span>${n.status === 'verified'
+                        ? '<span class="badge b-done">✓ verified</span>' : '<span class="badge b-partial">? hypothesis</span>'}</h4>
+                    <p>${esc(n.note)}</p><div class="date">${esc(n.evidence || '')}</div></div>`).join('')}</div></div>`;
+            }
+            view.innerHTML = html;
+            view.querySelectorAll('td.lib').forEach(td => td.onclick = () => {
+                libOpen = libOpen === td.dataset.cell ? null : td.dataset.cell; renderLibrary(); });
+        }
+
         function updateView() {
             renderNav();
             const gallery = document.getElementById('gallery');
@@ -680,6 +774,18 @@
             const subtitle = document.getElementById('view-subtitle');
             gallery.innerHTML = '';
 
+            const libraryView = document.getElementById('library-view');
+            libraryView.hidden = currentView !== 'library';
+            if (currentView === 'library') {
+                title.innerText = 'Library analysis';
+                subtitle.innerText = 'Which library or implementation is fastest, per workload and machine — the fastest-library rule in numbers.';
+                document.getElementById('hardware-limits').style.display = 'none';
+                gallery.hidden = true;
+                document.getElementById('device-summary').hidden = true;
+                statusView.hidden = true;
+                renderLibrary();
+                return;
+            }
             if (currentView === 'status' && workloadStatus.workloads) {
                 title.innerText = 'Workload Status & TODO';
                 subtitle.innerText = 'Final CPU-vs-GPU suite (ISCA\'10 bound classes) — what is implemented and which devices still need data. Click a row for its TODO list.';

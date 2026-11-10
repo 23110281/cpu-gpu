@@ -1,0 +1,27 @@
+{
+  "device_id": "AMD_R6615",
+  "device_class": "cpu",
+  "label": "AMD EPYC 9354P (Zen 4, 32C/64T, 1 socket, NPS4) — CloudLab r6615 (Clemson)",
+  "placements": [
+    "socket0",
+    "socket0-smt"
+  ],
+  "scaling": {
+    "workloads": [
+      "B1",
+      "C1",
+      "S1",
+      "S2"
+    ],
+    "base": "socket0",
+    "threads": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      32
+    ]
+  },
+  "_note": "max_mem_gb omitted: detected at sweep time (CPU MemTotal/sockets*0.8). Placements resolving to the same CPU set and scaling counts >= the socket's cores are dropped automatically. Datasheet ceilings to be added from dmidecode on the node."
+}

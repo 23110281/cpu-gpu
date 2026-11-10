@@ -1,22 +1,35 @@
 #!/usr/bin/env bash
-# scripts/setup_v2_harness.sh — node requirements of the v2 publication harness (src/torch/bench).
+# scripts/setup_node.sh — everything a CloudLab node needs to run the benchmarks (CPU or GPU).
 #
-# Idempotent; called by scripts/cpu/setup_cloudlab_xeon.sh and scripts/gpu/setup_gpu_node.sh
-# (setup_cloudlab_epyc.sh contains the same steps inline). Every step below exists because a
-# measurement was wrong without it -- see docs/methodology.md "Platform pitfalls".
+# Idempotent: safe to re-run. Every step below exists because a measurement was wrong without
+# it -- see docs/methodology.md "Platform pitfalls". Ubuntu 22.04 (CloudLab default image).
 #
-#   bash scripts/setup_v2_harness.sh [cpu|gpu]      (default: cpu)
+#   bash scripts/setup_node.sh            auto-detect: GPU if the NVIDIA driver works, else CPU
+#   bash scripts/setup_node.sh cpu|gpu    force one
+#
+# GPU nodes: install the driver + CUDA toolkit FIRST (sudo bash scripts/install_cuda.sh; reboot).
 set -euo pipefail
-KIND="${1:-cpu}"
-log()  { printf "\033[1;34m[v2]\033[0m %s\n" "$*"; }
-warn() { printf "\033[1;33m[v2 WARN]\033[0m %s\n" "$*"; }
+log()  { printf "\033[1;34m[setup]\033[0m %s\n" "$*"; }
+warn() { printf "\033[1;33m[setup WARN]\033[0m %s\n" "$*"; }
+if [ -n "${1:-}" ]; then
+    KIND="$1"
+elif nvidia-smi -L >/dev/null 2>&1; then
+    KIND=gpu
+elif lspci 2>/dev/null | grep -qi "nvidia"; then
+    echo "An NVIDIA GPU is present but its driver is not working."
+    echo "Run:  sudo bash scripts/install_cuda.sh && sudo reboot   -- then run this script again."
+    exit 1
+else
+    KIND=cpu
+fi
+log "node type: $KIND ($(lscpu | sed -n 's/^Model name: *//p' | head -1))"
 ARCH_DIR="/usr/lib/$(uname -m)-linux-gnu"
 
 log "apt packages (build, NUMA, fastest-library candidates, crypto, extension headers)"
 sudo apt-get update -y -q >/dev/null
 sudo apt-get install -y -q --no-install-recommends build-essential cmake git numactl hwloc \
     linux-tools-common "linux-tools-$(uname -r)" python3-dev python3-pip \
-    libopenblas-openmp-dev libblis3-openmp libtbb-dev libssl-dev libjemalloc2 >/dev/null \
+    libopenblas-dev libopenblas-openmp-dev libblis3-openmp libtbb-dev libssl-dev libjemalloc2 cpufrequtils >/dev/null \
     || warn "some packages failed; affected variants will report 'unsupported'"
 
 if [ "$KIND" = cpu ]; then
@@ -88,6 +101,7 @@ python3 -m pip install -q --no-cache-dir pandas matplotlib || warn "analysis dep
 
 log "telemetry permissions (RAPL energy + APERF/MPERF MSRs)"
 sudo modprobe msr 2>/dev/null || true
+grep -qx msr /etc/modules 2>/dev/null || echo msr | sudo tee -a /etc/modules >/dev/null || true   # survives reboots
 # powercap entries are symlinks: chmod the resolved files (root-only since CVE-2020-8694)
 for f in /sys/class/powercap/intel-rapl*/energy_uj /sys/class/powercap/intel-rapl*/*/energy_uj; do
     [ -e "$f" ] && sudo chmod a+r "$(readlink -f "$f")" 2>/dev/null || true
@@ -98,8 +112,16 @@ sudo setcap cap_sys_rawio+ep "$PY_REAL" 2>/dev/null && log "CAP_SYS_RAWIO -> $PY
 # CAP_SYS_RAWIO puts ld.so in secure mode: LD_PRELOAD needs a set-user-ID lib (opt-in jemalloc)
 [ -e "$ARCH_DIR/libjemalloc.so.2" ] && sudo chmod u+s "$(readlink -f "$ARCH_DIR/libjemalloc.so.2")" || true
 
-if command -v cpupower >/dev/null 2>&1; then
-    sudo cpupower frequency-set -g performance >/dev/null 2>&1 || true
+# performance governor (no DVFS ramp-up inside timed regions); /sys fallback without cpupower
+if command -v cpupower >/dev/null 2>&1 && sudo cpupower frequency-set -g performance >/dev/null 2>&1; then
+    log "CPU governor: performance (cpupower)"
+else
+    for g in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+        [ -f "$g" ] && echo performance | sudo tee "$g" >/dev/null 2>&1 || true
+    done
+    [ -f /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor ] \
+        && log "CPU governor: $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor) (sysfs)" \
+        || warn "no cpufreq interface (governor not set; frequency is still recorded per row)"
 fi
 if [ "$KIND" = gpu ] && command -v nvidia-smi >/dev/null 2>&1; then
     sudo nvidia-smi -pm 1 >/dev/null 2>&1 && log "GPU persistence mode on" || warn "persistence mode failed"
@@ -114,4 +136,4 @@ try:
 except OSError:
     print("  RAPL energy readable: NO (power will be NaN)")
 EOF
-log "done -- next: make test_bench && make bench_smoke$( [ "$KIND" = gpu ] && echo _cuda )"
+log "done -- next: bash scripts/run_campaign.sh start <DEVICE>   (or step by step: make test && make smoke)"

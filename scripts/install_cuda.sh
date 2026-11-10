@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
-# install_cuda.sh — NVIDIA driver + CUDA toolkit + Nsight for the GPU GEMM bench.
+# install_cuda.sh — NVIDIA driver + CUDA toolkit + Nsight on a GPU node (step 1 of a GPU setup).
 #
-# Target: Ubuntu 22.04, kernel 5.15, Secure Boot OFF, 4x A100-SXM4-40GB.
+# Target: Ubuntu 22.04 (CloudLab default), Secure Boot OFF. Tested on A100 and V100 nodes;
+# Volta/Pascal/Maxwell GPUs get the last driver branch that supports them (580).
 # Does EVERYTHING up to (but not including) the reboot. nouveau is unloaded
 # only by the reboot, so the NVIDIA driver becomes active after you reboot.
 #
-# Usage:  bash install_cuda.sh           # full install (needs sudo; passwordless OK)
-#         bash install_cuda.sh --probe   # only show what would be installed
+# Usage:  sudo bash scripts/install_cuda.sh           # full install, then: sudo reboot
+#         bash scripts/install_cuda.sh --probe        # only show what would be installed
 #
-# Idempotent: safe to re-run. Logs to third_party/gpu_bench/results/install.log
+# Idempotent: safe to re-run.
 set -euo pipefail
 
 CUDA_REPO="https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64"
@@ -98,8 +99,8 @@ cat <<'EOF'
       ncu --version
       sudo nvidia-smi -pm 1          # persistence mode (stable clocks)
 
-  Then build + run the bench:
-      cd third_party/gpu_bench && make
-      ./scripts/gpu/run_sweep.sh
+  Then set up the node and run everything (docs/RUNNING.md):
+      bash scripts/setup_node.sh
+      bash scripts/run_campaign.sh start <DEVICE>
 ──────────────────────────────────────────────────────────────────────────────
 EOF

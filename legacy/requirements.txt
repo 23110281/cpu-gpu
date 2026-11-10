@@ -1,0 +1,4 @@
+# Extra Python packages for the frozen legacy plot scripts (legacy/plotting/), on top of
+# the repo's requirements.txt.
+seaborn==0.13.2
+squarify==0.4.4

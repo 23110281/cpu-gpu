@@ -1,4 +1,12 @@
-# Benchmark-node dependencies (NOT installed in CI; CI only needs requirements.txt for plotting).
-#   pip install -r requirements.txt -r requirements-bench.txt
-# PyTorch harnesses in src/torch/ (CPU: oneDNN/MKL, GPU: cuBLAS/cuDNN/cuFFT/CUB):
+# Benchmark-node Python packages, for reference. scripts/setup_node.sh installs these (and picks
+# the right torch wheel: CPU wheel on CPU nodes, the CUDA wheel matching nvcc on GPU nodes).
 torch>=2.1.0
+numpy
+scipy
+pytest
+ninja
+opencv-python-headless
+cryptography
+nvidia-ml-py      # GPU nodes only (power telemetry)
+pandas            # analysis on the node (optional)
+matplotlib        # analysis on the node (optional)

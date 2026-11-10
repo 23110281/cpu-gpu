@@ -12,7 +12,7 @@
                             Raw per-kernel rates are stored in provenance.
   measured.peak_gflops[p]   best C1 GEMM median throughput at N=8192 over every BLAS library
                             on the node (torch/OpenBLAS/BLIS on CPU, cuBLAS on GPU), measured by
-                            the v2 harness itself (publication policy).
+                            the benchmark harness itself (publication policy).
   datasheet.*               copied from configs/devices/<DEVICE>.json "datasheet" with derivation.
 Writes results/calibration/<DEVICE>.json (raw BabelStream output kept for provenance).
 
@@ -31,7 +31,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO / "src" / "torch"))
+sys.path.insert(0, str(REPO))
 from bench import devices  # noqa: E402
 
 BABEL_URL = "https://github.com/UoB-HPC/BabelStream.git"
@@ -93,7 +93,7 @@ def dram_traffic_gbps(rates: dict, device_class: str) -> float:
 
 
 def run_gemm(dev: dict, n: int, precision: str, placement: str, lib: str = "torch") -> float:
-    env = dict(os.environ, PYTHONPATH=str(REPO / "src" / "torch"))
+    env = dict(os.environ, PYTHONPATH=str(REPO))
     prefix = []
     args = ["--workload", "C1", "--params", json.dumps({"precision": precision, "variant": "base", "n": n, "lib": lib}),
             "--device-id", dev["device_id"], "--out", str(REPO / "results" / "calibration" / "_runs")]

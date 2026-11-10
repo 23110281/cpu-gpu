@@ -1,0 +1,45 @@
+name: Dashboard
+
+# Rebuilds the dashboard from scratch on every relevant push and publishes results/site to the
+# `plots` branch (served by GitHub Pages). keep_files is false, so the published site is exactly
+# what `make site` generates -- stale files never linger.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'results/data/**'
+      - 'results/calibration/**'
+      - 'analysis/**'
+      - 'configs/**'
+      - 'legacy/data/**'
+      - 'studies/gh200_c2c/data/cleaned_for_paper/**'
+      - 'Makefile'
+      - 'requirements.txt'
+      - '.github/workflows/dashboard.yml'
+  workflow_dispatch: {}
+
+jobs:
+  site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Build the dashboard
+        run: |
+          make venv
+          make site PYTHON=.venv/bin/python
+
+      - name: Publish to plots branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: results/site
+          publish_branch: plots
+          keep_files: false

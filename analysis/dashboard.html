@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CPU-GPU Benchmarks - Performance Plots Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b1120;
+            --surface: #1e293b;
+            --surface-hover: #334155;
+            --primary: #38bdf8;
+            --primary-glow: rgba(56, 189, 248, 0.4);
+            --accent-coherence: #f43f5e;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+        }
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+        /* Sidebar */
+        aside {
+            width: 320px;
+            min-width: 320px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(16px);
+            border-right: 1px solid var(--border);
+            padding: 1.5rem 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            height: 100vh;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+        aside::-webkit-scrollbar {
+            width: 6px;
+        }
+        aside::-webkit-scrollbar-thumb {
+            background: var(--surface-hover);
+            border-radius: 3px;
+        }
+        .brand {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+        h1 {
+            font-size: 1.25rem;
+            font-weight: 800;
+            margin: 0;
+            background: linear-gradient(135deg, #38bdf8, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            letter-spacing: 0.02em;
+        }
+        .nav-section {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+        .nav-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+            padding-left: 0.5rem;
+        }
+        .cat-group {
+            margin-top: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        .cat-title {
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #38bdf8;
+            font-weight: 700;
+            margin: 0.4rem 0 0.15rem 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .cat-title.coherence {
+            color: #fb7185;
+        }
+        .nav-item {
+            padding: 0.45rem 0.75rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            border: 1px solid transparent;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .nav-item:hover {
+            background: var(--surface-hover);
+            color: var(--text-main);
+        }
+        .nav-item.active {
+            background: var(--surface);
+            color: var(--primary);
+            border-color: var(--primary);
+            font-weight: 600;
+            box-shadow: 0 0 12px var(--primary-glow);
+        }
+        .nav-item.active.coherence-active {
+            color: #fda4af;
+            border-color: var(--accent-coherence);
+            box-shadow: 0 0 12px rgba(244, 63, 94, 0.4);
+        }
+        /* Main Content */
+        main {
+            flex: 1;
+            padding: 2rem 2.5rem;
+            overflow-y: auto;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+        .header {
+            margin-bottom: 2rem;
+            padding-bottom: 1.25rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .header h2 {
+            font-size: 1.85rem;
+            font-weight: 700;
+            margin: 0 0 0.35rem 0;
+            letter-spacing: -0.01em;
+        }
+        .header p {
+            color: var(--text-muted);
+            margin: 0;
+            font-size: 0.95rem;
+        }
+        .hardware-panel {
+            margin-top: 1.25rem;
+            padding: 1.25rem;
+            background: rgba(30, 41, 59, 0.6);
+            border-left: 4px solid var(--primary);
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: #cbd5e1;
+            backdrop-filter: blur(8px);
+        }
+        .hardware-panel.coherence-panel {
+            border-left-color: var(--accent-coherence);
+            background: rgba(244, 63, 94, 0.05);
+        }
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        .card {
+            background: var(--surface);
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 28px rgba(0,0,0,0.45);
+            border-color: #64748b;
+        }
+        .card-img-wrap {
+            position: relative;
+            background: #050b14;
+            height: 320px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        .card-img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            transition: transform 0.2s ease;
+        }
+        .card-img-wrap:hover .card-img {
+            transform: scale(1.02);
+        }
+        .card-footer {
+            padding: 0.85rem 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(15, 23, 42, 0.8);
+            border-top: 1px solid var(--border);
+        }
+        .card-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-main);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .btn-pdf {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--primary);
+            text-decoration: none;
+            padding: 0.35rem 0.65rem;
+            border-radius: 4px;
+            background: rgba(56, 189, 248, 0.1);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            transition: all 0.2s ease;
+        }
+        .btn-pdf:hover {
+            background: rgba(56, 189, 248, 0.2);
+            color: #ffffff;
+            border-color: var(--primary);
+        }
+        /* Modal */
+        #modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.92);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        #modal.visible {
+            display: flex;
+            opacity: 1;
+        }
+        #modal img {
+            max-width: 95%;
+            max-height: 95%;
+            border-radius: 8px;
+            box-shadow: 0 0 40px rgba(0,0,0,0.9);
+        }
+        /* ── Workload status / TODO view ─────────────────────────────── */
+        :root {
+            --ok: #34d399; --ok-bg: rgba(52, 211, 153, 0.12);
+            --warn: #fbbf24; --warn-bg: rgba(251, 191, 36, 0.12);
+            --todo: #f87171; --todo-bg: rgba(248, 113, 113, 0.10);
+            --part: #a78bfa; --part-bg: rgba(167, 139, 250, 0.12);
+        }
+        .nav-subtitle {
+            font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em;
+            color: var(--text-muted); opacity: 0.75; margin: 0.5rem 0 0.1rem 0.5rem;
+        }
+        .nav-item.status-item { color: var(--text-main); }
+        .nav-item .count-pill {
+            float: right; font-size: 0.68rem; padding: 0 0.45rem; border-radius: 999px;
+            background: var(--todo-bg); color: var(--todo); font-weight: 700;
+        }
+        [hidden] { display: none !important; }
+        .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+        .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.1rem; }
+        .tile .k { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700; }
+        .tile .v { font-size: 1.6rem; font-weight: 800; margin-top: 0.25rem; font-variant-numeric: tabular-nums; }
+        .tile .s { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.2rem; }
+        .toolbar { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 1rem; }
+        .chip {
+            font: inherit; font-size: 0.78rem; font-weight: 600; color: var(--text-muted);
+            background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
+            padding: 0.35rem 0.8rem; cursor: pointer;
+        }
+        .chip:hover { color: var(--text-main); border-color: #64748b; }
+        .chip.on { color: var(--primary); border-color: var(--primary); box-shadow: 0 0 10px var(--primary-glow); }
+        .legend { display: flex; flex-wrap: wrap; gap: 1rem; font-size: 0.78rem; color: var(--text-muted); margin-left: auto; }
+        .legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
+        .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 2rem; }
+        table.status { width: 100%; border-collapse: collapse; font-size: 0.82rem; min-width: 980px; }
+        table.status th, table.status td { padding: 0.55rem 0.6rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+        table.status thead th { background: rgba(15, 23, 42, 0.95); color: var(--text-muted); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; position: sticky; top: 0; }
+        table.status thead th.side-cpu { color: #38bdf8; }
+        table.status thead th.side-gpu { color: #34d399; }
+        table.status th.dev { text-align: center; white-space: nowrap; }
+        tr.group td { background: rgba(56, 189, 248, 0.06); color: var(--primary); font-weight: 700; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; }
+        tr.group td small { color: var(--text-muted); font-weight: 500; text-transform: none; letter-spacing: 0; margin-left: 0.5rem; }
+        tr.wl { cursor: pointer; }
+        tr.wl:hover td { background: rgba(51, 65, 85, 0.35); }
+        tr.wl td.name { min-width: 200px; }
+        tr.wl td.name b { color: var(--text-main); }
+        table.status td.cell, table.status th.dev { min-width: 64px; }
+        tr.wl td.name .meta { color: var(--text-muted); font-size: 0.72rem; margin-top: 0.1rem; }
+        .tag { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; padding: 0 0.35rem; margin-right: 0.2rem; border-radius: 4px; background: rgba(148, 163, 184, 0.15); color: #cbd5e1; }
+        .badge { display: inline-block; font-size: 0.7rem; font-weight: 700; padding: 0.12rem 0.5rem; border-radius: 999px; white-space: nowrap; }
+        .b-done { color: var(--ok); background: var(--ok-bg); }
+        .b-partial { color: var(--part); background: var(--part-bg); }
+        .b-todo { color: var(--todo); background: var(--todo-bg); }
+        .b-broken { color: var(--warn); background: var(--warn-bg); }
+        td.cell { text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .c-collected { color: var(--ok); }
+        .c-invalid { color: var(--warn); }
+        .c-prelim { color: #94a3b8; font-weight: 600; font-size: 0.72rem; }
+        .c-missing { color: var(--todo); opacity: 0.8; font-weight: 600; font-size: 0.72rem; }
+        .dot { width: 0.6rem; height: 0.6rem; border-radius: 50%; display: inline-block; }
+        tr.detail td { background: rgba(5, 11, 20, 0.6); padding: 0.9rem 1.2rem 1.1rem; }
+        tr.detail .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; }
+        tr.detail h4 { margin: 0 0 0.4rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+        tr.detail p { margin: 0 0 0.6rem; color: #cbd5e1; font-family: 'JetBrains Mono', monospace; font-size: 0.76rem; line-height: 1.5; }
+        ul.todo { margin: 0; padding: 0; list-style: none; }
+        ul.todo li { padding: 0.22rem 0 0.22rem 1.4rem; position: relative; color: #e2e8f0; line-height: 1.45; }
+        ul.todo li::before { content: ""; position: absolute; left: 0.1rem; top: 0.5rem; width: 0.65rem; height: 0.65rem; border: 1.5px solid var(--todo); border-radius: 3px; }
+        .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem 1.3rem; margin-bottom: 1.5rem; }
+        .panel h3 { margin: 0 0 0.6rem; font-size: 0.95rem; }
+        .panel .muted { color: var(--text-muted); font-size: 0.85rem; line-height: 1.55; }
+        .two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.5rem; }
+        dl.dropped { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 1rem; font-size: 0.83rem; }
+        dl.dropped dt { font-weight: 600; color: var(--text-main); }
+        dl.dropped dd { margin: 0; color: var(--text-muted); }
+        #device-summary { margin-bottom: 1.75rem; }
+        .statements { margin: 0; padding-left: 1.1rem; color: #cbd5e1; line-height: 1.6; font-size: 0.88rem; }
+        .statements li { margin-bottom: 0.35rem; }
+        .findings { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; }
+        .finding { background: rgba(5, 11, 20, 0.6); border: 1px solid var(--border); border-radius: 8px; padding: 0.8rem 0.95rem; }
+        .finding h4 { margin: 0 0 0.35rem; font-size: 0.86rem; display: flex; gap: 0.5rem; align-items: baseline; justify-content: space-between; }
+        .finding p { margin: 0; color: #cbd5e1; font-size: 0.8rem; line-height: 1.55; }
+        .finding .date { color: var(--text-muted); font-size: 0.7rem; margin-top: 0.4rem; }
+        table.results { width: 100%; border-collapse: collapse; font-size: 0.8rem; min-width: 760px; }
+        table.results th, table.results td { padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--border); text-align: left; }
+        table.results thead th { background: rgba(15, 23, 42, 0.95); color: var(--text-muted); font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.06em; }
+        table.results td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        table.results td.prob { color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; }
+        .meter { display: inline-block; width: 64px; height: 6px; border-radius: 3px; background: var(--border); vertical-align: middle; margin-left: 0.45rem; overflow: hidden; }
+        .meter i { display: block; height: 100%; background: #3987e5; border-radius: 3px; }
+        .card.wide { grid-column: 1 / -1; }
+        .card-img-wrap.fig { height: auto; min-height: 220px; padding: 0.4rem; }
+        .card-img-wrap.fig .card-img { width: 100%; height: auto; max-height: none; }
+        .card-caption { color: var(--text-muted); font-size: 0.74rem; line-height: 1.45; padding: 0 1rem 0.9rem; }
+        @media (max-width: 760px) {
+            body { flex-direction: column; height: auto; overflow: auto; }
+            aside { width: 100%; min-width: 0; height: auto; }
+            main { height: auto; padding: 1.25rem 1rem; }
+            .gallery { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <aside>
+        <div class="brand">
+            <h1>Hardware Benchmarks</h1>
+            <div class="subtitle">CPU-GPU Empirical Characterization</div>
+        </div>
+        
+        <div class="nav-section" id="status-nav">
+            <div class="nav-title">Project Status</div>
+            <!-- Populated by JS -->
+        </div>
+
+        <div class="nav-section" id="gpu-nav">
+            <div class="nav-title">Hardware Architecture</div>
+            <!-- Populated by JS -->
+        </div>
+
+        <div class="nav-section" id="bench-nav">
+            <div class="nav-title">Benchmark Workloads</div>
+            <div id="bench-categories">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </aside>
+
+    <main>
+        <div class="header">
+            <h2 id="view-title">Benchmark Gallery</h2>
+            <p id="view-subtitle">Select a hardware target and workload to inspect empirical profiles</p>
+            <div id="hardware-limits" class="hardware-panel" style="display: none;"></div>
+        </div>
+        
+        <div id="status-view" hidden>
+            <!-- Populated by JS (renderStatus) -->
+        </div>
+
+        <div id="device-summary" hidden>
+            <!-- Populated by JS (renderSummary) -->
+        </div>
+
+        <div class="gallery" id="gallery">
+            <!-- Populated by JS -->
+        </div>
+    </main>
+
+    <div id="modal" onclick="closeModal()">
+        <img id="modal-img" src="" alt="Full size plot">
+    </div>
+
+    <script>
+        // Injected by analysis/build_dashboard.py: device -> page (results/site/devices/<DEV>/summary.json)
+        const pages = {};
+        // Injected by analysis/build_dashboard.py: device -> "cpu" | "gpu" (from results/data and legacy/data)
+        const deviceClass = {};
+        // Injected by analysis/build_dashboard.py from configs/workloads.json + CSV coverage scan
+        const workloadStatus = {};
+        // Injected by analysis/build_dashboard.py from results/analysis/library_report.json
+        const libraryReport = {};
+
+        let currentGpu = Object.keys(pages)[0] || '';
+        let currentFig = 'all';      // 'all' = summary + every figure, else one figure file
+        // 'status' = workload status / TODO matrix (landing view), 'gallery' = one device's page
+        let currentView = (workloadStatus.workloads && location.hash !== '#plots') || !currentGpu ? 'status' : 'gallery';
+        let statusFilter = 'all';
+        const openRows = new Set();
+
+        const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        const classOf = dev => (pages[dev] && pages[dev].device_class) || deviceClass[dev] || 'gpu';
+
+        function countTodos() {
+            return (workloadStatus.workloads || []).reduce((n, w) => n + (w.todo || []).length, 0)
+                 + (workloadStatus.infra_todo || []).length;
+        }
+
+        function renderNav() {
+            const statusNav = document.getElementById('status-nav');
+            statusNav.innerHTML = '<div class="nav-title">Project Status</div>';
+            if (workloadStatus.workloads) {
+                const el = document.createElement('div');
+                el.className = 'nav-item status-item' + (currentView === 'status' ? ' active' : '');
+                el.innerHTML = `Workload Status &amp; TODO <span class="count-pill">${countTodos()}</span>`;
+                el.title = 'Final workload suite: implementation + data-collection status per CPU / GPU';
+                el.onclick = () => { currentView = 'status'; updateView(); };
+                statusNav.appendChild(el);
+            }
+
+            const gpuNav = document.getElementById('gpu-nav');
+            gpuNav.innerHTML = '<div class="nav-title">Devices</div>';
+            const devs = Object.keys(pages);
+            if (devs.length === 0) {
+                gpuNav.insertAdjacentHTML('beforeend', '<div class="nav-subtitle">No results yet</div>');
+            }
+            [['cpu', 'CPUs'], ['gpu', 'GPUs']].forEach(([cls, label]) => {
+                const list = devs.filter(d => classOf(d) === cls);
+                if (list.length === 0) return;
+                const sub = document.createElement('div');
+                sub.className = 'nav-subtitle';
+                sub.innerText = label;
+                gpuNav.appendChild(sub);
+                list.forEach(dev => {
+                    const el = document.createElement('div');
+                    el.className = 'nav-item' + (currentView === 'gallery' && dev === currentGpu ? ' active' : '');
+                    el.innerText = dev.replace(/_/g, ' ');
+                    el.title = pages[dev].label || dev;
+                    el.onclick = () => { currentView = 'gallery'; currentGpu = dev; currentFig = 'all'; updateView(); };
+                    gpuNav.appendChild(el);
+                });
+            });
+
+            const benchCatContainer = document.getElementById('bench-categories');
+            benchCatContainer.innerHTML = '';
+            const benchNav = document.getElementById('bench-nav');
+            benchNav.querySelector('.nav-title').innerText = 'Figures';
+            benchNav.hidden = (currentView === 'status' || !pages[currentGpu]);
+            if (benchNav.hidden) return;
+            const group = document.createElement('div');
+            group.className = 'cat-group';
+            [{file: 'all', title: 'Summary & all figures'}, ...pages[currentGpu].figures].forEach(f => {
+                const el = document.createElement('div');
+                el.className = 'nav-item' + (f.file === currentFig ? ' active' : '');
+                el.innerText = f.title;
+                el.title = f.caption || f.title;
+                el.onclick = () => { currentView = 'gallery'; currentFig = f.file; updateView(); };
+                group.appendChild(el);
+            });
+            benchCatContainer.appendChild(group);
+        }
+
+        // ── device page: measured ceilings, statements with numbers, results table, findings ──
+        function renderSummary(page) {
+            const pctCell = t => t.pct === null || t.pct === undefined ? '<td class="num" style="color:var(--text-muted)">—</td>'
+                : `<td class="num">${t.pct.toFixed(0)}% <small style="color:var(--text-muted)">${esc(t.kind)}</small>`
+                  + `<span class="meter" aria-hidden="true"><i style="width:${Math.min(100, t.pct).toFixed(0)}%"></i></span></td>`;
+            const findingBadge = st => st === 'verified' ? '<span class="badge b-done">✓ verified</span>'
+                : '<span class="badge b-partial">? hypothesis</span>';
+            return `
+                <div class="tiles">${(page.tiles || []).map(t => `<div class="tile"><div class="k">${esc(t.k)}</div>
+                    <div class="v">${esc(t.v)}</div><div class="s">${esc(t.s)}</div></div>`).join('')}</div>
+                <div class="panel"><h3>Key results</h3>
+                    <ul class="statements">${(page.statements || []).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
+                ${(page.findings || []).length ? `<div class="panel"><h3>Findings &amp; caveats</h3><div class="findings">
+                    ${page.findings.map(f => `<div class="finding"><h4><span>${esc(f.title)}</span>${findingBadge(f.status)}</h4>
+                        <p>${esc(f.text)}</p><div class="date">last checked ${esc(f.date || '')}</div></div>`).join('')}
+                </div></div>` : ''}
+                <div class="panel"><h3>Per-workload results (largest problem size)</h3>
+                    <div class="table-wrap" style="margin-bottom:0"><table class="results"><thead><tr>
+                        <th>ID</th><th>Workload</th><th>Bound</th><th>Largest problem</th><th style="text-align:right">Result</th>
+                        <th style="text-align:right">% of measured ceiling</th><th>Fastest implementation</th></tr></thead><tbody>
+                    ${(page.table || []).map(t => `<tr><td><b>${esc(t.id)}</b></td><td>${esc(t.name)}</td><td>${esc(t.bound)}</td>
+                        <td class="prob">${esc(t.problem)}</td><td class="num"><b>${esc(t.result)}</b></td>${pctCell(t)}
+                        <td>${esc(t.impl)}${t.n_impl > 1 ? ` <small style="color:var(--text-muted)">(of ${t.n_impl} timed)</small>` : ''}</td></tr>`).join('')}
+                    </tbody></table></div>
+                    <p class="muted" style="margin:0.7rem 0 0">Every number is the median over all samples of 3 process-isolated trials, after validation against a reference.
+                    Bound: B = bandwidth, C = compute, S = synchronization, A = application. “—” = no simple hardware ceiling for this workload.</p></div>`;
+        }
+
+        // ── Workload status / TODO matrix ─────────────────────────────────────
+        const IMPL_LABEL = {done: 'Done', partial: 'Partial', todo: 'TODO', broken: 'Broken'};
+
+        function implBadge(side) {
+            const s = (side && side.impl) || 'todo';
+            return `<span class="badge b-${esc(s)}" title="${esc(side && side.where)}">${IMPL_LABEL[s] || esc(s)}</span>`;
+        }
+
+        function dataCell(w, side, dev) {
+            const c = (w.cells && w.cells[side] || {})[dev];
+            if (!c) return `<td class="cell c-missing" title="No data yet for ${esc(dev)}">TODO</td>`;
+            if (c.state === 'invalid') {
+                return `<td class="cell c-invalid" title="${esc(c.rows)} legacy rows, invalid: ${esc(c.notes.join('; '))}">⚠</td>`;
+            }
+            if (c.state === 'preliminary') {
+                return `<td class="cell c-prelim" title="${esc(c.valid_rows)} legacy rows (frozen, pre-protocol): preliminary, not for the paper">prelim</td>`;
+            }
+            return `<td class="cell c-collected" title="${esc(c.our_rows)} rows from our harness">✓</td>`;
+        }
+
+        function workloadFacts(w, devs) {
+            const core = {cpu: devs.cpu.filter(d => d.core), gpu: devs.gpu.filter(d => d.core)};
+            const has = (side, list) => list.filter(d => (w.cells[side][d.id] || {}).state === 'collected').length;
+            const cpuCore = has('cpu', core.cpu), gpuCore = has('gpu', core.gpu);
+            const missingCore = (core.cpu.length - cpuCore) + (core.gpu.length - gpuCore);
+            return {
+                cpuCore, gpuCore, missingCore,
+                ratioReady: cpuCore > 0 && gpuCore > 0,
+                cpuTodo: w.cpu.impl !== 'done', gpuTodo: w.gpu.impl !== 'done',
+                // legacy devices are pre-protocol by definition: count any data (ours or preliminary)
+                legacy: ['cpu', 'gpu'].reduce((n, side) => n + devs[side].filter(d => !d.core && w.cells[side][d.id]
+                        && w.cells[side][d.id].state !== 'invalid').length, 0),
+                legacyTotal: devs.cpu.filter(d => !d.core).length + devs.gpu.filter(d => !d.core).length,
+            };
+        }
+
+        const FILTERS = {
+            all: ['All workloads', () => true],
+            cpu: ['CPU impl not done', f => f.cpuTodo],
+            gpu: ['GPU impl not done', f => f.gpuTodo],
+            data: ['Missing core-device data', f => f.missingCore > 0],
+            ratio: ['No CPU/GPU pair yet', f => !f.ratioReady],
+        };
+
+        function renderStatus() {
+            const S = workloadStatus;
+            const view = document.getElementById('status-view');
+            const devs = S.devices;
+            const core = {cpu: devs.cpu.filter(d => d.core), gpu: devs.gpu.filter(d => d.core)};
+            const facts = Object.fromEntries(S.workloads.map(w => [w.id, workloadFacts(w, devs)]));
+
+            const implCount = side => S.workloads.reduce((acc, w) => { acc[w[side].impl] = (acc[w[side].impl] || 0) + 1; return acc; }, {});
+            const ci = implCount('cpu'), gi = implCount('gpu');
+            const coreCells = S.workloads.length * (core.cpu.length + core.gpu.length);
+            const coreDone = Object.values(facts).reduce((n, f) => n + f.cpuCore + f.gpuCore, 0);
+            const corePrelim = S.workloads.reduce((n, w) => n + [...core.cpu.map(d => (w.cells.cpu[d.id] || {}).state),
+                ...core.gpu.map(d => (w.cells.gpu[d.id] || {}).state)].filter(s => s === 'preliminary').length, 0);
+            const ratioReady = Object.values(facts).filter(f => f.ratioReady).length;
+            const implLine = c => ['done', 'partial', 'todo', 'broken'].filter(k => c[k]).map(k => `${c[k]} ${IMPL_LABEL[k].toLowerCase()}`).join(' · ');
+
+            let html = `
+                <div class="tiles">
+                    <div class="tile"><div class="k">Final workloads</div><div class="v">${S.workloads.length}</div>
+                        <div class="s">${['B','C','S','A'].map(b => `${S.workloads.filter(w => w.bound === b).length} ${b}`).join(' · ')}</div></div>
+                    <div class="tile"><div class="k">CPU implementations</div><div class="v" style="color:#38bdf8">${ci.done || 0}<span style="font-size:1rem;color:var(--text-muted)"> / ${S.workloads.length}</span></div>
+                        <div class="s">${implLine(ci)}</div></div>
+                    <div class="tile"><div class="k">GPU implementations</div><div class="v" style="color:#34d399">${gi.done || 0}<span style="font-size:1rem;color:var(--text-muted)"> / ${S.workloads.length}</span></div>
+                        <div class="s">${implLine(gi)}</div></div>
+                    <div class="tile"><div class="k">Core-device data</div><div class="v">${coreDone}<span style="font-size:1rem;color:var(--text-muted)"> / ${coreCells}</span></div>
+                        <div class="s">collected with our harness · ${corePrelim} more cells have only preliminary (legacy) data</div></div>
+                    <div class="tile"><div class="k">CPU/GPU ratio ready</div><div class="v">${ratioReady}<span style="font-size:1rem;color:var(--text-muted)"> / ${S.workloads.length}</span></div>
+                        <div class="s">≥1 core CPU and ≥1 core GPU with our data</div></div>
+                </div>
+                <div class="toolbar">
+                    ${Object.entries(FILTERS).map(([k, [label]]) => `<button class="chip${statusFilter === k ? ' on' : ''}" data-filter="${k}">${label}</button>`).join('')}
+                    <div class="legend">
+                        <span><b class="c-collected">✓</b> collected (our harness)</span>
+                        <span><b class="c-prelim">prelim</b> legacy data only (pre-protocol, not for the paper)</span>
+                        <span><b class="c-invalid">⚠</b> legacy data invalid</span>
+                        <span><b class="c-missing">TODO</b> not collected</span>
+                    </div>
+                </div>
+                <div class="table-wrap"><table class="status">
+                    <thead>
+                        <tr>
+                            <th rowspan="2">ID</th><th rowspan="2">Workload</th>
+                            <th rowspan="2">CPU impl</th><th rowspan="2">GPU impl</th>
+                            <th colspan="${core.cpu.length}" class="dev side-cpu">Core CPUs</th>
+                            <th colspan="${core.gpu.length}" class="dev side-gpu">Core GPUs</th>
+                            <th rowspan="2" class="dev" title="Non-core devices with any data (ours or legacy)">Other devices</th><th rowspan="2" class="dev">TODOs</th>
+                        </tr>
+                        <tr>
+                            ${core.cpu.map(d => `<th class="dev side-cpu" title="${esc(d.label + (d.note ? ' — ' + d.note : ''))}">${esc(d.short || d.label)}</th>`).join('')}
+                            ${core.gpu.map(d => `<th class="dev side-gpu" title="${esc(d.label)}">${esc(d.short || d.label)}</th>`).join('')}
+                        </tr>
+                    </thead><tbody>`;
+
+            const ncols = 6 + core.cpu.length + core.gpu.length;
+            const pred = FILTERS[statusFilter][1];
+            let shown = 0;
+            ['B', 'C', 'S', 'A'].forEach(b => {
+                const rows = S.workloads.filter(w => w.bound === b && pred(facts[w.id]));
+                if (rows.length === 0) return;
+                const binfo = S.bounds[b] || {name: b};
+                html += `<tr class="group"><td colspan="${ncols}">${esc(binfo.name)}<small>${esc(binfo.expect || '')}</small></td></tr>`;
+                rows.forEach(w => {
+                    shown++;
+                    const f = facts[w.id];
+                    const open = openRows.has(w.id);
+                    html += `<tr class="wl" data-id="${esc(w.id)}">
+                        <td><b>${esc(w.id)}</b></td>
+                        <td class="name"><b>${esc(w.name)}</b><div class="meta">${esc(w.field)} ${(w.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div></td>
+                        <td>${implBadge(w.cpu)}</td><td>${implBadge(w.gpu)}</td>
+                        ${core.cpu.map(d => dataCell(w, 'cpu', d.id)).join('')}
+                        ${core.gpu.map(d => dataCell(w, 'gpu', d.id)).join('')}
+                        <td class="cell" style="color:var(--text-muted)" title="Legacy devices with data">${f.legacy}/${f.legacyTotal}</td>
+                        <td class="cell"><span class="badge ${(w.todo || []).length ? 'b-todo' : 'b-done'}">${(w.todo || []).length} ${open ? '▴' : '▾'}</span></td>
+                    </tr>`;
+                    if (open) {
+                        html += `<tr class="detail"><td colspan="${ncols}"><div class="cols">
+                            <div><h4>CPU implementation</h4><p>${esc(w.cpu.where)}</p>
+                                 <h4>GPU implementation</h4><p>${esc(w.gpu.where)}</p></div>
+                            <div><h4>TODO</h4><ul class="todo">${(w.todo || []).map(t => `<li>${esc(t)}</li>`).join('') || '<li style="color:var(--ok)">Nothing outstanding</li>'}</ul></div>
+                        </div></td></tr>`;
+                    }
+                });
+            });
+            if (shown === 0) html += `<tr><td colspan="${ncols}" style="color:var(--text-muted);text-align:center;padding:1.5rem">No workloads match this filter.</td></tr>`;
+            html += `</tbody></table></div>`;
+
+            const other = [...(S.other_devices?.cpu || []), ...(S.other_devices?.gpu || [])];
+            html += `<div class="two-col">
+                <div class="panel"><h3>Infrastructure TODO</h3><ul class="todo">${(S.infra_todo || []).map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>
+                <div class="panel"><h3>Dropped from the suite</h3><dl class="dropped">${(S.dropped || []).map(d => `<dt>${esc(d.name)}</dt><dd>${esc(d.why)}</dd>`).join('')}</dl></div>
+            </div>
+            <div class="panel"><h3>Scope</h3><p class="muted">${esc(S.plan)}</p><p class="muted">${esc(S.system_axis)}</p>
+                <p class="muted">Implementation status and TODOs are maintained in <code>configs/workloads.json</code>; the ✓ / ⚠ / TODO data cells are recomputed from <code>results/data/</code> (ours) and <code>legacy/data/</code> (prelim) on every dashboard build.${other.length ? ` Devices with data not yet mapped in the manifest: <code>${other.map(esc).join(', ')}</code>.` : ''}</p></div>`;
+
+            view.innerHTML = html;
+            view.querySelectorAll('[data-filter]').forEach(b => b.onclick = () => { statusFilter = b.dataset.filter; renderStatus(); });
+            view.querySelectorAll('tr.wl').forEach(tr => tr.onclick = () => {
+                const id = tr.dataset.id;
+                openRows.has(id) ? openRows.delete(id) : openRows.add(id);
+                renderStatus();
+            });
+        }
+
+        function updateView() {
+            renderNav();
+            const gallery = document.getElementById('gallery');
+            const statusView = document.getElementById('status-view');
+            const title = document.getElementById('view-title');
+            const subtitle = document.getElementById('view-subtitle');
+            gallery.innerHTML = '';
+
+            if (currentView === 'status' && workloadStatus.workloads) {
+                title.innerText = 'Workload Status & TODO';
+                subtitle.innerText = 'Final CPU-vs-GPU suite (ISCA\'10 bound classes) — what is implemented and which devices still need data. Click a row for its TODO list.';
+                document.getElementById('hardware-limits').style.display = 'none';
+                gallery.hidden = true;
+                document.getElementById('device-summary').hidden = true;
+                statusView.hidden = false;
+                renderStatus();
+                return;
+            }
+            statusView.hidden = true;
+            gallery.hidden = false;
+
+            const page = pages[currentGpu];
+            const summary = document.getElementById('device-summary');
+            document.getElementById('hardware-limits').style.display = 'none';
+            if (!page) {
+                title.innerText = 'No results yet';
+                subtitle.innerText = 'Device pages appear here once a device has data from our harness.';
+                summary.hidden = true;
+                return;
+            }
+            title.innerText = currentGpu.replace(/_/g, ' ');
+            subtitle.innerText = page.label || '';
+            summary.hidden = currentFig !== 'all';
+            summary.innerHTML = currentFig === 'all' ? renderSummary(page) : '';
+            const figs = currentFig === 'all' ? page.figures : page.figures.filter(f => f.file === currentFig);
+            figs.forEach(f => {
+                const card = document.createElement('div');
+                card.className = 'card' + (f.wide ? ' wide' : '');
+                const imgPath = `devices/${currentGpu}/${f.file}`;
+                card.innerHTML = `
+                    <div class="card-img-wrap fig" onclick="openModal('${imgPath}')">
+                        <img class="card-img" src="${imgPath}" alt="${esc(f.title)}: ${esc(f.caption)}" loading="lazy">
+                    </div>
+                    <div class="card-footer"><div class="card-title" title="${esc(f.title)}">${esc(f.title)}</div></div>
+                    <div class="card-caption">${esc(f.caption)}</div>`;
+                gallery.appendChild(card);
+            });
+        }
+
+        function openModal(src) {
+            const modal = document.getElementById('modal');
+            const img = document.getElementById('modal-img');
+            img.src = src;
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('visible'), 10);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('modal');
+            modal.classList.remove('visible');
+            setTimeout(() => modal.style.display = 'none', 200);
+        }
+
+        // Init
+        updateView();
+    </script>
+</body>
+</html>

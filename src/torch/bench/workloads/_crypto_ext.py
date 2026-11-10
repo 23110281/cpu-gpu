@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from ._common import build_error_summary
 from ..core import Unsupported
 
 # ── reference AES-128 (T-table form, mirrors the CUDA kernel) ───────────────
@@ -271,7 +272,7 @@ def cpu():
                            extra_cflags=["-O3", "-march=native", "-fopenmp", "-Wno-deprecated-declarations"],
                            extra_ldflags=["-fopenmp", "-lcrypto"], verbose=False)
     except Exception as e:
-        raise Unsupported(f"crypto CPU extension build failed (needs libssl-dev): {str(e)[:140]}") from e
+        raise Unsupported(f"crypto CPU extension build failed (needs libssl-dev): {build_error_summary(e)}") from e
 
 
 @lru_cache(maxsize=1)
@@ -280,11 +281,12 @@ def cuda():
     from ._cpusort import _ensure_ninja_on_path
     _ensure_ninja_on_path()
     try:
-        return load_inline(name="bench_crypto_cuda_v1", cpp_sources="", cuda_sources=_CUDA_SRC,
-                           functions=["aes128_ctr_cuda", "sha256_multi_cuda"], extra_cuda_cflags=["-O3"],
-                           verbose=False)
+        from ._common import cuda_declarations
+        fns = ["aes128_ctr_cuda", "sha256_multi_cuda"]
+        return load_inline(name="bench_crypto_cuda_v2", cpp_sources=cuda_declarations(_CUDA_SRC, fns),
+                           cuda_sources=_CUDA_SRC, functions=fns, extra_cuda_cflags=["-O3"], verbose=False)
     except Exception as e:
-        raise Unsupported(f"crypto CUDA extension build failed: {str(e)[:140]}") from e
+        raise Unsupported(f"crypto CUDA extension build failed: {build_error_summary(e)}") from e
 
 
 def tables_tensor():

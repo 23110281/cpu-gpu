@@ -46,6 +46,34 @@ def widened_affinity(cpus):
         os.sched_setaffinity(0, saved)
 
 
+def cuda_declarations(cuda_src: str, functions) -> str:
+    """C++ declarations of the functions a load_inline CUDA extension exposes.
+
+    load_inline writes the Python bindings into main.cpp, compiled by the host C++ compiler, which
+    never sees cuda_sources: every exposed function must be DECLARED in cpp_sources, or main.cpp
+    fails with "'<fn>' was not declared in this scope" (all 7 CUDA kernels on the first V100 run).
+    Parsing the definitions keeps declarations and code from drifting apart."""
+    import re
+    decls = []
+    for fn in functions:
+        m = re.search(r"^([A-Za-z_][\w:<>]*)\s+" + re.escape(fn) + r"\s*\(([^)]*)\)\s*\{", cuda_src, re.M)
+        if not m:
+            raise ValueError(f"cuda_declarations: no definition of {fn!r} in the CUDA source")
+        args = " ".join(m.group(2).split())
+        decls.append(f"{m.group(1)} {fn}({args});")
+    return "#include <torch/extension.h>\n" + "\n".join(decls) + "\n"
+
+
+def build_error_summary(e: Exception, limit: int = 300) -> str:
+    """The compiler's own error lines from a failed load_inline build (the exception text starts
+    with the full ninja command line, so a plain prefix cut hides the actual error)."""
+    text = str(e).splitlines()
+    compiler = [l.strip() for l in text if ": error" in l or "error:" in l]          # file:line: error: ...
+    other = [l.strip() for l in text if "error" in l.lower() and l not in compiler
+             and not l.startswith("Error building extension") and "ninja: build stopped" not in l]
+    return (" | ".join(compiler or other) or str(e))[:limit]
+
+
 def require_native(p: dict, ctx: Ctx) -> None:
     if p.get("precision") == "bf16" and not ctx.native_bf16:
         raise Unsupported("bf16 not native on this device")

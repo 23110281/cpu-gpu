@@ -335,3 +335,27 @@ def test_widened_affinity_restores_mask():
         assert os.sched_getaffinity(0) == one
     finally:
         os.sched_setaffinity(0, saved)
+
+
+def test_cuda_extensions_declare_every_exposed_function():
+    """load_inline compiles the Python bindings (main.cpp) without seeing cuda_sources: each exposed
+    CUDA function needs a declaration in cpp_sources (all 7 kernels failed to build on the first V100)."""
+    from bench.workloads import _common as C, _crypto_ext, _mc_ext, b2_lbm, c3_conv, c5_bilateral, s2_solver
+    cases = [(b2_lbm._CUDA_SRC, ["lbm_step_cuda"]), (c3_conv._CUDA_SRC, ["conv2d_native_cuda"]),
+             (c5_bilateral._CUDA_SRC, ["bilateral_cuda"]), (_mc_ext._CUDA_SRC, ["mc_european_cuda"]),
+             (_crypto_ext._CUDA_SRC, ["aes128_ctr_cuda", "sha256_multi_cuda"]),
+             (s2_solver._CUDA_SRC, ["pgs_iter_launches", "pgs_iter_coop", "coop_max_blocks"])]
+    for src, fns in cases:
+        decl = C.cuda_declarations(src, fns)
+        for fn in fns:
+            assert f" {fn}(" in decl and decl.rstrip().endswith(";")
+    with pytest.raises(ValueError):
+        C.cuda_declarations("void other(int a) {}", ["missing_fn"])
+
+
+def test_build_error_summary_keeps_the_compiler_error():
+    from bench.workloads._common import build_error_summary
+    e = RuntimeError("Error building extension 'x': [1/3] c++ -MMD -MF main.o.d -DTORCH_EXTENSION_NAME=x "
+                     + "-I/very/long/include/path " * 20 + "\nmain.cpp:4:52: error: 'f' was not declared in this scope\n"
+                     "ninja: build stopped: subcommand failed.")
+    assert "'f' was not declared" in build_error_summary(e)

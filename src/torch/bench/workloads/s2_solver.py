@@ -23,6 +23,7 @@ from functools import lru_cache
 
 import torch
 
+from ._common import build_error_summary
 from ..core import Ctx, Unsupported, Workload
 from ..validate import normwise
 
@@ -128,7 +129,7 @@ def _cpu_ext():
         return load_inline(name="bench_pgs_cpu_v1", cpp_sources=_CPU_SRC, functions=["pgs_iter_cpu"],
                            extra_cflags=["-O3", "-march=native", "-fopenmp"], extra_ldflags=["-fopenmp"])
     except Exception as e:
-        raise Unsupported(f"PGS CPU extension build failed: {str(e)[:140]}") from e
+        raise Unsupported(f"PGS CPU extension build failed: {build_error_summary(e)}") from e
 
 
 @lru_cache(maxsize=1)
@@ -140,12 +141,13 @@ def _cuda_ext():
         # No -rdc=true: torch's JIT build (load_inline) has no CUDA device-link step, so rdc
         # objects leave __cudaRegisterLinkedBinary_* unresolved and the module fails to load.
         # grid.sync() needs no rdc since CUDA 11 (cooperative launch is enough).
-        return load_inline(name="bench_pgs_cuda_v2", cpp_sources="",
-                           cuda_sources="#include <ATen/cuda/CUDAContext.h>\n" + _CUDA_SRC,
-                           functions=["pgs_iter_launches", "pgs_iter_coop", "coop_max_blocks"],
-                           extra_cuda_cflags=["-O3"])
+        from ._common import cuda_declarations
+        src = "#include <ATen/cuda/CUDAContext.h>\n" + _CUDA_SRC
+        fns = ["pgs_iter_launches", "pgs_iter_coop", "coop_max_blocks"]
+        return load_inline(name="bench_pgs_cuda_v3", cpp_sources=cuda_declarations(src, fns),
+                           cuda_sources=src, functions=fns, extra_cuda_cflags=["-O3"])
     except Exception as e:
-        raise Unsupported(f"PGS CUDA extension build failed: {str(e)[:140]}") from e
+        raise Unsupported(f"PGS CUDA extension build failed: {build_error_summary(e)}") from e
 
 
 def make_problem(n_bodies: int, colors: int, seed: int):

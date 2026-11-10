@@ -153,7 +153,7 @@ def _cpu_ext():
         return load_inline(name="bench_conv_cpu_v1", cpp_sources=_CPU_SRC, functions=["conv2d_native_cpu"],
                            extra_cflags=["-O3", "-march=native", "-fopenmp"], extra_ldflags=["-fopenmp"])
     except Exception as e:
-        raise Unsupported(f"conv CPU extension build failed: {str(e)[:140]}") from e
+        raise Unsupported(f"conv CPU extension build failed: {C.build_error_summary(e)}") from e
 
 
 @lru_cache(maxsize=1)
@@ -162,12 +162,11 @@ def _cuda_ext():
     from ._cpusort import _ensure_ninja_on_path
     _ensure_ninja_on_path()
     try:
-        return load_inline(name="bench_conv_cuda_v1", cpp_sources="",
-                           cuda_sources="#include <ATen/cuda/CUDAContext.h>\n#include <c10/cuda/CUDAException.h>\n"
-                                        + _CUDA_SRC,
-                           functions=["conv2d_native_cuda"], extra_cuda_cflags=["-O3"])
+        src = "#include <ATen/cuda/CUDAContext.h>\n#include <c10/cuda/CUDAException.h>\n" + _CUDA_SRC
+        return load_inline(name="bench_conv_cuda_v2", cpp_sources=C.cuda_declarations(src, ["conv2d_native_cuda"]),
+                           cuda_sources=src, functions=["conv2d_native_cuda"], extra_cuda_cflags=["-O3"])
     except Exception as e:
-        raise Unsupported(f"conv CUDA extension build failed: {str(e)[:140]}") from e
+        raise Unsupported(f"conv CUDA extension build failed: {C.build_error_summary(e)}") from e
 
 
 def _cv2():

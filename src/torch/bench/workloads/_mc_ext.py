@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from ._common import build_error_summary
 from ..core import Unsupported
 
 _COMMON = r"""
@@ -156,7 +157,7 @@ def cpu():
                            extra_cflags=["-O3", "-march=native", "-fopenmp", "-ffast-math"],
                            extra_ldflags=["-fopenmp"], verbose=False)
     except Exception as e:
-        raise Unsupported(f"MC CPU extension build failed: {str(e)[:160]}") from e
+        raise Unsupported(f"MC CPU extension build failed: {build_error_summary(e)}") from e
 
 
 @lru_cache(maxsize=1)
@@ -165,7 +166,9 @@ def cuda():
     from ._cpusort import _ensure_ninja_on_path
     _ensure_ninja_on_path()
     try:
-        return load_inline(name="bench_mc_cuda_v4", cpp_sources="", cuda_sources=_CUDA_SRC,
-                           functions=["mc_european_cuda"], extra_cuda_cflags=["-O3"], verbose=False)
+        from ._common import cuda_declarations
+        return load_inline(name="bench_mc_cuda_v5", cpp_sources=cuda_declarations(_CUDA_SRC, ["mc_european_cuda"]),
+                           cuda_sources=_CUDA_SRC, functions=["mc_european_cuda"], extra_cuda_cflags=["-O3"],
+                           verbose=False)
     except Exception as e:
-        raise Unsupported(f"MC CUDA extension build failed: {str(e)[:160]}") from e
+        raise Unsupported(f"MC CUDA extension build failed: {build_error_summary(e)}") from e

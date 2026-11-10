@@ -109,7 +109,7 @@ def _cpu_ext():
         return load_inline(name="bench_bilat_cpu_v1", cpp_sources=_CPU_SRC, functions=["bilateral_cpu"],
                            extra_cflags=["-O3", "-march=native", "-fopenmp", "-ffast-math"], extra_ldflags=["-fopenmp"])
     except Exception as e:
-        raise Unsupported(f"bilateral CPU extension build failed: {str(e)[:140]}") from e
+        raise Unsupported(f"bilateral CPU extension build failed: {C.build_error_summary(e)}") from e
 
 
 @lru_cache(maxsize=1)
@@ -118,11 +118,11 @@ def _cuda_ext():
     from ._cpusort import _ensure_ninja_on_path
     _ensure_ninja_on_path()
     try:
-        return load_inline(name="bench_bilat_cuda_v1", cpp_sources="",
-                           cuda_sources="#include <ATen/cuda/CUDAContext.h>\n" + _CUDA_SRC,
-                           functions=["bilateral_cuda"], extra_cuda_cflags=["-O3"])
+        src = "#include <ATen/cuda/CUDAContext.h>\n" + _CUDA_SRC
+        return load_inline(name="bench_bilat_cuda_v2", cpp_sources=C.cuda_declarations(src, ["bilateral_cuda"]),
+                           cuda_sources=src, functions=["bilateral_cuda"], extra_cuda_cflags=["-O3"])
     except Exception as e:
-        raise Unsupported(f"bilateral CUDA extension build failed: {str(e)[:140]}") from e
+        raise Unsupported(f"bilateral CUDA extension build failed: {C.build_error_summary(e)}") from e
 
 
 def offsets(r: int):

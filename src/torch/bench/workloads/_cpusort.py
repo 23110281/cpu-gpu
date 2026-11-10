@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from ._common import build_error_summary
 from ..core import Unsupported
 
 _SRC = r"""
@@ -117,7 +118,7 @@ def ext():
             extra_cflags=["-O3", "-march=native", "-fopenmp"] + (["-DHAVE_TBB"] if tbb else []),
             extra_ldflags=["-fopenmp"] + (["-ltbb"] if tbb else []), verbose=False)
     except Exception as e:  # compiler / ninja missing -> the variant is unavailable on this node
-        raise Unsupported(f"cpu sort extension build failed: {type(e).__name__}: {str(e)[:120]}") from e
+        raise Unsupported(f"cpu sort extension build failed: {type(e).__name__}: {build_error_summary(e)}") from e
 
 
 def version(lib: str) -> str:

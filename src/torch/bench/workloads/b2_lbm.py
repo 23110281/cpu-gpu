@@ -192,7 +192,7 @@ def _cpu_ext():
         return load_inline(name="bench_lbm_cpu_v2", cpp_sources=_CPU_SRC, functions=["lbm_step_cpu"],
                            extra_cflags=["-O3", "-march=native", "-fopenmp"], extra_ldflags=["-fopenmp"])
     except Exception as e:
-        raise Unsupported(f"LBM CPU extension build failed: {str(e)[:140]}") from e
+        raise Unsupported(f"LBM CPU extension build failed: {C.build_error_summary(e)}") from e
 
 
 @lru_cache(maxsize=1)
@@ -201,11 +201,11 @@ def _cuda_ext():
     from ._cpusort import _ensure_ninja_on_path
     _ensure_ninja_on_path()
     try:
-        return load_inline(name="bench_lbm_cuda_v1", cpp_sources="",
-                           cuda_sources="#include <ATen/cuda/CUDAContext.h>\n" + _CUDA_SRC,
-                           functions=["lbm_step_cuda"], extra_cuda_cflags=["-O3"])
+        src = "#include <ATen/cuda/CUDAContext.h>\n" + _CUDA_SRC
+        return load_inline(name="bench_lbm_cuda_v2", cpp_sources=C.cuda_declarations(src, ["lbm_step_cuda"]),
+                           cuda_sources=src, functions=["lbm_step_cuda"], extra_cuda_cflags=["-O3"])
     except Exception as e:
-        raise Unsupported(f"LBM CUDA extension build failed: {str(e)[:140]}") from e
+        raise Unsupported(f"LBM CUDA extension build failed: {C.build_error_summary(e)}") from e
 
 
 def reference_step(f: torch.Tensor, omega: float) -> torch.Tensor:

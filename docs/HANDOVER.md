@@ -1,4 +1,4 @@
-# Handover: CPU vs GPU benchmark project (state as of 2026-11-11)
+# Handover: CPU vs GPU benchmark project (state as of 2026-11-11, evening)
 
 This is for an AI coding session picking up the work. **Verify every claim here against the code, git log and data before acting on it.** If something here disagrees with the repo, the repo wins; note the discrepancy. Keep this file current: update it at every milestone and delete what is no longer true (the user's standing request).
 
@@ -46,7 +46,12 @@ Each workload is **one module for CPU and GPU**; the device is a runtime argumen
   - `results/plotting/v2/analyze.py` writes `<ID>_{headline,libraries,bounds,scaling}.csv`, `ratios.csv` and plots.
   - `results/plotting/v2/library_report.py` writes `library_report.{csv,json,md}` and `library_summary.csv`, with notes from `results/library_notes.json` (curated: verified vs hypothesis).
   - Both run via `make analysis`. Env overrides: `ANALYSIS_DATA`, `ANALYSIS_CAL`, `ANALYSIS_OUT`, `ANALYSIS_PLOTS`.
-- Dashboard: `results/generate_index.py` (`make index`). A (workload, device) cell is "collected" if v2 rows exist under `results/data/v2/{cpu,gpu}/<ID>/<WID>_*.csv`, else "preliminary" from legacy.
+- Dashboard (`make plots`, also run by CI on push):
+  - Pipeline: `analyze.py` → `library_report.py` → `dashboard_summary.py` → `generate_index.py`.
+  - The device pages show **v2 data only**. Legacy plots are no longer listed, and the legacy plot scripts no longer run.
+  - Each page, from `results/plots/v2/<ID>/summary.json`: measured vs datasheet tiles, auto-generated statements with numbers, a per-workload table, curated findings from `results/dashboard_notes.json`, then the overview and per-workload figures (`figures.py`, dark theme).
+  - The status matrix still marks legacy-only cells "prelim". Device aliases in `workloads.json` map old directory names (V100: `Tesla_V100-SXM2-16GB` → `NVIDIA_V100`).
+  - Checked under the CI's pinned versions (Python 3.11, pandas 3.0.5, matplotlib 3.11.1): identical output.
 - `tests/torch/test_bench.py`: 29 test functions (41 cases). Laptop: 26 pass, 15 skip (old GCC). The r6615 and V100 nodes passed all of them.
 
 Legacy code still in the repo: native `src/cpu/*.c` and `src/gpu/*.cu` benches (cross-checks only), `src/gpu/gh200/*` (C2C study, not fixed), and old sweep shell scripts.
@@ -83,8 +88,11 @@ Legacy code still in the repo: native `src/cpu/*.c` and `src/gpu/*.cu` benches (
 - **Full sweep:** campaign `c_v100_20261110`, 3 trials, 621 jobs, done 2026-11-10 19:30 UTC.
   - 516 ok, 27 unsupported (bf16), 78 preflight OOM (16 GB), 0 errors, 8 unstable (all tiny problems).
   - 10 early rows from 2999f37, rest from 3b1a3f2.
-- **Data:** copied to `results/data/test/v100_c4130_20261110/` (untracked; also still on the node).
-- **Analysis:** `results/analysis/test/v100_20261110/`.
+- **Data:**
+  - Campaign: `results/data/v2/gpu/NVIDIA_V100/`, calibration `results/calibration/NVIDIA_V100.json` (committed locally; on the dashboard).
+  - Session files: `results/data/test/v100_c4130_20261110/` (README, smoke, logs, superseded A1 rows).
+  - Everything is also still on the node.
+- **Analysis:** `make analysis` regenerates `results/analysis/NVIDIA_V100_*` (gitignored build outputs).
 - **Found and fixed (local commits 0fb3d5b..3b1a3f2):**
   - Driver 620 has no Volta support: pin 580.
   - The cu128/cu129 torch wheels have no sm_70 code: the setup now checks the arch list.
@@ -112,18 +120,25 @@ Legacy code still in the repo: native `src/cpu/*.c` and `src/gpu/*.cu` benches (
 | C8 AES | 126–135 GB/s | ✓ |
 | C9 SHA-256 | 52–105 GB/s | **hypothesis: below well-tuned GPU SHA-256** (per-thread message reads are uncoalesced); check before the paper |
 | S1, S2 | ok; S2 CUDA graph beats cooperative launch 4/4 | ✓ |
-| A1 Llama | **decode results not trustworthy (see below)**; prefill ~14 TFLOP/s ≈ peak ✓ | ✗ decode |
+| A1 Llama | decode B=1 117.6 / B=8 678.5 tok/s (71% / 60% of bandwidth) after the 11-11 fixes (below); prefill ~14 TFLOP/s ≈ peak | ✓ (re-run with 09d3e54) |
 
-**A1 decode, new finding (2026-11-11, torch profiler on the V100, llama3.2-1b fp32):**
-- Attention (`F.scaled_dot_product_attention`, the memory-efficient CUTLASS kernel on sm_70) takes **47% of GPU time at batch 1 and 64% at batch 8**. It reads only 0.13 / 1.07 GB of KV cache but runs ~40× slower than bandwidth: with one query token, a 64-row tile is mostly empty.
-- The weight GEMVs alone run at ~800 GB/s, so the BLAS side is fine.
-- The per-step `torch.cat` of the KV cache adds another ~8% at batch 8.
-- **The same SDPA + cat code runs on the CPU**, so the "batch-8 decode at 9–13% of bandwidth" seen on r6615 is probably mostly this, not a "skinny GEMM" problem (that library note is now doubtful).
-- **Proposed fix (not yet approved or made):**
-  - For decode (S = 1), compute attention explicitly: GQA reshape, then q·Kᵀ, softmax, ·V (bandwidth-bound batched GEMV).
-  - Preallocate the KV cache and write in place instead of `cat`.
-  - Then re-run A1 on the V100 (while reserved) and on the next CPU.
-- Diagnostic script (not in repo): run on the node with `python3 /tmp/prof_a1.py` from `~/cpu-gpu`.
+**A1 decode: found and fixed 2026-11-11 (commits 72ab4db, 09d3e54; V100 A1 re-run `c_v100_a1graph_20261111`):**
+1. **Attention.** SDPA's fused kernel (mem-efficient, sm_70) tiles over queries. With one query token it took 47% (B=1) / 64% (B=8) of the step, and `torch.cat` of the KV cache another ~8%.
+   - Fix: decode attention = GQA reshape + q·Kᵀ / softmax / ·V (`decode_attention`), with the new K/V written in place into a preallocated cache slot.
+   - Prefill keeps SDPA. The old cat + SDPA path is the fp64 validation reference.
+2. **Host launch rate.** An eager step issues ~500 kernels. This node's Xeon E5-2667 v4 needs 16 ms to issue a step that takes the GPU 8.5 ms, and the harness rightly syncs per step (each token depends on the last).
+   - Fix: GPU decode is also timed replayed from a CUDA graph (`lib=cudagraph`, standard in vLLM/TensorRT-LLM). Eager rows are kept; the analysis keeps the faster.
+
+V100 llama3.2-1b fp32, tokens/s:
+
+| | Before | Eager, new attention | CUDA graph |
+|---|---|---|---|
+| B=1 | 66.8 | 43.9 | **117.6** (597 GB/s, 71%) |
+| B=8 | 251 | 347.5 | **678.5** (510 GB/s, 60%) |
+
+**The same attention change applies to CPUs.** The r6615 A1 rows (before 72ab4db) are outdated: re-run A1 on every CPU and profile batch-8 decode there.
+- The CPU still pays Python per-op overhead (an estimated 10–20% at 1B, batch 1).
+- `torch.compile` for both sides is future work.
 
 **r6615 vs V100 (same problems):**
 - B2 LBM: GPU 2.3–3.4× faster, roughly the bandwidth ratio 845/364 = 2.3.
@@ -137,20 +152,30 @@ Legacy code still in the repo: native `src/cpu/*.c` and `src/gpu/*.cu` benches (
 - `analyze.py` writes plots to `results/plots/v2/<ID>/`, but `generate_index.py` treats every first-level folder of `results/plots/` as a device, so "v2" would show as a device. Check before publishing v2 plots.
 
 ## 7. Open items
-1. **A1 decode attention fix** (§6). Needs user approval; changes A1 results on every device.
+1. **Re-run A1 on CPUs** with the decode-attention fix (any CPU node; then profile batch-8 decode). The V100 is done.
 2. Lock clocks or not (user decision). The V100 GEMM shows a 9% clock-driven difference between sessions.
 3. C9 GPU SHA-256 efficiency check.
-4. Freeze a release: tag one commit and collect all paper campaigns from it. CPU paths have not changed since r6615 (d51fa7e..HEAD only touched CUDA builds and error messages), but the A1 fix would change both.
+4. Freeze a release: tag one commit and collect all paper campaigns from it. Since r6615 (d51fa7e), CPU code changed only in A1 decode attention (72ab4db); everything else touched CUDA builds or error messages.
 5. Library provenance (BLIS arch, OpenBLAS core, MKL/oneDNN ISA) in rows. The BLIS 0.8.1-on-Zen-4 slowness is a hypothesis.
 6. GEMM cross-check outliers; native benches per-iteration samples; GH200 C2C study (keep or drop: user's call).
 7. SuiteSparse for B3/B4; pyFFTW for C4; llama.cpp rows.
 8. Group A (deferred by user): committed launcher + periodic copy-back.
+10. Sweep preflight margin: 2.5× working set skips problems that likely fit (V100: 8–9 GB problems such as Llama-1B decode B=32 and SAXPY n=1G). Consider relaxing it once a real out-of-memory error is reliably recorded as `oom`.
+11. Dashboard figures exist only for v2 devices. Cross-device ratio pages wait for the first CPU campaign in `results/data/v2` (the r6615 rows are test data, kept out).
 9. Next hardware: c6620 (Intel, AMX: first Intel test with the new scripts, so do the drill first), c6525-100g (Zen 2, close to r6615), r6615 again for a full campaign, then A100/A30/H100. Every new machine type: tests, smoke, calibration (~30 min) before the full sweep. First bf16-capable GPU = first ever run of the GPU bf16 paths and of sizes that were OOM on 16 GB.
 
 ## 8. Git state
 - `origin/main` = `9798ed8` (pushed 2026-11-10 23:00 IST, after the r6615 session; includes the library report and r6615 data).
-- **Unpushed local commits** (V100 fixes): `0fb3d5b` config, `79e2eb4` driver 580, `138a007` torch wheel arch check, `2999f37` CUDA declarations + error summary, `3b1a3f2` BabelStream arch.
-- Untracked: `results/data/test/v100_c4130_20261110/`, `results/analysis/test/v100_20261110/`.
+- **Unpushed local commits:**
+  - V100 fixes: `0fb3d5b` config, `79e2eb4` driver 580, `138a007` torch wheel arch check, `2999f37` CUDA declarations + error summary, `3b1a3f2` BabelStream arch.
+  - `379a063` handover.
+  - `72ab4db` A1 decode attention.
+  - `09d3e54` A1 CUDA-graph decode.
+  - `4aa688b` v2 dashboard.
+  - `abe1ec3` V100 data.
+  - This handover update.
+- The V100 node runs `09d3e54` (deployed with git bundles, since nothing is pushed).
+- Pushing triggers the CI dashboard rebuild, which publishes the V100 page.
 
 ## 9. Known pitfalls (do not rediscover them)
 - **Thread affinity:** pthread OpenBLAS, oneTBB and OpenCV under torch's `OMP_PROC_BIND` run on one core. Use OpenMP OpenBLAS (update-alternatives), `_cpusort.WidenAffinity` for TBB, `_common.widened_affinity` for OpenCV.
@@ -170,6 +195,12 @@ Legacy code still in the repo: native `src/cpu/*.c` and `src/gpu/*.cu` benches (
   - Wheels for CUDA ≥ 12.8 have no sm_70: V100 needs cu126.
   - Bump the extension name (`_vN`) when the source changes.
 - **Drivers:** branch 580 is the last with Volta/Pascal/Maxwell.
+- **LLM decode:**
+  - Don't use SDPA for one-token decode (it tiles over queries).
+  - Don't `torch.cat` the KV cache every step.
+  - Eager GPU decode can be host-launch-bound: time it from a CUDA graph too.
+  - Profile the decode step on every new device type.
+- **Dashboard:** plots come only from `results/plots/v2/`. The published plots branch keeps old files (`keep_files: true`), so a page must never list folders it does not generate.
 - **Permissions:** setcap puts ld.so in secure mode (drops `LD_PRELOAD`; jemalloc needs a setuid lib); RAPL `energy_uj` is root-only (chmod the resolved symlinks).
 - **Harness:** one subprocess per config, because `torch.set_num_interop_threads` can only be set once per process.
 - **Laptop:**

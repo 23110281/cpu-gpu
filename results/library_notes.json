@@ -16,8 +16,8 @@
       "library": "*",
       "status": "hypothesis",
       "date": "2026-11-10",
-      "note": "Batch-8 decode reaches only ~9-13% of bandwidth with ALL three libraries (BLIS slightly ahead): an 8-row 'skinny' GEMM is a weak shape for general BLAS kernels on this CPU. Open item: a decode-specific path (e.g. oneDNN matmul, or a batched-GEMV kernel) may be needed for a fair CPU baseline at batch > 1.",
-      "evidence": "r6615 ctest_r6615: llama3-8b B=8 blis 10.8 / openblas 9.9 / torch 8.1 tok/s (35-46 GB/s of 364); llama3.2-1b B=8 blis 45.8 / openblas 43.6 / torch 36.2."
+      "note": "Batch-8 decode reaches only ~9-13% of bandwidth with ALL three libraries (BLIS slightly ahead). Updated 2026-11-11: the likelier cause is the harness's attention step, not the BLAS -- on the V100 the same code spends 47% (B=1) / 64% (B=8) of decode time in scaled_dot_product_attention plus ~8% in the KV-cache torch.cat, while the weight GEMVs run near bandwidth. Confirm on the next CPU with the torch profiler after the planned decode-attention fix.",
+      "evidence": "r6615 ctest_r6615: llama3-8b B=8 blis 10.8 / openblas 9.9 / torch 8.1 tok/s (35-46 GB/s of 364); llama3.2-1b B=8 blis 45.8 / openblas 43.6 / torch 36.2. V100 torch profiler 2026-11-11 (llama3.2-1b fp32): fmha_cutlassF sm70 47% / 64% of GPU time at B=1 / B=8."
     },
     {
       "device": "AMD_R6615",

@@ -1,164 +1,182 @@
-# Handover: CPU vs GPU benchmark project (state as of 2026-11-06)
+# Handover: CPU vs GPU benchmark project (state as of 2026-11-11)
 
-This is for an AI coding session picking up the work. **Verify every claim here against the code, git log and data before acting on it.** If something here disagrees with the repo, the repo wins; note the discrepancy.
+This is for an AI coding session picking up the work. **Verify every claim here against the code, git log and data before acting on it.** If something here disagrees with the repo, the repo wins; note the discrepancy. Keep this file current: update it at every milestone and delete what is no longer true (the user's standing request).
 
 ## 1. The project in one paragraph
-We are replicating ISCA'10 *"Debunking the 100X GPU vs. CPU Myth"* (Lee et al.) on modern hardware. That paper showed that GPU-vs-CPU speedups shrink to about 2.5× once **both** sides run properly optimized code. Our suite has **16 workloads**, each tagged by what limits it:
-- B = bandwidth
-- C = compute
-- S = synchronization
-- A = application
+We are replicating ISCA'10 *"Debunking the 100X GPU vs. CPU Myth"* (Lee et al.) on modern hardware. That paper showed that GPU-vs-CPU speedups shrink to about 2.5× once **both** sides run properly optimized code. Our suite has **16 workloads**, each tagged by what limits it: B = bandwidth, C = compute, S = synchronization, A = application.
 
-We run it on **6 core devices**:
-- CPUs: Intel Xeon SPR (CloudLab c6620), AMD EPYC 7402P (CloudLab c6525-100g), NVIDIA Grace
-- GPUs: A100, L40S, H100 (on GH200)
+Target devices:
+- **Core:** Intel Xeon (c6620), AMD EPYC (c6525-100g Zen 2; r6615 Zen 4), NVIDIA Grace; A100, L40S, H100/GH200.
+- **Extra:** V100 (c4130).
 
-Repo: `/home/kushal/cpu gpu project/cpu-gpu`. GitHub: `https://github.com/23110281/cpu-gpu` (branch `main`, GitHub Pages dashboard built from `results/`).
+Repo: `/home/kushal/cpu gpu project/cpu-gpu`. GitHub: `https://github.com/23110281/cpu-gpu` (branch `main`; GitHub Pages dashboard built from `results/` by `.github/workflows/plots.yml`).
 
 ## 2. Ground rules from the user
-- **Commit locally only. Do not push** until the new suite has been tested end to end on one CPU node AND one GPU node, and the user asks. See §7 for unpushed commits.
-- Narrate progress step by step in plain language. The user wants to follow along.
+- **Push only when the user asks.** Fixes stay as local commits until they have been tested on real hardware. See §8.
+- Narrate progress step by step in plain language. The user wants to follow along, so take things slowly and explain.
 - Prefer PyTorch with the fastest well-known library on each side. Keep a publication standard.
-- Re-collect all data. Old data under `results/data/legacy/` is frozen, shown as "preliminary", and **never used in the paper**.
-- Keep the native C/CUDA benches only as cross-checks.
-- Ask before anything hard to reverse: deleting data, pushing, releasing the CloudLab node.
+- Old data under `results/data/legacy/` is frozen, shown as "preliminary", and **never used in the paper**.
+- Ask before anything hard to reverse: deleting data, pushing, releasing a CloudLab node, or a code change that alters measured results.
+- Long runs on a node: `setsid -f nohup <launcher> >> log 2>&1 < /dev/null` (survives the laptop sleeping). The user backs up results when they choose.
 
-## 3. Architecture (what replaced what)
-**Primary data source:** the v2 harness in `src/torch/bench/` (~4.4k lines). Run with `PYTHONPATH=src/torch python3 -m bench ...`.
+## 3. Architecture
+**Primary data source:** the v2 harness in `src/torch/bench/`. Run with `PYTHONPATH=src/torch python3 -m bench ...`.
 
 | File | Role |
 |---|---|
-| `core.py` | `TimingPolicy`, adaptive warmup, per-sample timing (CPU `perf_counter_ns`, GPU CUDA events), small-call batching, `Workload` base class, `run_one()` (validates first, then times, then writes the row) |
-| `devices.py` | lscpu topology; placements `socketS[-smt][:T]` / `node`; OMP pinning env; numactl prefix; LLC size; bf16 nativeness; TF32 off; opt-in jemalloc |
-| `env.py` | provenance JSON per run: versions, clocks, governor, git sha, `dirty_tree` |
-| `schema.py` | the single long CSV schema (`COLUMNS`), flock append, raw samples as `.csv.gz` |
-| `stats.py` | median, IQR, CV, bootstrap 95% CI of the median, ratio CI |
-| `validate.py` | normwise checks; row-scaled Freivalds plus sampled entries (GEMM); exact match; 4·SE statistical check |
-| `telemetry.py` | RAPL powercap, AMD MSR (0xC001029B / 0xC0010299), APERF/MPERF frequency, NVML; NaN, never 0, when unreadable |
-| `sweep.py` | one **subprocess per (config, placement, trial)**; shuffled trial-major order; resumable by `--campaign`; preflight memory check; `--workloads B2,C3` subsets |
-| `workloads/` | one module per workload: `b1_saxpy, b2_lbm, b3_spmv, b4_spgemm, c1_gemm, c2_montecarlo, c3_conv, c4_fft, c5_bilateral, c6_sort, c7_search, c8_aes, c9_sha256, s1_histogram, s2_solver, a1_llama`. Helpers: `_common, _blas, _cpusort, _sparse, _mc_ext, _crypto_ext`. |
+| `core.py` | `TimingPolicy`, adaptive warmup, per-sample timing (CPU `perf_counter_ns`, GPU CUDA events), small-call batching, `Workload` base, `run_one()` (validate, then time, then write the row) |
+| `devices.py` | lscpu topology; placements `socketS[-smt][:T]` / `node`; OMP pinning env; numactl membind over all NUMA nodes of the placement (NPS4-safe); LLC summed over instances; bf16 nativeness (CPU flags, or GPU capability ≥ 8.0); TF32 off |
+| `env.py` | provenance per run: versions, clocks, governor, git sha, `dirty_tree` (src/configs/scripts/Makefile only) |
+| `schema.py`, `stats.py`, `validate.py`, `telemetry.py` | CSV schema; median, IQR, bootstrap CI; validation; RAPL/MSR/NVML (NaN when unreadable, never 0) |
+| `sweep.py` | one subprocess per (config, placement, trial); resumable with `--campaign <id>` (skips `ok, validation_failed, oom, unsupported`; re-runs `error`); preflight OOM when ws × 2.5 > memory (row carries git sha) |
+| `workloads/` | `b1_saxpy b2_lbm b3_spmv b4_spgemm c1_gemm c2_montecarlo c3_conv c4_fft c5_bilateral c6_sort c7_search c8_aes c9_sha256 s1_histogram s2_solver a1_llama`. Helpers: `_common` (incl. `widened_affinity`, `cuda_declarations`, `build_error_summary`), `_blas`, `_cpusort`, `_sparse`, `_mc_ext`, `_crypto_ext` |
 
-**Same module for CPU and GPU.** Each workload is a single file and the device is a runtime argument (`--device cpu|cuda`, or `device_class` in `configs/devices/<ID>.json`). There are no separate CPU/GPU folders in v2. Within a module:
-- `configs(device_class)` adds CPU-only library variants: BLIS/OpenBLAS (C1), OpenCV (C3, C5), GNU-parallel/TBB sort (C6), OpenSSL hw-off variants (C8, C9). It also adds GPU-only variants: S2 CUDA graph vs cooperative launch, C5 `__expf`.
-- Native kernels (`load_inline`) have a C++/OpenMP version and a CUDA version of the **same algorithm**. This covers B2, C2, C5, C8 (GPU T-table AES; CPU uses OpenSSL EVP), C9 (CPU OpenSSL low-level, GPU custom) and S2.
-- Validation, the work model, metrics, the CSV schema, statistics and the timing policy are shared across devices.
+Each workload is **one module for CPU and GPU**; the device is a runtime argument. Native kernels (`torch.utils.cpp_extension.load_inline`) have a C++/OpenMP version and a CUDA version of the same algorithm.
+
+**Fastest-library rule:** library choice is a config key `lib`. The analysis defines a problem as params minus `lib`, and the headline is the best (lib, placement) per problem.
 
 **Supporting files:**
-- `docs/methodology.md`: the written protocol. It contains a deviations table, the platform pitfalls found on EPYC, and the open items. **Read it fully.**
-- `configs/devices/*.json`: 6 device configs (AMD has datasheet ceilings). GPU configs are minimal; memory is detected at run time.
-- `scripts/setup_v2_harness.sh` (shared), `scripts/cpu/setup_cloudlab_{epyc,xeon}.sh`, `scripts/gpu/setup_gpu_node.sh`: node setup.
-- `scripts/calibrate.py`: BabelStream v5.0 plus best-library GEMM, written to `results/calibration/<ID>.json`.
-- `scripts/crosscheck_native.py`: harness vs native C benches, written to `results/crosscheck/<ID>.json`.
-- `results/plotting/v2/analyze.py` (`make analysis`) writes:
-  - `results/analysis/<ID>_{headline,libraries,bounds}.csv`
-  - `results/analysis/ratios.csv`
-  - `results/plots/v2/<ID>/*.png`
-- `tests/torch/test_bench.py`: 38 tests. On the laptop 23 pass and 15 skip (GCC 9 cannot build torch's C++20 extensions; no OpenBLAS/BLIS; broken system pandas). All must pass on the next CPU node before the sweep.
-- `Makefile` targets:
-  - `bench_smoke`, `bench_smoke_cuda`, `bench_list`
-  - `torch_suite DEVICE=<ID>` / `torch_suite_bg`, `bench_suite`
-  - `analysis`, `index` (dashboard), `test_bench`
-  - `cpu_all` (native cross-check binaries)
+- `docs/methodology.md`: the written protocol, deviations table, platform pitfalls, open items. **Read it fully.**
+- `configs/devices/*.json`: `AMD_C6525_100G, AMD_R6615, INTEL_C6620, NVIDIA_GRACE, NVIDIA_A100, NVIDIA_L40S, NVIDIA_GH200_480GB, NVIDIA_V100`. Each config holds the placements, the thread-scaling list (B1, C1, S1, S2) and datasheet ceilings. It is a label and a run plan; the code is not tuned per machine.
+- Setup:
+  - `scripts/setup_v2_harness.sh [cpu|gpu]`. GPU: picks the torch wheel matching nvcc's major version **and** containing kernels for the GPU's compute capability.
+  - `scripts/gpu/install_cuda.sh`: driver 580 on Volta/Pascal/Maxwell; override with `DRIVER_BRANCH`.
+- `scripts/calibrate.py`: BabelStream v5.0 (built for the GPU's own sm_XY) plus best-library GEMM, written to `results/calibration/<ID>.json`.
+- Analysis:
+  - `results/plotting/v2/analyze.py` writes `<ID>_{headline,libraries,bounds,scaling}.csv`, `ratios.csv` and plots.
+  - `results/plotting/v2/library_report.py` writes `library_report.{csv,json,md}` and `library_summary.csv`, with notes from `results/library_notes.json` (curated: verified vs hypothesis).
+  - Both run via `make analysis`. Env overrides: `ANALYSIS_DATA`, `ANALYSIS_CAL`, `ANALYSIS_OUT`, `ANALYSIS_PLOTS`.
+- Dashboard: `results/generate_index.py` (`make index`). A (workload, device) cell is "collected" if v2 rows exist under `results/data/v2/{cpu,gpu}/<ID>/<WID>_*.csv`, else "preliminary" from legacy.
+- `tests/torch/test_bench.py`: 29 test functions (41 cases). Laptop: 26 pass, 15 skip (old GCC). The r6615 and V100 nodes passed all of them.
 
-**Legacy code still in the repo:**
-- `src/cpu/cpu_{gemm,gemv,saxpy,spgemm,montecarlo}_bench.c` and `src/gpu/gpu_*_bench.cu`: cross-checks only.
-- `src/gpu/gh200/*`: C2C residency study (not fixed, see §6).
-- Old per-workload sweep shell scripts in `scripts/cpu/` and `scripts/gpu/`: legacy drivers, not used by v2.
+Legacy code still in the repo: native `src/cpu/*.c` and `src/gpu/*.cu` benches (cross-checks only), `src/gpu/gh200/*` (C2C study, not fixed), and old sweep shell scripts.
 
-Deleted: PCA, k-means, `cpu_cryptography_bench.c`, the old `torch_*_bench.py` scripts, torch_telemetry, bench_llama32_layers.
+## 4. Measurement protocol (summary)
+- One socket (numactl membind, OMP pinning) vs one GPU. Headline = best of `socket0` and `socket0-smt`.
+- Kernel-only timing. GPU H2D/D2H are recorded separately.
+- At least 30 samples and 1 s per run, 3 process-isolated trials. `flag=unstable` if CV > 5%.
+- Every config is validated at full size before timing.
+- fp32 headline (Monte Carlo fp64); TF32 off; bf16 only where native (otherwise `unsupported`).
+- Bandwidth ceiling:
+  - CPU: DRAM traffic including write-allocate.
+  - GPU: BabelStream Triad as reported.
+- Bound check: B rows ≥ 60% of measured bandwidth; C rows as % of the measured GEMM peak.
+- **Clocks are not locked.** This is now shown to matter (§6, V100 GEMM). Whether to lock is the user's decision.
 
-## 4. Measurement protocol (summary; full version in `docs/methodology.md`)
-- **Unit of comparison:** one socket (numactl membind, OMP_PLACES pinning, parallel first touch) against one GPU.
-- **Placements:**
-  - Headline: the best of `socket0` and `socket0-smt`.
-  - Thread scaling: at the median size only.
-- **Timed region:** kernel only. GPU H2D/D2H times are recorded separately (`h2d_ms`, `d2h_ms`, `e2e_ms`).
-- **Samples:** adaptive warmup. At least 30 samples and at least 1 s; for calls of 1 s or more, at least 10 samples.
-- **Trials:** 3 process-isolated trials.
-- **Reported statistics:** median, IQR, bootstrap CI. `flag=unstable` if CV > 5%.
-- **Validation:** full size, before timing, on every config. Status is one of `ok | validation_failed | oom | unsupported | error`.
-- **Precision:**
-  - fp32 headline; Monte Carlo in fp64.
-  - TF32 off.
-  - bf16 only where native; EPYC Zen 2 records `unsupported`.
-- **Bandwidth ceiling:** DRAM traffic including write-allocate, `max(Dot, Triad·4/3, Copy·3/2)`. On EPYC this is 125.1 GB/s.
-- **Bound-label check:**
-  - B rows must reach ≥ 60% of the measured bandwidth.
-  - C rows are compared with the measured peak (the C1 best).
-  - S rows: scaling efficiency, and S2 batch sensitivity.
+## 5. Hardware sessions so far
 
-## 5. Status per workload (from the lost EPYC campaign; no GPU path has ever run)
-Rows marked *fixed 2026-11-06* were changed after that campaign and need re-measuring.
+### r6615 (Clemson, AMD EPYC 9354P Zen 4, 32C, NPS4), 2026-11-10, 4 h, node released
+- **Data:** `results/data/test/r6615_ctest_20261110/` (README inside), committed and pushed. Test data: one trial, partial grid, **not paper data**.
+- **Analysis:** `results/analysis/test/r6615_20261110/`.
+- **Passed:** setup, all tests, smoke 35/35 (incl. bf16).
+- **Calibration:** 364.1 GB/s; fp32 3495 (OpenBLAS), fp64 1643 (MKL) GFLOP/s.
+- **Targeted sweep, 136/136 ok:**
+  - B2: 80–84% of bandwidth (was 27% before the 11-06 fix).
+  - C3 native: wins 18/18 at 15–45% of peak.
+  - A1 decode: batch 1, OpenBLAS 9.31 vs torch/MKL 0.89 tok/s (8B), so MKL GEMV is slow on AMD. Batch 8: 9–13% of bandwidth in every library.
+- **Found and fixed:** OpenCV ran on one core inside the harness. torch's OMP binding pins the main thread and OpenCV's pthreads inherit it; fixed with `_common.widened_affinity` (d51fa7e). All OpenCV rows (C3, C5) collected before d51fa7e are invalid.
 
-| ID | Implementation | EPYC status |
+### V100 (Wisconsin c4130, 4× V100-SXM2-16GB; we use GPU 0), reserved to ~2026-11-20
+- **Node:** `ssh -i ~/.ssh/cloudlab rudra281@c4130-110133.wisc.cloudlab.us`, repo at `~/cpu-gpu`. Driver 580.196.07, nvcc 12.9, torch 2.14.1+cu126.
+- **Smoke:** 23 ok + 2 bf16 unsupported (expected). C8/C9 GPU output byte-identical to the CPU reference.
+- **Calibration:** Triad 845.2 GB/s (94% of 900), GEMM fp32 14.1, fp64 7.0 TFLOP/s.
+- **Full sweep:** campaign `c_v100_20261110`, 3 trials, 621 jobs, done 2026-11-10 19:30 UTC.
+  - 516 ok, 27 unsupported (bf16), 78 preflight OOM (16 GB), 0 errors, 8 unstable (all tiny problems).
+  - 10 early rows from 2999f37, rest from 3b1a3f2.
+- **Data:** copied to `results/data/test/v100_c4130_20261110/` (untracked; also still on the node).
+- **Analysis:** `results/analysis/test/v100_20261110/`.
+- **Found and fixed (local commits 0fb3d5b..3b1a3f2):**
+  - Driver 620 has no Volta support: pin 580.
+  - The cu128/cu129 torch wheels have no sm_70 code: the setup now checks the arch list.
+  - Every CUDA extension failed with "'fn' was not declared in this scope", because load_inline's main.cpp never sees cuda_sources: declarations are now generated with `cuda_declarations`.
+  - BabelStream was built for sm_80: it now builds for the GPU's own arch.
+  - Build errors were truncated: `build_error_summary` now shows the compiler's error lines.
+
+## 6. Results review (2026-11-11)
+
+**V100, per workload, at the largest size:**
+
+| ID | Result | Verdict |
 |---|---|---|
-| B1 SAXPY | torch `add_` | 96.7% of bandwidth ✓ |
-| B2 LBM D3Q19 | native C++/CUDA | was 27% of bandwidth. *Fixed 2026-11-06:* CPU kernel generated as 19 scalars (x loop now vectorised) + streaming stores; laptop 3.5x fp32 / 1.7x fp64. |
-| B3 SpMV | torch sparse CSR (MKL/cuSPARSE) | 62% of bandwidth ✓ (synthetic matrices; SuiteSparse still TODO) |
-| B4 SpGEMM | torch.sparse.mm | ok; symbolic phase inside the timer (documented) |
-| C1 GEMM | torch/MKL, OpenBLAS, BLIS on CPU; cuBLAS on GPU | at peak: BLIS 1997 fp32 / ~954 fp64 GFLOP/s ✓ |
-| C2 Monte Carlo | native Philox4x32-10 (KAT-tested), libmvec | 2.48 Gpaths/s ✓ |
-| C3 conv2d | torch/oneDNN, OpenCV, native | was ~2% of peak. *Fixed 2026-11-06:* `lib=native` direct conv (CPU OpenMP+SIMD, CUDA smem tiles), K unrolled; laptop 5–6x torch. A 4-row register-blocked variant was tried and was slower (GCC). |
-| C4 FFT | torch.fft (MKL/cuFFT) | ok; CPU timing includes plan creation (deviation); pyFFTW variant TODO |
-| C5 bilateral | OpenCV + native exact; CUDA expf / `__expf` | ✓ (native 7× faster than OpenCV) |
-| C6 sort | ATen, GNU parallel, oneTBB | ✓ |
-| C7 index search | torch.searchsorted | ✓ after the int32 overflow fix in 8ebecfa; the one errored 2^29 config must be re-run |
-| C8 AES-128-CTR | OpenSSL EVP on CPU (plus hw-off variant); CUDA T-table | ✓ NIST vectors; CPU and GPU ciphertext must match byte for byte (GPU side untested) |
-| C9 SHA-256 | OpenSSL low-level on CPU; custom CUDA | ✓ |
-| S1 histogram | histc (chunked to 2^24 samples), bincount | ✓ |
-| S2 PGS solver | native OpenMP barrier per batch; CUDA graph / cooperative grid.sync | ✓ CPU. *Fixed 2026-11-06:* removed `-rdc=true -lcudadevrt` (torch's load_inline has no CUDA device-link step, so the module would not load). |
-| A1 Llama-3 | exact 3.2-1B / 3.2-3B / 3-8B architectures, random weights, eager + SDPA; CPU fp32 linears also via OpenBLAS/BLIS | was 10–18% of bandwidth on every decode row, even B=1 (8B B=1: 0.72 tok/s vs ~3.9 bound; B=8: 4.0 vs ~31). KV `cat` is ~3% of traffic, so not the cause. MKL GEMV runs at full read rate on Intel, so suspect MKL GEMV on AMD. *Fixed 2026-11-06:* `lib` variants openblas/blis (gemv at B=1). Confirm on the next AMD node. |
+| B1 SAXPY | 849 GB/s = 100% of Triad; matches legacy (844) | ✓ |
+| B2 LBM | 95% of bandwidth (5330 MLUPS fp32) | ✓ |
+| B3 SpMV | poisson3d 78% ✓; powerlaw falls to 9% (irregular gather, B label fails, as flagged) | ok, as measured |
+| B4 SpGEMM | 2–9% of bandwidth (cuSPARSE via torch); B label fails | ok, as measured; the label is questionable |
+| C1 GEMM | 96–100% of measured peak. Measured peak 14.1 vs legacy 15.3 TFLOP/s: the SM clock was 1392 vs 1520 MHz at the same 300 W cap (15.34 × 1392/1520 = 14.05) | ✓ ; clocks matter |
+| C2 Monte Carlo | 45 Gpaths/s fp64 | ✓ plausible |
+| C3 conv | native beats cuDNN 18/18 (cuDNN 0.42× median); k=3 is bandwidth-bound (~83% BW), k=7 at 27% of FMA peak | ✓ ; possible headroom at k=7 |
+| C4 FFT | 1.65 TFLOP/s (5N log N) | ✓ plausible |
+| C5 bilateral | ✓ (`__expf` variant 1.2× exact) | ✓ |
+| C6 sort | 4.8 G pairs/s (CUB radix) | ✓ |
+| C7 search | sorted queries 5–34 G/s, random 0.36–16 G/s (latency-bound at large key sets) | ✓ |
+| C8 AES | 126–135 GB/s | ✓ |
+| C9 SHA-256 | 52–105 GB/s | **hypothesis: below well-tuned GPU SHA-256** (per-thread message reads are uncoalesced); check before the paper |
+| S1, S2 | ok; S2 CUDA graph beats cooperative launch 4/4 | ✓ |
+| A1 Llama | **decode results not trustworthy (see below)**; prefill ~14 TFLOP/s ≈ peak ✓ | ✗ decode |
 
-## 6. Old (legacy) code and data
-- **Old data** (`results/data/legacy/`): 5 CPUs and 6 GPUs, including GH200 residency sweeps. It is not research grade:
-  - no or partial validation (old AMD SpGEMM 0/192 rows validated but marked ok; old GEMM 19/43 unvalidated);
-  - cache-resident SAXPY reported as "1007 GB/s bandwidth";
-  - a slower library (old GEMM 1.48 vs new 2.0 TFLOP/s fp32);
-  - means of 5–20 iterations with no CI;
-  - fake kernels (GPU AES = XOR, Grace AES 1 round, GH200 "Monte Carlo" = closed form, Grace sort never merges);
-  - unequal work between CPU and GPU (Llama fp32 vs bf16);
-  - wrong AMD MSR addresses; 0 W when power was unreadable.
-- **Native cross-check benches, fixed:** SpGEMM `nanosleep` fabrication removed (now `unsupported` without MKL); MSR addresses; real OpenBLAS label; status taken from validation.
-  - **Not done:** per-iteration samples and median in the native benches.
-- **GH200 C2C/residency benches: not fixed.** They need one `t_e2e` definition, NVML, validation, removal of the cpu_local stub paths, and the Makefile build of `protocol_benchmark_suite.cu`. They need a GH200 to test.
-  - This is a separate system-axis study. Its old data must not be mixed into the main comparison.
-  - Whether to keep it at all is the user's call.
+**A1 decode, new finding (2026-11-11, torch profiler on the V100, llama3.2-1b fp32):**
+- Attention (`F.scaled_dot_product_attention`, the memory-efficient CUTLASS kernel on sm_70) takes **47% of GPU time at batch 1 and 64% at batch 8**. It reads only 0.13 / 1.07 GB of KV cache but runs ~40× slower than bandwidth: with one query token, a 64-row tile is mostly empty.
+- The weight GEMVs alone run at ~800 GB/s, so the BLAS side is fine.
+- The per-step `torch.cat` of the KV cache adds another ~8% at batch 8.
+- **The same SDPA + cat code runs on the CPU**, so the "batch-8 decode at 9–13% of bandwidth" seen on r6615 is probably mostly this, not a "skinny GEMM" problem (that library note is now doubtful).
+- **Proposed fix (not yet approved or made):**
+  - For decode (S = 1), compute attention explicitly: GQA reshape, then q·Kᵀ, softmax, ·V (bandwidth-bound batched GEMV).
+  - Preallocate the KV cache and write in place instead of `cat`.
+  - Then re-run A1 on the V100 (while reserved) and on the next CPU.
+- Diagnostic script (not in repo): run on the node with `python3 /tmp/prof_a1.py` from `~/cpu-gpu`.
 
-## 7. Unpushed commits
-`git log origin/main..main`. GitHub `main` is still `82dd457`. The 7 commits from 2026-11-05 (`45a8e8c` … `8ebecfa`) plus the 2026-11-06 fix commits (S1/S2 scaling, analysis fixes, preflight provenance, S2 rdc, B2/C3/A1 baselines, docs).
+**r6615 vs V100 (same problems):**
+- B2 LBM: GPU 2.3–3.4× faster, roughly the bandwidth ratio 845/364 = 2.3.
+- C3 native conv: 1.0–3.0× (k=3 at 4096²: 0.96×).
+- A1: 1.6× (B=1) and 5.5× (B=8; skewed by the attention issue).
+- These are about the paper's ~2.5×, not 100×.
 
-## 8. The EPYC campaign of 2026-11-05 is lost
-- Campaign `c20261105T022449Z_node0` on `amd249.utah.cloudlab.us` (c6525-100g) finished ~10:40 UTC, but the experiment ended before the data was copied back; the node is gone (ssh times out).
-- Only a 03:22 UTC snapshot was ever pulled (181 of 1557 rows, trial 1). The user chose not to keep it. The native cross-check result is in `results/crosscheck/AMD_C6525_100G.json`.
-- **Never again:** the next run must copy results back during the run (planned "group A": laptop-side rsync loop + a committed launcher with a fixed campaign id). The old launcher `/tmp/final_run.sh` began with `rm -rf results/data/v2`: never re-run anything like it to resume; resume with `bench sweep --campaign <id>`.
-- Resume skips only rows with a terminal status (`ok|validation_failed|oom|unsupported`); `error` rows are re-run and the analysis ignores them, so they never need deleting.
+**Dashboard:**
+- Legacy V100 data exists as `results/data/legacy/gpu/Tesla_V100-SXM2-16GB` (Sept 2026; GEMM, GEMV, SAXPY, SpGEMM). The new v2 device id is `NVIDIA_V100`, which differs, so `workloads.json` needs mapping/renaming before the dashboard shows the v2 data in the V100 column.
+- Legacy V100 GEMM also reports bf16 11 TFLOP/s on a GPU without bf16 hardware (emulated). That is another reason to replace it.
+- `analyze.py` writes plots to `results/plots/v2/<ID>/`, but `generate_index.py` treats every first-level folder of `results/plots/` as a device, so "v2" would show as a device. Check before publishing v2 plots.
 
-## 9. Next work, in priority order
-1. **CPU node test session** (user will book): setup, `pytest` (all 38 must pass, including the new B2/C3/A1 native and BLAS tests), smoke, calibration, full sweep, pull, `make analysis`, review `bounds.csv` (B2 >= 60% bandwidth? C3 % of peak? A1 decode GB/s by library? S1/S2 scaling).
-2. **GPU node test session**: same, plus `make bench_smoke_cuda`. `setup_v2_harness.sh gpu` now installs the torch wheel matching nvcc's CUDA major version (a mismatch makes torch refuse to build every native CUDA kernel); check its log line. First hour = fix any CUDA build/launch issue (none of B2, C2, C3, C5, C8, C9, S2 CUDA code has ever been compiled). Check C8/C9 CPU vs GPU byte-identical output.
-3. Group A (user deferred): automated run + periodic copy-back.
-4. GEMM cross-check outliers (perf counters); native benches per-iteration samples; `lock_clocks.sh` (decide keep/drop); GH200 C2C study (decide keep/drop).
-5. SuiteSparse for B3/B4; pyFFTW for C4; llama.cpp rows.
-6. Intel SPR, Grace, remaining GPUs; cross-device analysis. Push only after step 1 and 2 pass and the user asks.
+## 7. Open items
+1. **A1 decode attention fix** (§6). Needs user approval; changes A1 results on every device.
+2. Lock clocks or not (user decision). The V100 GEMM shows a 9% clock-driven difference between sessions.
+3. C9 GPU SHA-256 efficiency check.
+4. Freeze a release: tag one commit and collect all paper campaigns from it. CPU paths have not changed since r6615 (d51fa7e..HEAD only touched CUDA builds and error messages), but the A1 fix would change both.
+5. Library provenance (BLIS arch, OpenBLAS core, MKL/oneDNN ISA) in rows. The BLIS 0.8.1-on-Zen-4 slowness is a hypothesis.
+6. GEMM cross-check outliers; native benches per-iteration samples; GH200 C2C study (keep or drop: user's call).
+7. SuiteSparse for B3/B4; pyFFTW for C4; llama.cpp rows.
+8. Group A (deferred by user): committed launcher + periodic copy-back.
+9. Next hardware: c6620 (Intel, AMX: first Intel test with the new scripts, so do the drill first), c6525-100g (Zen 2, close to r6615), r6615 again for a full campaign, then A100/A30/H100. Every new machine type: tests, smoke, calibration (~30 min) before the full sweep. First bf16-capable GPU = first ever run of the GPU bf16 paths and of sizes that were OOM on 16 GB.
 
-## 10. Known pitfalls (do not rediscover them)
-- **Thread affinity:**
-  - pthread OpenBLAS and oneTBB under `OMP_PROC_BIND` run on one core. Use the OpenMP OpenBLAS build (update-alternatives); `_cpusort.WidenAffinity` handles TBB.
+## 8. Git state
+- `origin/main` = `9798ed8` (pushed 2026-11-10 23:00 IST, after the r6615 session; includes the library report and r6615 data).
+- **Unpushed local commits** (V100 fixes): `0fb3d5b` config, `79e2eb4` driver 580, `138a007` torch wheel arch check, `2999f37` CUDA declarations + error summary, `3b1a3f2` BabelStream arch.
+- Untracked: `results/data/test/v100_c4130_20261110/`, `results/analysis/test/v100_20261110/`.
+
+## 9. Known pitfalls (do not rediscover them)
+- **Thread affinity:** pthread OpenBLAS, oneTBB and OpenCV under torch's `OMP_PROC_BIND` run on one core. Use OpenMP OpenBLAS (update-alternatives), `_cpusort.WidenAffinity` for TBB, `_common.widened_affinity` for OpenCV.
 - **Library choice:**
-  - MKL is not the fastest BLAS on AMD; BLIS is. That is why C1 times every library.
-  - ATen sort scales poorly. torch.bincount scales only 1.5×, so histc is chunked to exact 2^24 samples.
-  - oneDNN conv2d is 3.4× slower than OpenCV for image filtering.
+  - MKL is not the fastest BLAS on AMD; the fastest depends on CPU and precision (Zen 2: BLIS; Zen 4: OpenBLAS fp32, MKL fp64).
+  - MKL GEMV is slow on AMD.
+  - Ubuntu 22.04 BLIS 0.8.1 is slow on Zen 4.
+  - oneDNN depthwise conv is ~160 Mpx/s (slow path).
 - **Native kernels:**
-  - GCC fuses sin/cos into `sincos`, which blocks vectorization. Use `cos(θ−π/2)`. Check with `-fopt-info-vec` and the libmvec `_ZGV*` symbols.
-  - OpenSSL 3 one-shot `SHA256()` has lock contention. Use the low-level API.
-- **Permissions and environment:**
-  - setcap (CAP_SYS_RAWIO for MSR) puts ld.so in secure mode and drops `LD_PRELOAD`. jemalloc is detected via `/proc/self/maps`.
-  - RAPL `energy_uj` is root-only and the powercap entries are symlinks. chmod the resolved paths (the setup script does this).
-- **Harness design:**
-  - `torch.set_num_interop_threads` can only be set once per process. That is why there is one subprocess per config.
-- **Laptop limits:**
-  - GCC is too old for C++20 extensions, and there is only 3 GB RAM. Test native extensions on the node.
-  - The laptop's system pandas is broken (numpy ABI). Use the scratchpad venv or the node.
-- **Remote commands:**
-  - Complex quoting over ssh breaks. Write helper scripts and heredocs.
-- **Analysis:** fixed 2026-11-06: labels come from the `library` column when there is no `lib` key; scaling efficiency is per (problem, library) with the full-socket row as the top point (it used to median across libraries/precisions).
+  - GCC fuses sin/cos into `sincos` (blocks vectorization).
+  - OpenSSL 3 one-shot `SHA256()` has lock contention.
+  - The LBM inner loop needs the 19-scalar form to vectorize.
+- **CUDA builds (load_inline):**
+  - Declare every exposed function in `cpp_sources` (`cuda_declarations`).
+  - No device-link step, so no `-rdc`.
+  - torch's CUDA major version must equal nvcc's.
+  - Wheels for CUDA ≥ 12.8 have no sm_70: V100 needs cu126.
+  - Bump the extension name (`_vN`) when the source changes.
+- **Drivers:** branch 580 is the last with Volta/Pascal/Maxwell.
+- **Permissions:** setcap puts ld.so in secure mode (drops `LD_PRELOAD`; jemalloc needs a setuid lib); RAPL `energy_uj` is root-only (chmod the resolved symlinks).
+- **Harness:** one subprocess per config, because `torch.set_num_interop_threads` can only be set once per process.
+- **Laptop:**
+  - GCC too old for C++20 extensions; 3 GB RAM.
+  - System pandas broken: use a venv (the requirements.txt pins need Python 3.11; the setup installs pandas/matplotlib unpinned).
+  - Don't use `python3 -I` (hides user site-packages, so torch appears missing).
+- **ssh:**
+  - Always `< /dev/null`; start background jobs with `setsid -f nohup`, or the channel hangs.
+  - Write helper scripts instead of nested quoting.
+- **Data safety:** a CloudLab experiment's end deletes the node. The 2026-11-05 EPYC campaign was lost that way. Copy results back before the reservation ends; never use launchers that `rm -rf results/data/v2`; resume with `--campaign <id>`.

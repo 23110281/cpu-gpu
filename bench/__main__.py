@@ -1,4 +1,4 @@
-"""CLI:  python -m bench {run,sweep,smoke,list}    (run from the repo root: PYTHONPATH=.)
+"""CLI:  python -m bench {run,sweep,smoke,list,describe}    (run from the repo root: PYTHONPATH=.)
 
 `run` executes ONE configuration in this process. CPU thread placement is applied before
 torch is imported (OpenMP reads its environment once). Use `sweep` for real collections:
@@ -88,6 +88,65 @@ def _cmd_list(a) -> int:
     return 0
 
 
+def _describe_cpu() -> dict:
+    from . import devices
+    topo = devices.topology()
+    socks = devices.sockets()
+    s0 = [t for t in topo if t.socket == socks[0]]
+    cores = len({t.core for t in s0})
+    threads = len(s0)
+    nodes = sorted({t.node for t in s0})
+    print(f"CPU      : {devices.cpu_model()}")
+    print(f"sockets  : {len(socks)}  (cores/socket {cores}, hardware threads/socket {threads}, "
+          f"NUMA nodes/socket {len(nodes)})")
+    print(f"LLC      : {devices.llc_bytes_per_socket() / 2**20:.0f} MiB per socket   native bf16: {devices.native_bf16('cpu')}")
+    scaling = sorted({t for t in (1, 2, 4, 8, 16, 32, 64, 128) if t < cores})
+    return {"device_class": "cpu",
+            "label": f"{devices.cpu_model()} ({cores}C/{threads}T per socket, {len(socks)} socket(s)) -- <CloudLab node type>",
+            "placements": ["socket0"] + (["socket0-smt"] if threads > cores else []),
+            "scaling": {"workloads": ["B1", "C1", "S1", "S2"], "base": "socket0", "threads": scaling},
+            "_note": "Fill 'datasheet' (bandwidth_gbps, peak_gflops fp32/fp64, derivation) from the vendor spec; "
+                     "see configs/devices/AMD_R6615.json for the format."}
+
+
+def _describe_gpu() -> dict | None:
+    import subprocess
+    try:
+        out = subprocess.run(["nvidia-smi", "--query-gpu=index,name,memory.total,compute_cap,driver_version",
+                              "--format=csv,noheader"], capture_output=True, text=True, check=True).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    rows = [r.split(", ") for r in out.splitlines() if r]
+    for idx, name, mem, cc, drv in rows:
+        print(f"GPU {idx}    : {name}  {mem}  compute capability {cc}  driver {drv}"
+              f"{'' if float(cc) >= 8.0 else '  (no native bf16: bf16 rows will be unsupported)'}")
+    return {"device_class": "gpu", "label": f"{rows[0][1]} -- <CloudLab node type>", "gpu_index": 0,
+            "_note": "Fill 'datasheet' (bandwidth_gbps, peak_gflops fp32/fp64, derivation) from the vendor spec; "
+                     "see configs/devices/NVIDIA_V100.json for the format."}
+
+
+def _cmd_describe(a) -> int:
+    """What the harness sees on this node, and a suggested configs/devices/<ID>.json."""
+    import re
+    from . import devices
+    gpu = None if a.cpu else _describe_gpu()
+    cfg = gpu if gpu else _describe_cpu()
+    dev_id = a.id or re.sub(r"[^A-Za-z0-9]+", "_", cfg["label"].split(" -- ")[0].split(" (")[0]).strip("_").upper()
+    cfg = {"device_id": dev_id, **cfg}
+    known = sorted(p.stem for p in (Path(__file__).resolve().parents[1] / "configs" / "devices").glob("*.json"))
+    print(f"\nexisting device configs: {', '.join(known)}")
+    print(f"suggested configs/devices/{dev_id}.json (pick a short id such as INTEL_C6620 with --id):")
+    print(json.dumps(cfg, indent=2))
+    if a.write:
+        dst = Path(__file__).resolve().parents[1] / "configs" / "devices" / f"{dev_id}.json"
+        if dst.exists():
+            print(f"not written: {dst} already exists")
+            return 1
+        dst.write_text(json.dumps(cfg, indent=2) + "\n")
+        print(f"written: {dst}  (now add its datasheet numbers)")
+    return 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="bench", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -112,6 +171,12 @@ def main(argv=None) -> int:
 
     l = sub.add_parser("list", help="list registered workloads")
     l.set_defaults(fn=_cmd_list)
+
+    d = sub.add_parser("describe", help="show the detected CPU/GPU and a suggested device config")
+    d.add_argument("--id", help="device id to use, e.g. INTEL_C6620 (default: derived from the model name)")
+    d.add_argument("--cpu", action="store_true", help="describe the CPU even on a GPU node")
+    d.add_argument("--write", action="store_true", help="save the suggestion to configs/devices/<id>.json")
+    d.set_defaults(fn=_cmd_describe)
 
     a = ap.parse_args(argv)
     return a.fn(a)

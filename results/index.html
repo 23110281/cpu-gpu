@@ -342,6 +342,25 @@
         dl.dropped { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 1rem; font-size: 0.83rem; }
         dl.dropped dt { font-weight: 600; color: var(--text-main); }
         dl.dropped dd { margin: 0; color: var(--text-muted); }
+        #device-summary { margin-bottom: 1.75rem; }
+        .statements { margin: 0; padding-left: 1.1rem; color: #cbd5e1; line-height: 1.6; font-size: 0.88rem; }
+        .statements li { margin-bottom: 0.35rem; }
+        .findings { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; }
+        .finding { background: rgba(5, 11, 20, 0.6); border: 1px solid var(--border); border-radius: 8px; padding: 0.8rem 0.95rem; }
+        .finding h4 { margin: 0 0 0.35rem; font-size: 0.86rem; display: flex; gap: 0.5rem; align-items: baseline; justify-content: space-between; }
+        .finding p { margin: 0; color: #cbd5e1; font-size: 0.8rem; line-height: 1.55; }
+        .finding .date { color: var(--text-muted); font-size: 0.7rem; margin-top: 0.4rem; }
+        table.results { width: 100%; border-collapse: collapse; font-size: 0.8rem; min-width: 760px; }
+        table.results th, table.results td { padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--border); text-align: left; }
+        table.results thead th { background: rgba(15, 23, 42, 0.95); color: var(--text-muted); font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.06em; }
+        table.results td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        table.results td.prob { color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; }
+        .meter { display: inline-block; width: 64px; height: 6px; border-radius: 3px; background: var(--border); vertical-align: middle; margin-left: 0.45rem; overflow: hidden; }
+        .meter i { display: block; height: 100%; background: #3987e5; border-radius: 3px; }
+        .card.wide { grid-column: 1 / -1; }
+        .card-img-wrap.v2 { height: auto; min-height: 220px; padding: 0.4rem; }
+        .card-img-wrap.v2 .card-img { width: 100%; height: auto; max-height: none; }
+        .card-caption { color: var(--text-muted); font-size: 0.74rem; line-height: 1.45; padding: 0 1rem 0.9rem; }
         @media (max-width: 760px) {
             body { flex-direction: column; height: auto; overflow: auto; }
             aside { width: 100%; min-width: 0; height: auto; }
@@ -386,6 +405,10 @@
             <!-- Populated by JS (renderStatus) -->
         </div>
 
+        <div id="device-summary" hidden>
+            <!-- Populated by JS (renderSummary) -->
+        </div>
+
         <div class="gallery" id="gallery">
             <!-- Populated by JS -->
         </div>
@@ -396,73 +419,22 @@
     </div>
 
     <script>
-        const tree = {};
-        const gpuLimits = {};
+        // Injected by results/generate_index.py: device -> v2 page (results/plots/v2/<DEV>/summary.json)
+        const pages = {};
         // Injected by results/generate_index.py: device -> "cpu" | "gpu" (from results/data/<cpu|gpu>/)
         const deviceClass = {};
         // Injected by results/generate_index.py from results/workloads.json + CSV coverage scan
         const workloadStatus = {};
 
-        // Structured Taxonomy
-        const taxonomy = {
-            "Dense Linear Algebra": ["gemm", "gemv", "saxpy"],
-            "Sparse & Irregular": ["spgemm", "spmv", "thrust_search"],
-            "Normalization": ["rmsnorm"],
-            "Spectral & Convolutions": ["cufft_1d", "cufft_2d", "conv2d"],
-            "Sorting, Atomics & Crypto": ["cub_radix_sort", "cub_histogram", "aes_128_ctr"],
-            "Stochastic Simulation": ["montecarlo"],
-            "LLM Sub-layers & KV Offload": [
-                "llama32_embedding", "llama32_rmsnorm", "llama32_rope", "llama32_qkv_proj",
-                "llama32_sdpa_attention", "llama32_swiglu_ffn", "llama32_lmhead_topk", "llama3_kv_cache_offload"
-            ],
-            "CPU–GPU Coherence (GH200)": [
-                "cpu_gpu_c2c_bandwidth", "cpu_gpu_uvm_cliff", "cpu_gpu_cooperative_partitioning",
-                "cpu_gpu_grace_scaling", "cpu_gpu_residency_crossover", "cpu_gpu_power_energy",
-                "cpu_gpu_paper_figures"
-            ]
-        };
-
-        const displayNames = {
-            "gemm": "GEMM (Matrix Multiply)",
-            "gemv": "GEMV (Matrix-Vector)",
-            "saxpy": "SAXPY (Streaming Vector)",
-            "spgemm": "SpGEMM (Sparse Matrix-Matrix)",
-            "spmv": "SpMV (Sparse Matrix-Vector)",
-            "thrust_search": "Thrust Binary Search (SMMU/TLB)",
-            "rmsnorm": "RMSNorm",
-            "cufft_1d": "1D FFT (cuFFT)",
-            "cufft_2d": "2D FFT (cuFFT)",
-            "conv2d": "2D Convolution",
-            "cub_radix_sort": "CUB Radix Sort",
-            "cub_histogram": "CUB Histogram (Cluster DSM vs Atomics)",
-            "aes_128_ctr": "AES-128-CTR (stub kernel — invalid)",
-            "montecarlo": "Black-Scholes closed form (labelled montecarlo)",
-            "llama32_embedding": "Llama-3.2 Embedding Layer",
-            "llama32_rmsnorm": "Llama-3.2 RMSNorm Layer",
-            "llama32_rope": "Llama-3.2 RoPE Positions",
-            "llama32_qkv_proj": "Llama-3.2 QKV Projections",
-            "llama32_sdpa_attention": "Llama-3.2 Attention (Split-KV)",
-            "llama32_swiglu_ffn": "Llama-3.2 SwiGLU FFN",
-            "llama32_lmhead_topk": "Llama-3.2 LM Head & Top-K",
-            "llama3_kv_cache_offload": "Llama-3 KV-Cache Offload (1-128GB)",
-            "cpu_gpu_c2c_bandwidth": "NVLink-C2C Bandwidth Landscape",
-            "cpu_gpu_uvm_cliff": "96GB HBM3 Capacity Cliff (UVM)",
-            "cpu_gpu_cooperative_partitioning": "Cooperative CPU+GPU Partitioning",
-            "cpu_gpu_grace_scaling": "Grace CPU 72-Core Scaling",
-            "cpu_gpu_residency_crossover": "Residency Crossover Matrix",
-            "cpu_gpu_power_energy": "Real-Time 10 Hz Power & Telemetry",
-            "cpu_gpu_paper_figures": "Publication Overview Figures (Fig 1-7)"
-        };
-
-        let currentGpu = Object.keys(tree).includes('NVIDIA_GH200_480GB') ? 'NVIDIA_GH200_480GB' : Object.keys(tree)[0] || '';
-        let currentBench = 'gemm';
-        // 'status' = workload status / TODO matrix (landing view), 'gallery' = plots for one device
-        let currentView = (workloadStatus.workloads && location.hash !== '#plots') ? 'status' : 'gallery';
+        let currentGpu = Object.keys(pages)[0] || '';
+        let currentFig = 'all';      // 'all' = summary + every figure, else one figure file
+        // 'status' = workload status / TODO matrix (landing view), 'gallery' = one device's v2 page
+        let currentView = (workloadStatus.workloads && location.hash !== '#plots') || !currentGpu ? 'status' : 'gallery';
         let statusFilter = 'all';
         const openRows = new Set();
 
         const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-        const classOf = dev => deviceClass[dev] || 'gpu';
+        const classOf = dev => (pages[dev] && pages[dev].device_class) || deviceClass[dev] || 'gpu';
 
         function countTodos() {
             return (workloadStatus.workloads || []).reduce((n, w) => n + (w.todo || []).length, 0)
@@ -482,64 +454,73 @@
             }
 
             const gpuNav = document.getElementById('gpu-nav');
-            gpuNav.innerHTML = '<div class="nav-title">Hardware Architecture</div>';
+            gpuNav.innerHTML = '<div class="nav-title">Devices (v2 results)</div>';
+            const devs = Object.keys(pages);
+            if (devs.length === 0) {
+                gpuNav.insertAdjacentHTML('beforeend', '<div class="nav-subtitle">No v2 data yet</div>');
+            }
             [['cpu', 'CPUs'], ['gpu', 'GPUs']].forEach(([cls, label]) => {
-                const devs = Object.keys(tree).filter(d => classOf(d) === cls);
-                if (devs.length === 0) return;
+                const list = devs.filter(d => classOf(d) === cls);
+                if (list.length === 0) return;
                 const sub = document.createElement('div');
                 sub.className = 'nav-subtitle';
                 sub.innerText = label;
                 gpuNav.appendChild(sub);
-                devs.forEach(gpu => {
+                list.forEach(dev => {
                     const el = document.createElement('div');
-                    el.className = 'nav-item' + (currentView === 'gallery' && gpu === currentGpu ? ' active' : '');
-                    el.innerText = gpu.replace(/_/g, ' ') + (gpu === 'NVIDIA_GH200_480GB' ? '  (+ Grace CPU)' : '');
-                    el.onclick = () => {
-                        currentView = 'gallery';
-                        currentGpu = gpu;
-                        // ensure currentBench exists on this device
-                        const available = Object.keys(tree[currentGpu] || {});
-                        if (!available.includes(currentBench) && available.length > 0) {
-                            currentBench = available[0];
-                        }
-                        updateView();
-                    };
+                    el.className = 'nav-item' + (currentView === 'gallery' && dev === currentGpu ? ' active' : '');
+                    el.innerText = dev.replace(/_/g, ' ');
+                    el.title = pages[dev].label || dev;
+                    el.onclick = () => { currentView = 'gallery'; currentGpu = dev; currentFig = 'all'; updateView(); };
                     gpuNav.appendChild(el);
                 });
             });
 
             const benchCatContainer = document.getElementById('bench-categories');
             benchCatContainer.innerHTML = '';
-            document.getElementById('bench-nav').hidden = (currentView === 'status');
-
-            const availableBenches = Object.keys(tree[currentGpu] || {});
-            
-            // Render benchmarks grouped by taxonomy
-            Object.entries(taxonomy).forEach(([catName, benchList]) => {
-                const matches = benchList.filter(b => availableBenches.includes(b));
-                if (matches.length === 0) return;
-
-                const isCoherence = catName.includes("Coherence");
-                const catGroup = document.createElement('div');
-                catGroup.className = 'cat-group';
-                
-                const catTitle = document.createElement('div');
-                catTitle.className = 'cat-title' + (isCoherence ? ' coherence' : '');
-                catTitle.innerText = catName;
-                catGroup.appendChild(catTitle);
-
-                matches.forEach(bench => {
-                    const el = document.createElement('div');
-                    const isActive = (bench === currentBench);
-                    el.className = 'nav-item' + (isActive ? ' active' : '') + (isActive && isCoherence ? ' coherence-active' : '');
-                    el.innerText = displayNames[bench] || bench.replace(/_/g, ' ').toUpperCase();
-                    el.title = el.innerText;
-                    el.onclick = () => { currentView = 'gallery'; currentBench = bench; updateView(); };
-                    catGroup.appendChild(el);
-                });
-
-                benchCatContainer.appendChild(catGroup);
+            const benchNav = document.getElementById('bench-nav');
+            benchNav.querySelector('.nav-title').innerText = 'Figures';
+            benchNav.hidden = (currentView === 'status' || !pages[currentGpu]);
+            if (benchNav.hidden) return;
+            const group = document.createElement('div');
+            group.className = 'cat-group';
+            [{file: 'all', title: 'Summary & all figures'}, ...pages[currentGpu].figures].forEach(f => {
+                const el = document.createElement('div');
+                el.className = 'nav-item' + (f.file === currentFig ? ' active' : '');
+                el.innerText = f.title;
+                el.title = f.caption || f.title;
+                el.onclick = () => { currentView = 'gallery'; currentFig = f.file; updateView(); };
+                group.appendChild(el);
             });
+            benchCatContainer.appendChild(group);
+        }
+
+        // ── v2 device page: measured ceilings, statements with numbers, results table, findings ──
+        function renderSummary(page) {
+            const pctCell = t => t.pct === null || t.pct === undefined ? '<td class="num" style="color:var(--text-muted)">—</td>'
+                : `<td class="num">${t.pct.toFixed(0)}% <small style="color:var(--text-muted)">${esc(t.kind)}</small>`
+                  + `<span class="meter" aria-hidden="true"><i style="width:${Math.min(100, t.pct).toFixed(0)}%"></i></span></td>`;
+            const findingBadge = st => st === 'verified' ? '<span class="badge b-done">✓ verified</span>'
+                : '<span class="badge b-partial">? hypothesis</span>';
+            return `
+                <div class="tiles">${(page.tiles || []).map(t => `<div class="tile"><div class="k">${esc(t.k)}</div>
+                    <div class="v">${esc(t.v)}</div><div class="s">${esc(t.s)}</div></div>`).join('')}</div>
+                <div class="panel"><h3>Key results</h3>
+                    <ul class="statements">${(page.statements || []).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
+                ${(page.findings || []).length ? `<div class="panel"><h3>Findings &amp; caveats</h3><div class="findings">
+                    ${page.findings.map(f => `<div class="finding"><h4><span>${esc(f.title)}</span>${findingBadge(f.status)}</h4>
+                        <p>${esc(f.text)}</p><div class="date">last checked ${esc(f.date || '')}</div></div>`).join('')}
+                </div></div>` : ''}
+                <div class="panel"><h3>Per-workload results (largest problem size)</h3>
+                    <div class="table-wrap" style="margin-bottom:0"><table class="results"><thead><tr>
+                        <th>ID</th><th>Workload</th><th>Bound</th><th>Largest problem</th><th style="text-align:right">Result</th>
+                        <th style="text-align:right">% of measured ceiling</th><th>Fastest implementation</th></tr></thead><tbody>
+                    ${(page.table || []).map(t => `<tr><td><b>${esc(t.id)}</b></td><td>${esc(t.name)}</td><td>${esc(t.bound)}</td>
+                        <td class="prob">${esc(t.problem)}</td><td class="num"><b>${esc(t.result)}</b></td>${pctCell(t)}
+                        <td>${esc(t.impl)}${t.n_impl > 1 ? ` <small style="color:var(--text-muted)">(of ${t.n_impl} timed)</small>` : ''}</td></tr>`).join('')}
+                    </tbody></table></div>
+                    <p class="muted" style="margin:0.7rem 0 0">Every number is the median over all samples of 3 process-isolated trials, after validation against a reference.
+                    Bound: B = bandwidth, C = compute, S = synchronization, A = application. “—” = no simple hardware ceiling for this workload.</p></div>`;
         }
 
         // ── Workload status / TODO matrix ─────────────────────────────────────
@@ -631,7 +612,7 @@
                             <th rowspan="2">CPU impl</th><th rowspan="2">GPU impl</th>
                             <th colspan="${core.cpu.length}" class="dev side-cpu">Core CPUs</th>
                             <th colspan="${core.gpu.length}" class="dev side-gpu">Core GPUs</th>
-                            <th rowspan="2" class="dev">Legacy</th><th rowspan="2" class="dev">TODOs</th>
+                            <th rowspan="2" class="dev" title="Non-core devices with any data (v2 or legacy)">Other devices</th><th rowspan="2" class="dev">TODOs</th>
                         </tr>
                         <tr>
                             ${core.cpu.map(d => `<th class="dev side-cpu" title="${esc(d.label + (d.note ? ' — ' + d.note : ''))}">${esc(d.short || d.label)}</th>`).join('')}
@@ -702,6 +683,7 @@
                 subtitle.innerText = 'Final CPU-vs-GPU suite (ISCA\'10 bound classes) — what is implemented and which devices still need data. Click a row for its TODO list.';
                 document.getElementById('hardware-limits').style.display = 'none';
                 gallery.hidden = true;
+                document.getElementById('device-summary').hidden = true;
                 statusView.hidden = false;
                 renderStatus();
                 return;
@@ -709,103 +691,30 @@
             statusView.hidden = true;
             gallery.hidden = false;
 
-            const benchName = displayNames[currentBench] || currentBench.replace(/_/g, ' ').toUpperCase();
-            title.innerText = `${currentGpu.replace(/_/g, ' ')} — ${benchName}`;
-            
-            const isCoherence = currentBench.startsWith('cpu_gpu_');
-            subtitle.innerText = isCoherence 
-                ? "System-level microarchitectural coherence & interconnect characterization"
-                : `Empirical performance scaling and residency comparison for ${benchName}`;
-            
-            const limitsPanel = document.getElementById('hardware-limits');
-            const limits = gpuLimits[currentGpu];
-            
-            if (isCoherence && currentGpu === 'NVIDIA_GH200_480GB') {
-                limitsPanel.className = 'hardware-panel coherence-panel';
-                limitsPanel.innerHTML = `
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
-                        <div>
-                            <strong style="color: #38bdf8;">Grace CPU (Arm Neoverse-V2)</strong><br>
-                            &bull; <strong>Cores:</strong> 72 cores @ 3.10 GHz (4x 128-bit SVE2 per core)<br>
-                            &bull; <strong>Memory:</strong> 480 GB LPDDR5X (512-bit bus @ 6000 MT/s)<br>
-                            &bull; <strong>DRAM Peak:</strong> 384.0 GB/s (STREAM Triad spec: 307.2 GB/s, 80%)<br>
-                            &bull; <strong>Compute Peak:</strong> 7.142 TFLOPS (FP32 SIMD) / 3.571 TFLOPS (FP64)
-                        </div>
-                        <div>
-                            <strong style="color: #34d399;">Hopper GPU (H100 96GB HBM3)</strong><br>
-                            &bull; <strong>SMs:</strong> 132 SMs @ 1.980 GHz (1.830 GHz Tensor Boost)<br>
-                            &bull; <strong>HBM3 Peak:</strong> 4022.8 GB/s (6144-bit bus @ 2619 MHz, nvbandwidth: 3869 GB/s)<br>
-                            &bull; <strong>Tensor Peaks:</strong> 989.4 TFLOPS (BF16/FP16) | 494.8 TFLOPS (TF32)<br>
-                            &bull; <strong>FP32/FP64:</strong> 66.9 TFLOPS (SIMT / Dense FP64)
-                        </div>
-                        <div>
-                            <strong style="color: #fb7185;">NVLink-C2C Coherent Interconnect</strong><br>
-                            &bull; <strong>Wire Peak:</strong> 900.0 GB/s BiDir (450.0 GB/s UniDir)<br>
-                            &bull; <strong>Copy Engine:</strong> 407.9 GB/s (512MB pages, 98% of 416G spec)<br>
-                            &bull; <strong>SM Direct Read:</strong> 355.1 GB/s (nvbandwidth read)<br>
-                            &bull; <strong>Latency:</strong> 617.6 ns coherent round-trip
-                        </div>
-                    </div>
-                `;
-                limitsPanel.style.display = 'block';
-            } else if (limits) {
-                limitsPanel.className = 'hardware-panel';
-                const c = limits.compute;
-                const m = limits.memory;
-                const fp32_cores = c.sms * c.fp32_cores_per_sm;
-                const fp64_cores = c.sms * c.fp64_cores_per_sm;
-                const fp32_tflops = (fp32_cores * 2 * c.boost_mhz / 1000000).toFixed(1);
-                const fp64_tflops = (fp64_cores * 2 * c.boost_mhz / 1000000).toFixed(1);
-                const tc_tflops = c.tc_per_sm ? ((c.sms * c.tc_per_sm * c.tc_flops_per_clock * c.boost_mhz) / 1000000).toFixed(1) : ((fp32_cores * 4 * c.boost_mhz) / 1000000).toFixed(1);
-                const mem_bw = Math.round((m.bus_width_bits * m.speed_gbps) / 8);
-                
-                limitsPanel.innerHTML = `
-                    <div style="display: flex; gap: 2.5rem; flex-wrap: wrap;">
-                        <div>
-                            <strong style="color: #38bdf8;">GPU Architecture Limits</strong><br>
-                            <strong>SMs:</strong> ${c.sms} | <strong>Boost Clock:</strong> ${c.boost_mhz} MHz<br>
-                            <strong>FP32 SIMT:</strong> ${fp32_tflops} TFLOPS | <strong>FP64:</strong> ${fp64_tflops} TFLOPS<br>
-                            <strong>Tensor Compute:</strong> ${tc_tflops} TFLOPS
-                        </div>
-                        <div>
-                            <strong style="color: #34d399;">Memory Subsystem</strong><br>
-                            <strong>Bus Width:</strong> ${m.bus_width_bits}-bit | <strong>Speed:</strong> ${m.speed_gbps} Gbps<br>
-                            <strong>Theoretical Memory Peak:</strong> ${mem_bw} GB/s
-                        </div>
-                    </div>
-                `;
-                limitsPanel.style.display = 'block';
-            } else {
-                limitsPanel.style.display = 'none';
-            }
-
-            const plots = tree[currentGpu]?.[currentBench] || [];
-            
-            if (plots.length === 0) {
-                gallery.innerHTML = '<p style="color: var(--text-muted); grid-column: 1/-1;">No plots available for this selection.</p>';
+            const page = pages[currentGpu];
+            const summary = document.getElementById('device-summary');
+            document.getElementById('hardware-limits').style.display = 'none';
+            if (!page) {
+                title.innerText = 'No v2 results yet';
+                subtitle.innerText = 'Device pages appear here once a device has data from the v2 harness.';
+                summary.hidden = true;
                 return;
             }
-
-            plots.forEach(plot => {
+            title.innerText = currentGpu.replace(/_/g, ' ');
+            subtitle.innerText = page.label || '';
+            summary.hidden = currentFig !== 'all';
+            summary.innerHTML = currentFig === 'all' ? renderSummary(page) : '';
+            const figs = currentFig === 'all' ? page.figures : page.figures.filter(f => f.file === currentFig);
+            figs.forEach(f => {
                 const card = document.createElement('div');
-                card.className = 'card';
-                
-                const imgPath = `${currentGpu}/${currentBench}/${plot}`;
-                const pdfPath = imgPath.replace('.png', '.pdf');
-                const plotTitle = plot.replace('.png', '').replace(/_/g, ' ');
-                
+                card.className = 'card' + (f.wide ? ' wide' : '');
+                const imgPath = `v2/${currentGpu}/${f.file}`;
                 card.innerHTML = `
-                    <div class="card-img-wrap" onclick="openModal('${imgPath}')">
-                        <img class="card-img" src="${imgPath}" alt="${plot}" loading="lazy">
+                    <div class="card-img-wrap v2" onclick="openModal('${imgPath}')">
+                        <img class="card-img" src="${imgPath}" alt="${esc(f.title)}: ${esc(f.caption)}" loading="lazy">
                     </div>
-                    <div class="card-footer">
-                        <div class="card-title" title="${plotTitle}">${plotTitle}</div>
-                        <a class="btn-pdf" href="${pdfPath}" target="_blank" download title="Open Vector PDF">
-                            <span>PDF</span>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-                        </a>
-                    </div>
-                `;
+                    <div class="card-footer"><div class="card-title" title="${esc(f.title)}">${esc(f.title)}</div></div>
+                    <div class="card-caption">${esc(f.caption)}</div>`;
                 gallery.appendChild(card);
             });
         }

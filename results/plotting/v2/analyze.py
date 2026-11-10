@@ -201,30 +201,45 @@ def ratios(heads_by_dev: dict) -> pd.DataFrame:
     return out
 
 
-def plots(combos: pd.DataFrame, dev: str):
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
+def workload_names() -> dict:
+    try:
+        return {w["id"]: w["name"] for w in json.loads((ROOT / "results" / "workloads.json").read_text())["workloads"]}
+    except (OSError, ValueError, KeyError):
+        return {}
+
+
+def plots(combos: pd.DataFrame, bounds: pd.DataFrame, dev: str):
+    """One figure per workload (results/plots/v2/<DEV>/<ID>.png): every library at its best
+    placement, median with 95% CI, plus the measured ceiling of each problem where the bound
+    check has one. Style and colours: results/plotting/v2/figures.py."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import figures
     d = PLOTS / dev
     d.mkdir(parents=True, exist_ok=True)
+    names = workload_names()
+    b = bounds[bounds["bound"].isin(["B", "C"])] if len(bounds) else bounds
+    meas = calibration(dev).get("measured", {})
     for wid, g in combos.groupby("workload_id"):
-        fig, ax = plt.subplots(figsize=(7, 4))
-        g = g.copy()
-        g["size"] = g["problem"].map(lambda p: json.dumps({k: v for k, v in json.loads(p).items()
-                                                           if k not in ("precision", "variant")}))
-        for (lib, pl, prec, var), gg in g.groupby(["lib", "placement", "precision", "variant"]):
-            gg = gg.sort_values("ws_over_llc")
-            yerr = [gg["metric"] - gg["metric_ci_lo"], gg["metric_ci_hi"] - gg["metric"]]
-            ax.errorbar(range(len(gg)), gg["metric"], yerr=yerr, marker="o", ms=3, capsize=2,
-                        label=f"{lib} {pl} {prec}{'' if var == 'base' else ' ' + var}")
-        ax.set_yscale("log")
-        ax.set_ylabel(g["metric_name"].iloc[0])
-        ax.set_xlabel("problem size (sorted by working set; see headline CSV)")
-        ax.set_title(f"{dev} -- {wid} {g['workload'].iloc[0]} (median, 95% CI)")
-        ax.legend(fontsize=6, ncol=2)
-        fig.tight_layout()
-        fig.savefig(d / f"{wid}.png", dpi=130)
-        plt.close(fig)
+        title = f"{wid} {names.get(wid, g['workload'].iloc[0])} — {dev.replace('_', ' ')}"
+        extra = a1_ceilings(g, meas) if wid == "A1" else None
+        figures.workload_figure(g, b[b["workload_id"] == wid] if len(b) else None, d / f"{wid}.png",
+                                title, g["metric_name"].iloc[0], extra)
+
+
+def a1_ceilings(g: pd.DataFrame, meas: dict) -> dict:
+    """A1 has bound 'A' (no automatic bound check): decode is limited by streaming the weights
+    + KV cache (measured bandwidth), prefill by the GEMM peak of its precision. Ceiling in
+    tokens/s = best metric x (ceiling / achieved)."""
+    bw, peak = meas.get("bandwidth_gbps"), meas.get("peak_gflops") or {}
+    out = {}
+    for prob, gg in g.groupby("problem"):
+        r = gg.sort_values("metric").iloc[-1]
+        phase = json.loads(prob).get("phase")
+        if phase == "decode" and bw and r["gbps"] > 0:
+            out[prob] = r["metric"] * bw / r["gbps"]
+        elif phase == "prefill" and peak.get(r["precision"]) and r["gflops"] > 0:
+            out[prob] = r["metric"] * peak[r["precision"]] / r["gflops"]
+    return out
 
 
 def main():
@@ -239,8 +254,9 @@ def main():
         heads_by_dev[dev] = heads
         head.to_csv(OUT / f"{dev}_headline.csv", index=False)
         combos.to_csv(OUT / f"{dev}_libraries.csv", index=False)
-        bounds_table(head, df, dev).to_csv(OUT / f"{dev}_bounds.csv", index=False)
-        plots(combos, dev)
+        bt = bounds_table(head, df, dev)
+        bt.to_csv(OUT / f"{dev}_bounds.csv", index=False)
+        plots(combos, bt, dev)
         print(f"{dev}: {len(head)} problems, {len(combos)} (problem, library, placement) combinations")
     r = ratios(heads_by_dev)
     if len(r):

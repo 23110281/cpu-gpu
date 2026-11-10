@@ -263,23 +263,19 @@ venv: requirements.txt
 	@if [ ! -d ".venv" ]; then uv venv .venv; fi
 	uv pip install --python .venv/bin/python -r requirements.txt
 
+# Dashboard: v2 results only (legacy plot scripts under results/plotting/{cpu,gpu}/ are kept
+# for reference but no longer published -- legacy data is a placeholder until v2 data exists)
 plots: venv
-	SOURCE_DATE_EPOCH=0 .venv/bin/python results/plotting/gpu/generate_plots.py
-	SOURCE_DATE_EPOCH=0 .venv/bin/python results/plotting/gpu/generate_gemv_plots.py
-	SOURCE_DATE_EPOCH=0 .venv/bin/python results/plotting/gpu/generate_saxpy_plots.py
-	SOURCE_DATE_EPOCH=0 .venv/bin/python results/plotting/gpu/generate_spgemm_plots.py
-	SOURCE_DATE_EPOCH=0 .venv/bin/python results/plotting/gpu/gh200/generate_all_workload_and_coherence_plots.py
-	SOURCE_DATE_EPOCH=0 .venv/bin/python results/plotting/cpu/generate_cpu_gemm_plots.py
-	SOURCE_DATE_EPOCH=0 .venv/bin/python results/plotting/cpu/generate_cpu_gemv_plots.py
-	SOURCE_DATE_EPOCH=0 .venv/bin/python results/plotting/cpu/generate_cpu_saxpy_plots.py
-	SOURCE_DATE_EPOCH=0 .venv/bin/python results/plotting/cpu/generate_cpu_spgemm_plots.py
 	SOURCE_DATE_EPOCH=0 .venv/bin/python results/plotting/v2/analyze.py
+	.venv/bin/python results/plotting/v2/library_report.py
+	SOURCE_DATE_EPOCH=0 .venv/bin/python results/plotting/v2/dashboard_summary.py
 	.venv/bin/python results/generate_index.py
 
 # v2 analysis only: headline tables, library comparison, bound checks, ratios, plots
 analysis:
 	$(PYTHON) results/plotting/v2/analyze.py
 	$(PYTHON) results/plotting/v2/library_report.py
+	$(PYTHON) results/plotting/v2/dashboard_summary.py
 
 # Regenerate only the dashboard (index.html + workload status/TODO matrix)
 index: venv

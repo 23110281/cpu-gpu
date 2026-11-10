@@ -3,5 +3,16 @@
   "device_class": "gpu",
   "label": "NVIDIA Tesla V100-SXM2-16GB (Volta) — CloudLab c4130 (Wisconsin)",
   "gpu_index": 0,
-  "_note": "max_mem_gb omitted: detected at sweep time (nvidia-smi x0.9). Volta has no bf16 tensor cores: bf16 rows record 'unsupported'."
+  "_note": "max_mem_gb omitted: detected at sweep time (nvidia-smi x0.9). Volta has no bf16 tensor cores: bf16 rows record 'unsupported'.",
+  "datasheet": {
+    "bandwidth_gbps": 900.0,
+    "peak_gflops": {
+      "fp64": 7800.0,
+      "fp32": 15700.0
+    },
+    "derivation": {
+      "bandwidth": "NVIDIA V100 SXM2 datasheet: 900 GB/s HBM2 (4096-bit x 1.75 Gb/s/pin = 896 GB/s)",
+      "compute": "NVIDIA datasheet at the 1530 MHz boost clock: 80 SMs x 64 FP32 lanes x 2 FLOP x 1.53 GHz = 15.7 TFLOP/s; FP64 = half (7.8). GPU datasheets quote boost clocks (CPU datasheet figures here use base clocks)."
+    }
+  }
 }

@@ -43,19 +43,30 @@ def sh(cmd, **kw):
     return subprocess.run(cmd, check=True, capture_output=True, text=True, **kw)
 
 
-def build_babelstream(model: str) -> Path:
-    exe = BABEL_DIR / f"build-{model}" / f"{model}-stream"
+def gpu_arch(gpu_index: int = 0) -> str:
+    """sm_XY of the GPU actually present (CUDA_ARCH env overrides). A fixed sm_80 build fails on
+    V100 (sm_70) with 'no kernel image is available' -- found on CloudLab c4130."""
+    if os.environ.get("CUDA_ARCH"):
+        return os.environ["CUDA_ARCH"]
+    out = sh(["nvidia-smi", "--query-gpu=compute_cap", "--format=csv,noheader", "-i", str(gpu_index)]).stdout
+    major, minor = out.strip().splitlines()[0].split(".")
+    return f"sm_{major}{minor}"
+
+
+def build_babelstream(model: str, gpu_index: int = 0) -> Path:
+    tag = model if model != "cuda" else f"cuda-{gpu_arch(gpu_index)}"      # one build dir per GPU arch
+    exe = BABEL_DIR / f"build-{tag}" / f"{model}-stream"
     if exe.exists():
         return exe
     if not BABEL_DIR.exists():
         sh(["git", "clone", "--depth", "1", "--branch", BABEL_TAG, BABEL_URL, str(BABEL_DIR)])
-    bdir = BABEL_DIR / f"build-{model}"
+    bdir = BABEL_DIR / f"build-{tag}"
     args = ["cmake", "-S", str(BABEL_DIR), "-B", str(bdir), f"-DMODEL={model}", "-DCMAKE_BUILD_TYPE=Release"]
     if model == "omp":
         args += ["-DCMAKE_CXX_COMPILER=g++", "-DCXX_EXTRA_FLAGS=-march=native"]
     if model == "cuda":
         args += ["-DCMAKE_CUDA_COMPILER=" + os.environ.get("NVCC", "/usr/local/cuda/bin/nvcc"),
-                 "-DCUDA_ARCH=" + os.environ.get("CUDA_ARCH", "sm_80")]
+                 "-DCUDA_ARCH=" + gpu_arch(gpu_index)]
     sh(args)
     sh(["cmake", "--build", str(bdir), "-j"])
     return exe
@@ -117,7 +128,7 @@ def main():
 
     # ── bandwidth: BabelStream Triad ────────────────────────────────────────
     model = "omp" if cls == "cpu" else "cuda"
-    exe = build_babelstream(model)
+    exe = build_babelstream(model, dev.get("gpu_index", 0))
     env, prefix = dict(os.environ), []
     if cls == "cpu":
         p = devices.resolve_placement(a.placement)

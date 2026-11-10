@@ -41,15 +41,40 @@ else
     NVCC_VER="$("$NVCC" --version 2>/dev/null | sed -n 's/.*release \([0-9]*\)\.\([0-9]*\).*/\1.\2/p' || true)"
     case "${NVCC_VER%%.*}" in
         13) IDX="cu130" ;;
-        12) IDX="cu129 cu128 cu126" ;;
+        12) IDX="cu129 cu128 cu126 cu124" ;;
         *)  IDX="" ; warn "nvcc version '${NVCC_VER}' not recognised: installing the default torch wheel" ;;
     esac
+    # The wheel must also contain kernels for THIS GPU: PyTorch's CUDA >= 12.8 builds dropped
+    # Volta/Pascal/Maxwell (no sm_70 code -> "no kernel image is available"). So each candidate
+    # is installed cleanly and checked against the GPU's compute capability; the first that fits
+    # is kept. (Found on CloudLab c4130, 4x V100.)
+    torch_fits_gpu() {
+        python3 - <<'PY'
+import sys, torch
+if not torch.cuda.is_available():
+    print("  torch sees no GPU (driver not loaded?)"); sys.exit(2)
+maj, mi = torch.cuda.get_device_capability(0); cc = 10 * maj + mi
+archs = torch.cuda.get_arch_list()
+sm = [int(a[3:]) for a in archs if a.startswith("sm_")]
+ptx = [int(a[8:]) for a in archs if a.startswith("compute_")]
+ok = any(s // 10 == maj and s <= cc for s in sm) or any(p <= cc for p in ptx)
+print(f"  {torch.cuda.get_device_name(0)} sm_{cc}; torch {torch.__version__} archs {archs}: "
+      + ("has kernels for this GPU" if ok else "NO kernels for this GPU"))
+sys.exit(0 if ok else 1)
+PY
+    }
     ok_torch=0
     for i in $IDX; do
-        python3 -m pip install -q --no-cache-dir torch --index-url "https://download.pytorch.org/whl/$i" \
-            && { ok_torch=1; log "torch wheel from $i (nvcc ${NVCC_VER})"; break; }
+        python3 -m pip uninstall -y -q torch >/dev/null 2>&1 || true
+        python3 -m pip install -q --no-cache-dir torch --index-url "https://download.pytorch.org/whl/$i" || continue
+        rc=0; torch_fits_gpu || rc=$?
+        if [ "$rc" -eq 0 ]; then
+            ok_torch=1; log "torch wheel from $i (nvcc ${NVCC_VER})"; break
+        elif [ "$rc" -eq 2 ]; then
+            ok_torch=1; warn "torch wheel from $i installed, but no GPU visible to check it: re-run after the driver loads"; break
+        fi
+        warn "torch wheel from $i has no kernels for this GPU: trying the next CUDA build"
     done
-    [ "$ok_torch" = 1 ] || python3 -m pip install -q --no-cache-dir torch || warn "torch (CUDA wheel) install failed"
     TORCH_CUDA="$(python3 -c 'import torch; print(torch.version.cuda or "")' 2>/dev/null || true)"
     [ "${TORCH_CUDA%%.*}" = "${NVCC_VER%%.*}" ] \
         || warn "torch CUDA ${TORCH_CUDA} vs nvcc ${NVCC_VER}: major versions differ -> native CUDA kernels will NOT build"

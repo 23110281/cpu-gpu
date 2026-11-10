@@ -25,6 +25,7 @@ import torch.nn.functional as F
 
 from ..core import Ctx, Unsupported, Workload
 from ..validate import normwise
+from . import _common as C
 
 IMAGES = [1024, 4096, 8192]
 RADII = [2, 4, 7]
@@ -169,7 +170,7 @@ class Bilateral(Workload):
     def _library_for(self, p, ctx):
         if p["lib"] == "opencv":
             import cv2
-            return f"opencv{cv2.__version__}/bilateralFilter(LUT range weights)"
+            return f"opencv{cv2.__version__}/bilateralFilter(LUT range weights)/threads={ctx.threads}(affinity widened)"
         if p["lib"] == "fast":
             return "native CUDA, __expf (SFU fast math)"
         return "native C++/OpenMP+SIMD, libmvec expf" if ctx.device_class == "cpu" else "native CUDA, precise expf"
@@ -188,10 +189,15 @@ class Bilateral(Workload):
         st = {"img": img, "padded": padded, "out": out, "r": r, "lib": lib}
         if lib == "opencv":
             import cv2
-            cv2.setNumThreads(ctx.threads)
+            cpus = C.placement_cpus(ctx)
+            with C.widened_affinity(cpus):          # OpenCV's pthread pool inherits the caller's mask
+                cv2.setNumThreads(ctx.threads)
             src, dst = img.numpy(), out.numpy()
-            st["fn"] = lambda: cv2.bilateralFilter(src, 2 * r + 1, SIGMA_R, r / 2.0, dst=dst,
-                                                   borderType=cv2.BORDER_REFLECT_101)
+
+            def fn():
+                with C.widened_affinity(cpus):
+                    cv2.bilateralFilter(src, 2 * r + 1, SIGMA_R, r / 2.0, dst=dst, borderType=cv2.BORDER_REFLECT_101)
+            st["fn"] = fn
         elif ctx.device_class == "cpu":
             ext = _cpu_ext()
             st["fn"] = lambda: ext.bilateral_cpu(padded, out, dy, dx, sw, r, kr)

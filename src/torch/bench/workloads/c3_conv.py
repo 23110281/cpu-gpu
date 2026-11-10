@@ -203,7 +203,7 @@ class Conv2d(Workload):
                     else "native CUDA direct conv (smem tile, K unrolled)")
         if p.get("lib", "torch") == "opencv":
             cv2 = _cv2()
-            return f"opencv{cv2.__version__}/filter2D/threads={cv2.getNumThreads()}"
+            return f"opencv{cv2.__version__}/filter2D/threads={ctx.threads}(affinity widened)"
         return self.library(ctx)
 
     def setup(self, p, ctx: Ctx):
@@ -232,7 +232,9 @@ class Conv2d(Workload):
                 s["fn"] = _cuda_ext().conv2d_native_cuda
         else:
             cv2 = _cv2()
-            cv2.setNumThreads(ctx.threads)
+            s["cpus"] = C.placement_cpus(ctx)
+            with C.widened_affinity(s["cpus"]):      # OpenCV's pthread pool inherits the caller's mask
+                cv2.setNumThreads(ctx.threads)
             # OpenCV's native layouts: HxW for one channel, HxWxC otherwise
             img = x[0, 0].contiguous() if c == 1 else x[0].permute(1, 2, 0).contiguous()
             s["img"], s["dst"] = img.numpy(), torch.empty_like(img).numpy()
@@ -252,7 +254,8 @@ class Conv2d(Workload):
             # disabled (sweep.py, methodology §4) so the block is reused without page faults.
             s["y"] = F.conv2d(s["x"], s["w"], padding=s["pad"], groups=s["c"])
         else:
-            s["cv2"].filter2D(s["img"], -1, s["kern"], dst=s["dst"], borderType=s["cv2"].BORDER_CONSTANT)
+            with C.widened_affinity(s["cpus"]):
+                s["cv2"].filter2D(s["img"], -1, s["kern"], dst=s["dst"], borderType=s["cv2"].BORDER_CONSTANT)
 
     def _output_nchw(self, s):
         if s["lib"] in ("torch", "native"):

@@ -320,3 +320,18 @@ def test_preflight_oom_row_has_provenance(tmp_path):
     sweep._preflight_oom_row(w, c, dcfg, "socket0", 1, "cTEST", tmp_path)
     rows = schema.read_rows(schema.output_paths(tmp_path, "cpu", "TEST", w.id, w.name)["rows"])
     assert rows[0]["status"] == "oom" and len(rows[0]["git_sha"]) >= 7
+
+
+def test_widened_affinity_restores_mask():
+    """OpenCV/TBB pools must see the whole placement; the caller's mask is restored afterwards."""
+    import os
+    from bench.workloads import _common as C
+    saved = os.sched_getaffinity(0)
+    one = {min(saved)}
+    os.sched_setaffinity(0, one)                  # what torch's OMP_PROC_BIND does to the main thread
+    try:
+        with C.widened_affinity(saved):
+            assert os.sched_getaffinity(0) == saved
+        assert os.sched_getaffinity(0) == one
+    finally:
+        os.sched_setaffinity(0, saved)

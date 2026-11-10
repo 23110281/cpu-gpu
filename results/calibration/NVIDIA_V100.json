@@ -1,0 +1,77 @@
+{
+  "device_id": "NVIDIA_V100",
+  "utc": "2026-11-10T18:32:20.697281+00:00",
+  "placement": "gpu0",
+  "datasheet": {},
+  "measured": {
+    "bandwidth_gbps": 845.216431,
+    "bandwidth_convention": "BabelStream Triad as reported (GPU)",
+    "peak_gflops": {
+      "fp32": 14110.822126850157,
+      "fp64": 7013.061853886643
+    }
+  },
+  "provenance": {
+    "babelstream": {
+      "url": "https://github.com/UoB-HPC/BabelStream.git",
+      "tag": "v5.0",
+      "model": "cuda",
+      "array_elems": 134217728,
+      "array_bytes_total": 3221225472,
+      "ws_over_llc": 61.44,
+      "reported_gbps_median": {
+        "Copy": 804.886419,
+        "Mul": 805.850519,
+        "Add": 843.946235,
+        "Triad": 845.216431,
+        "Dot": 886.621654
+      },
+      "reported_gbps_runs": [
+        {
+          "Copy": 804.966672,
+          "Mul": 805.877735,
+          "Add": 846.0924669999999,
+          "Triad": 848.1212240000001,
+          "Dot": 886.7556500000001
+        },
+        {
+          "Copy": 804.886419,
+          "Mul": 805.817256,
+          "Add": 843.904227,
+          "Triad": 845.187823,
+          "Dot": 886.590906
+        },
+        {
+          "Copy": 804.8821949999999,
+          "Mul": 805.9917630000001,
+          "Add": 843.829505,
+          "Triad": 845.2102219999999,
+          "Dot": 886.621654
+        },
+        {
+          "Copy": 804.71239,
+          "Mul": 805.847797,
+          "Add": 843.9915649999999,
+          "Triad": 845.216431,
+          "Dot": 886.926683
+        },
+        {
+          "Copy": 804.9235259999999,
+          "Mul": 805.850519,
+          "Add": 843.946235,
+          "Triad": 845.2727659999999,
+          "Dot": 886.6125030000001
+        }
+      ],
+      "write_allocate_factors": null,
+      "command": "/users/rudra281/cpu-gpu/third_party/BabelStream/build-cuda-sm_70/cuda-stream -s 134217728 -n 100",
+      "raw_output_last": "BabelStream\nVersion: 5.0\nImplementation: CUDA\nRunning kernels 100 times\nPrecision: double\nArray size: 1073.7 MB (=1.1 GB)\nTotal size: 3221.2 MB (=3.2 GB)\nUsing CUDA device Tesla V100-SXM2-16GB\nDriver: 13000\nMemory: DEFAULT\nReduction kernel config: 320 groups of (fixed) size 1024\nInit: 0.250306 s (=12869.152311 MBytes/sec)\nRead: 0.003869 s (=832613.380900 MBytes/sec)\nFunction    MBytes/sec  Min (sec)   Max         Average     \nCopy        804923.526  0.00267     0.00267     0.00267     \nMul         805850.519  0.00266     0.00267     0.00267     \nAdd         843946.235  0.00382     0.00383     0.00382     \nTriad       845272.766  0.00381     0.00384     0.00381     \nDot         886612.503  0.00242     0.00245     0.00243     \n"
+    },
+    "gemm_fp32": {
+      "torch": 14110.822126850157
+    },
+    "gemm_fp64": {
+      "torch": 7013.061853886643
+    }
+  }
+}

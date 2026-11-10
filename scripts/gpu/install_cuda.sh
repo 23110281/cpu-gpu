@@ -34,6 +34,16 @@ TOOLKIT_PKG="$(apt-cache search --names-only '^cuda-toolkit-12-[0-9]+$' \
               | awk '{print $1}' | sort -V | tail -1)"
 [ -n "${TOOLKIT_PKG}" ] || { echo "no cuda-toolkit-12-* found in repo"; exit 1; }
 DRIVER_PKG="cuda-drivers"              # pulls the latest DKMS data-center driver
+# NVIDIA's 580 branch is the LAST driver supporting Maxwell, Pascal and Volta: on those GPUs the
+# latest driver (e.g. 620) does not recognise the card at all. Pin 580 there (override with
+# DRIVER_BRANCH=<n>). Found on CloudLab c4130 (4x V100), where cuda-drivers -> 620.
+GPU_NAMES="$(lspci 2>/dev/null | grep -i nvidia || true)"
+if [ -n "${DRIVER_BRANCH:-}" ]; then
+    DRIVER_PKG="cuda-drivers-${DRIVER_BRANCH}"
+elif echo "${GPU_NAMES}" | grep -Eq 'GV100|GV10[0-9]|GP10[0-9]|GM20[0-9]|GK[0-9]'; then
+    DRIVER_PKG="cuda-drivers-580"
+    log "pre-Turing GPU detected (Volta/Pascal/Maxwell/Kepler): pinning ${DRIVER_PKG}"
+fi
 log "Selected toolkit='${TOOLKIT_PKG}' driver='${DRIVER_PKG}'"
 
 if [ "${1:-}" = "--probe" ]; then

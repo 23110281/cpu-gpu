@@ -279,6 +279,7 @@ plots: venv
 # v2 analysis only: headline tables, library comparison, bound checks, ratios, plots
 analysis:
 	$(PYTHON) results/plotting/v2/analyze.py
+	$(PYTHON) results/plotting/v2/library_report.py
 
 # Regenerate only the dashboard (index.html + workload status/TODO matrix)
 index: venv

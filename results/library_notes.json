@@ -1,0 +1,77 @@
+{
+  "_about": "Curated explanations shown next to library results by results/plotting/v2/library_report.py. status: 'verified' = backed by the evidence given; 'hypothesis' = plausible but not yet confirmed (say how to confirm). device is a glob on device_id; workload/library may be '*'. Add a note only with evidence.",
+  "notes": [
+    {
+      "device": "AMD_*",
+      "workload": "A1",
+      "library": "torch",
+      "status": "verified",
+      "date": "2026-11-10",
+      "note": "torch's fp32 linear layers (MKL GEMV) stream only ~25-35 GB/s at batch-1 decode on AMD EPYC, i.e. about one core's worth of bandwidth; OpenBLAS sgemv on the same tensors streams 218-285 GB/s. That the slowdown is inside MKL's AMD code path is a hypothesis (MKL_VERBOSE would show the dispatched kernel).",
+      "evidence": "r6615 ctest_r6615: llama3-8b B=1 torch 0.89 tok/s (27 GB/s) vs openblas 9.31 tok/s (284 GB/s); c6525-100g 2026-11-05: every decode row 13-22 GB/s; Intel laptop: torch GEMV at full read rate. BLIS sgemv is as slow as MKL here (llama3-8b B=1: 1.04 tok/s, 32 GB/s), so OpenBLAS is the CPU winner at batch 1."
+    },
+    {
+      "device": "AMD_*",
+      "workload": "A1",
+      "library": "*",
+      "status": "hypothesis",
+      "date": "2026-11-10",
+      "note": "Batch-8 decode reaches only ~9-13% of bandwidth with ALL three libraries (BLIS slightly ahead): an 8-row 'skinny' GEMM is a weak shape for general BLAS kernels on this CPU. Open item: a decode-specific path (e.g. oneDNN matmul, or a batched-GEMV kernel) may be needed for a fair CPU baseline at batch > 1.",
+      "evidence": "r6615 ctest_r6615: llama3-8b B=8 blis 10.8 / openblas 9.9 / torch 8.1 tok/s (35-46 GB/s of 364); llama3.2-1b B=8 blis 45.8 / openblas 43.6 / torch 36.2."
+    },
+    {
+      "device": "AMD_R6615",
+      "workload": "C1",
+      "library": "blis",
+      "status": "hypothesis",
+      "date": "2026-11-10",
+      "note": "Ubuntu 22.04's BLIS 0.8.1 is about 3.5x slower than OpenBLAS/MKL on Zen 4; likely it has no Zen 4 kernel set and falls back to an older one. Confirm by recording BLIS's selected architecture (bli_arch_query_id) in the row provenance.",
+      "evidence": "r6615 calibration: GEMM fp32 blis 994 vs openblas 3495 GFLOP/s; fp64 blis 506 vs torch/MKL 1643."
+    },
+    {
+      "device": "AMD_R6615",
+      "workload": "C1",
+      "library": "openblas",
+      "status": "verified",
+      "date": "2026-11-10",
+      "note": "On Zen 4 the fastest GEMM library depends on precision: OpenBLAS wins fp32, torch/MKL wins fp64 (on Zen 2 BLIS won both). Reason not yet investigated.",
+      "evidence": "r6615 calibration: fp32 openblas 3495 / MKL 3066 / blis 994; fp64 MKL 1643 / openblas 1542 / blis 506 GFLOP/s."
+    },
+    {
+      "device": "*",
+      "workload": "C3",
+      "library": "native",
+      "status": "verified",
+      "date": "2026-11-10",
+      "note": "The native direct convolution (filter size a compile-time constant, all K*K taps unrolled, vectorised x loop) wins every size: neural-network convolution libraries are not built for one small filter over a large image.",
+      "evidence": "r6615 ctest_r6615: native wins 18/18 problems at 15-45% of measured GEMM peak; next best OpenCV at 0.04-0.71x of native."
+    },
+    {
+      "device": "*",
+      "workload": "C3",
+      "library": "torch",
+      "status": "hypothesis",
+      "date": "2026-11-10",
+      "note": "torch CPU conv2d for this shape (groups = channels, one 3/5/7 filter) stays at ~160 Mpx/s regardless of image or filter size, which points at a slow non-oneDNN fallback path rather than a compute or bandwidth limit. Confirm with the torch profiler / ONEDNN_VERBOSE.",
+      "evidence": "r6615 ctest_r6615: 155-169 Mpx/s for every k at c=1, 67-83 at c=3, across 1024^2..8192^2."
+    },
+    {
+      "device": "*",
+      "workload": "C3",
+      "library": "opencv",
+      "status": "verified",
+      "date": "2026-11-10",
+      "note": "Rows collected before commit d51fa7e ran OpenCV on ONE core (torch's OpenMP binding pins the main thread, and OpenCV's pthread pool inherited it). Only compare OpenCV rows from d51fa7e or later.",
+      "evidence": "r6615: filter2D 8192^2 k=5 634 Mpx/s pinned vs 6109 standalone; after the fix the sweep measured 12004 Mpx/s."
+    },
+    {
+      "device": "*",
+      "workload": "C5",
+      "library": "opencv",
+      "status": "verified",
+      "date": "2026-11-10",
+      "note": "Same as C3: OpenCV bilateralFilter rows before commit d51fa7e ran on one core, so the earlier 'native is 7x faster than OpenCV' (EPYC 7402P) is not a fair comparison and must be re-measured.",
+      "evidence": "Same mechanism as C3 (shared fix in _common.widened_affinity)."
+    }
+  ]
+}

@@ -1,0 +1,505 @@
+[1;34m[INFO][0m ======================================================================
+[1;34m[INFO][0m       AMD EPYC CLOUDLAB PROVISIONING & OPENBLAS SETUP
+[1;34m[INFO][0m ======================================================================
+[1;34m[INFO][0m CPU Model:      AMD EPYC 9354P 32-Core Processor
+[1;34m[INFO][0m Online Threads: 64
+[1;34m[INFO][0m Linux Kernel:   5.15.0-198-generic
+[1;34m[INFO][0m ======================================================================
+[1;34m[INFO][0m Step 1/4: Installing base build tools and hardware utilities
+Get:1 http://repos.emulab.net/emulab/ubuntu jammy InRelease [6,176 B]
+Get:2 http://repos.emulab.net/grub-backports/ubuntu jammy InRelease [3,163 B]
+Get:3 http://repos.emulab.net/emulab/ubuntu jammy/main amd64 Packages [5,467 B]
+Get:4 http://repos.emulab.net/grub-backports/ubuntu jammy/main amd64 Packages [7,248 B]
+Get:5 http://us.archive.ubuntu.com/ubuntu jammy InRelease [270 kB]
+Get:6 http://us.archive.ubuntu.com/ubuntu jammy-updates InRelease [128 kB]
+Get:7 http://us.archive.ubuntu.com/ubuntu jammy-backports InRelease [127 kB]
+Get:8 http://us.archive.ubuntu.com/ubuntu jammy-security InRelease [129 kB]
+Get:9 http://us.archive.ubuntu.com/ubuntu jammy/main amd64 Packages [1,395 kB]
+Get:10 http://us.archive.ubuntu.com/ubuntu jammy/main Translation-en [510 kB]
+Get:11 http://us.archive.ubuntu.com/ubuntu jammy/main amd64 c-n-f Metadata [30.3 kB]
+Get:12 http://us.archive.ubuntu.com/ubuntu jammy/restricted amd64 Packages [129 kB]
+Get:13 http://us.archive.ubuntu.com/ubuntu jammy/restricted Translation-en [18.6 kB]
+Get:14 http://us.archive.ubuntu.com/ubuntu jammy/restricted amd64 c-n-f Metadata [488 B]
+Get:15 http://us.archive.ubuntu.com/ubuntu jammy/universe amd64 Packages [14.1 MB]
+Get:16 http://us.archive.ubuntu.com/ubuntu jammy/universe Translation-en [5,652 kB]
+Get:17 http://us.archive.ubuntu.com/ubuntu jammy/universe amd64 c-n-f Metadata [286 kB]
+Get:18 http://us.archive.ubuntu.com/ubuntu jammy/multiverse amd64 Packages [217 kB]
+Get:19 http://us.archive.ubuntu.com/ubuntu jammy/multiverse Translation-en [112 kB]
+Get:20 http://us.archive.ubuntu.com/ubuntu jammy/multiverse amd64 c-n-f Metadata [8,372 B]
+Get:21 http://us.archive.ubuntu.com/ubuntu jammy-updates/main amd64 Packages [3,980 kB]
+Get:22 http://us.archive.ubuntu.com/ubuntu jammy-updates/main Translation-en [583 kB]
+Get:23 http://us.archive.ubuntu.com/ubuntu jammy-updates/main amd64 c-n-f Metadata [20.1 kB]
+Get:24 http://us.archive.ubuntu.com/ubuntu jammy-updates/restricted amd64 Packages [6,843 kB]
+Get:25 http://us.archive.ubuntu.com/ubuntu jammy-updates/restricted Translation-en [1,314 kB]
+Get:26 http://us.archive.ubuntu.com/ubuntu jammy-updates/restricted amd64 c-n-f Metadata [584 B]
+Get:27 http://us.archive.ubuntu.com/ubuntu jammy-updates/universe amd64 Packages [1,291 kB]
+Get:28 http://us.archive.ubuntu.com/ubuntu jammy-updates/universe Translation-en [327 kB]
+Get:29 http://us.archive.ubuntu.com/ubuntu jammy-updates/universe amd64 c-n-f Metadata [30.8 kB]
+Get:30 http://us.archive.ubuntu.com/ubuntu jammy-updates/multiverse amd64 Packages [86.1 kB]
+Get:31 http://us.archive.ubuntu.com/ubuntu jammy-updates/multiverse Translation-en [16.5 kB]
+Get:32 http://us.archive.ubuntu.com/ubuntu jammy-updates/multiverse amd64 c-n-f Metadata [756 B]
+Get:33 http://us.archive.ubuntu.com/ubuntu jammy-backports/main amd64 Packages [70.2 kB]
+Get:34 http://us.archive.ubuntu.com/ubuntu jammy-backports/main Translation-en [11.4 kB]
+Get:35 http://us.archive.ubuntu.com/ubuntu jammy-backports/main amd64 c-n-f Metadata [412 B]
+Get:36 http://us.archive.ubuntu.com/ubuntu jammy-backports/restricted amd64 c-n-f Metadata [116 B]
+Get:37 http://us.archive.ubuntu.com/ubuntu jammy-backports/universe amd64 Packages [30.8 kB]
+Get:38 http://us.archive.ubuntu.com/ubuntu jammy-backports/universe Translation-en [16.9 kB]
+Get:39 http://us.archive.ubuntu.com/ubuntu jammy-backports/universe amd64 c-n-f Metadata [676 B]
+Get:40 http://us.archive.ubuntu.com/ubuntu jammy-backports/multiverse amd64 c-n-f Metadata [116 B]
+Get:41 http://us.archive.ubuntu.com/ubuntu jammy-security/main amd64 Packages [3,698 kB]
+Get:42 http://us.archive.ubuntu.com/ubuntu jammy-security/main Translation-en [515 kB]
+Hit:43 http://us.archive.ubuntu.com/ubuntu jammy-security/main amd64 c-n-f Metadata
+Get:44 http://us.archive.ubuntu.com/ubuntu jammy-security/restricted amd64 Packages [6,575 kB]
+Get:45 http://us.archive.ubuntu.com/ubuntu jammy-security/restricted Translation-en [1,265 kB]
+Hit:46 http://us.archive.ubuntu.com/ubuntu jammy-security/restricted amd64 c-n-f Metadata
+Get:47 http://us.archive.ubuntu.com/ubuntu jammy-security/universe amd64 Packages [1,057 kB]
+Get:48 http://us.archive.ubuntu.com/ubuntu jammy-security/universe Translation-en [238 kB]
+Hit:49 http://us.archive.ubuntu.com/ubuntu jammy-security/universe amd64 c-n-f Metadata
+Get:50 http://us.archive.ubuntu.com/ubuntu jammy-security/multiverse amd64 Packages [79.6 kB]
+Get:51 http://us.archive.ubuntu.com/ubuntu jammy-security/multiverse Translation-en [13.6 kB]
+Hit:52 http://us.archive.ubuntu.com/ubuntu jammy-security/multiverse amd64 c-n-f Metadata
+Fetched 51.2 MB in 2min 53s (296 kB/s)
+Reading package lists...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+build-essential is already the newest version (12.9ubuntu3).
+build-essential set to manually installed.
+g++ is already the newest version (4:11.2.0-1ubuntu1).
+g++ set to manually installed.
+gcc is already the newest version (4:11.2.0-1ubuntu1).
+gcc set to manually installed.
+make is already the newest version (4.3-4.1build1).
+make set to manually installed.
+git is already the newest version (1:2.34.1-1ubuntu1.18).
+git set to manually installed.
+wget is already the newest version (1.21.2-2ubuntu1.5).
+wget set to manually installed.
+The following additional packages will be installed:
+  cmake-data dh-elpa-helper gfortran-11 hwdata libcpufreq0 libgfortran-11-dev
+  libgfortran5 libhwloc15 libjsoncpp25 libpython3-stdlib librhash0
+  linux-tools-5.15.0-203 linux-tools-5.15.0-203-generic python3-minimal
+  python3-pip-whl python3-setuptools-whl python3-wheel python3.10-venv
+Suggested packages:
+  cmake-doc ninja-build cmake-format gfortran-multilib gfortran-doc
+  gfortran-11-multilib gfortran-11-doc libcoarrays-dev
+  libhwloc-contrib-plugins python3-doc python3-tk
+Recommended packages:
+  libhwloc-plugins python3-dev
+The following NEW packages will be installed:
+  cmake cmake-data cpufrequtils dh-elpa-helper gfortran gfortran-11 hwdata
+  hwloc libcpufreq0 libgfortran-11-dev libgfortran5 libhwloc15 libjsoncpp25
+  librhash0 linux-tools-5.15.0-203 linux-tools-5.15.0-203-generic
+  linux-tools-common linux-tools-generic numactl pkg-config python3-pip
+  python3-pip-whl python3-setuptools-whl python3-venv python3-wheel
+  python3.10-venv
+The following packages will be upgraded:
+  libpython3-stdlib python3 python3-minimal
+3 upgraded, 26 newly installed, 0 to remove and 93 not upgraded.
+Need to get 32.9 MB of archives.
+After this operation, 111 MB of additional disk space will be used.
+Get:1 http://us.archive.ubuntu.com/ubuntu jammy-updates/main amd64 python3-minimal amd64 3.10.6-1~22.04.1 [24.3 kB]
+Get:2 http://us.archive.ubuntu.com/ubuntu jammy-updates/main amd64 python3 amd64 3.10.6-1~22.04.1 [22.8 kB]
+Get:3 http://us.archive.ubuntu.com/ubuntu jammy-updates/main amd64 libpython3-stdlib amd64 3.10.6-1~22.04.1 [6,812 B]
+Get:4 http://us.archive.ubuntu.com/ubuntu jammy/universe amd64 libcpufreq0 amd64 008-2build1 [12.3 kB]
+Get:5 http://us.archive.ubuntu.com/ubuntu jammy/universe amd64 cpufrequtils amd64 008-2build1 [34.5 kB]
+Get:6 http://us.archive.ubuntu.com/ubuntu jammy/main amd64 libjsoncpp25 amd64 1.9.5-3 [80.0 kB]
+Get:7 http://us.archive.ubuntu.com/ubuntu jammy/main amd64 librhash0 amd64 1.4.2-1ubuntu1 [125 kB]
+Get:8 http://us.archive.ubuntu.com/ubuntu jammy/main amd64 dh-elpa-helper all 2.0.9ubuntu1 [7,610 B]
+Get:9 http://us.archive.ubuntu.com/ubuntu jammy-updates/main amd64 cmake-data all 3.22.1-1ubuntu1.22.04.2 [1,913 kB]
+Get:10 http://us.archive.ubuntu.com/ubuntu jammy-updates/main amd64 cmake amd64 3.22.1-1ubuntu1.22.04.2 [5,010 kB]
+Get:11 http://us.archive.ubuntu.com/ubuntu jammy-updates/main amd64 libgfortran5 amd64 12.3.0-1ubuntu1~22.04.3 [879 kB]
+Get:12 http://us.archive.ubuntu.com/ubuntu jammy-updates/main amd64 libgfortran-11-dev amd64 11.4.0-1ubuntu1~22.04.3 [842 kB]
+Get:13 http://us.archive.ubuntu.com/ubuntu jammy-updates/main amd64 gfortran-11 amd64 11.4.0-1ubuntu1~22.04.3 [11.2 MB]
+Get:14 http://us.archive.ubuntu.com/ubuntu jammy/main amd64 gfortran amd64 4:11.2.0-1ubuntu1 [1,182 B]
+Get:15 http://us.archive.ubuntu.com/ubuntu jammy/main amd64 hwdata all 0.357-1 [26.6 kB]
+Get:16 http://us.archive.ubuntu.com/ubuntu jammy-updates/universe amd64 libhwloc15 amd64 2.7.0-2ubuntu1 [159 kB]
+Get:17 http://us.archive.ubuntu.com/ubuntu jammy-updates/main amd64 linux-tools-common all 5.15.0-203.213 [378 kB]
+Get:18 http://us.archive.ubuntu.com/ubuntu jammy-updates/main amd64 linux-tools-5.15.0-203 amd64 5.15.0-203.213 [8,031 kB]
+Get:19 http://us.archive.ubuntu.com/ubuntu jammy-updates/main amd64 linux-tools-5.15.0-203-generic amd64 5.15.0-203.213 [1,792 B]
+Get:20 http://us.archive.ubuntu.com/ubuntu jammy-updates/main amd64 linux-tools-generic amd64 5.15.0.203.175 [2,336 B]
+Get:21 http://us.archive.ubuntu.com/ubuntu jammy/main amd64 numactl amd64 2.0.14-3ubuntu2 [36.8 kB]
+Get:22 http://us.archive.ubuntu.com/ubuntu jammy/main amd64 pkg-config amd64 0.29.2-1ubuntu3 [48.2 kB]
+Get:23 http://us.archive.ubuntu.com/ubuntu jammy-updates/universe amd64 python3-wheel all 0.37.1-2ubuntu0.22.04.1 [32.0 kB]
+Get:24 http://us.archive.ubuntu.com/ubuntu jammy-updates/universe amd64 python3-pip all 22.0.2+dfsg-1ubuntu0.7 [1,306 kB]
+Get:25 http://us.archive.ubuntu.com/ubuntu jammy-updates/universe amd64 python3-pip-whl all 22.0.2+dfsg-1ubuntu0.7 [1,683 kB]
+Get:26 http://us.archive.ubuntu.com/ubuntu jammy-updates/universe amd64 python3-setuptools-whl all 59.6.0-1.2ubuntu0.22.04.3 [789 kB]
+Get:27 http://us.archive.ubuntu.com/ubuntu jammy-updates/universe amd64 python3.10-venv amd64 3.10.12-1~22.04.18 [5,724 B]
+Get:28 http://us.archive.ubuntu.com/ubuntu jammy-updates/universe amd64 python3-venv amd64 3.10.6-1~22.04.1 [1,042 B]
+Get:29 http://us.archive.ubuntu.com/ubuntu jammy-updates/universe amd64 hwloc amd64 2.7.0-2ubuntu1 [223 kB]
+debconf: unable to initialize frontend: Dialog
+debconf: (Dialog frontend will not work on a dumb terminal, an emacs shell buffer, or without a controlling terminal.)
+debconf: falling back to frontend: Readline
+debconf: unable to initialize frontend: Readline
+debconf: (This frontend requires a controlling tty.)
+debconf: falling back to frontend: Teletype
+dpkg-preconfigure: unable to re-open stdin: 
+Fetched 32.9 MB in 39s (844 kB/s)
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 96749 files and directories currently installed.)
+Preparing to unpack .../python3-minimal_3.10.6-1~22.04.1_amd64.deb ...
+Unpacking python3-minimal (3.10.6-1~22.04.1) over (3.10.6-1~22.04) ...
+Setting up python3-minimal (3.10.6-1~22.04.1) ...
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 96749 files and directories currently installed.)
+Preparing to unpack .../00-python3_3.10.6-1~22.04.1_amd64.deb ...
+running python pre-rtupdate hooks for python3.10...
+Unpacking python3 (3.10.6-1~22.04.1) over (3.10.6-1~22.04) ...
+Preparing to unpack .../01-libpython3-stdlib_3.10.6-1~22.04.1_amd64.deb ...
+Unpacking libpython3-stdlib:amd64 (3.10.6-1~22.04.1) over (3.10.6-1~22.04) ...
+Selecting previously unselected package libcpufreq0.
+Preparing to unpack .../02-libcpufreq0_008-2build1_amd64.deb ...
+Unpacking libcpufreq0 (008-2build1) ...
+Selecting previously unselected package cpufrequtils.
+Preparing to unpack .../03-cpufrequtils_008-2build1_amd64.deb ...
+Unpacking cpufrequtils (008-2build1) ...
+Selecting previously unselected package libjsoncpp25:amd64.
+Preparing to unpack .../04-libjsoncpp25_1.9.5-3_amd64.deb ...
+Unpacking libjsoncpp25:amd64 (1.9.5-3) ...
+Selecting previously unselected package librhash0:amd64.
+Preparing to unpack .../05-librhash0_1.4.2-1ubuntu1_amd64.deb ...
+Unpacking librhash0:amd64 (1.4.2-1ubuntu1) ...
+Selecting previously unselected package dh-elpa-helper.
+Preparing to unpack .../06-dh-elpa-helper_2.0.9ubuntu1_all.deb ...
+Unpacking dh-elpa-helper (2.0.9ubuntu1) ...
+Selecting previously unselected package cmake-data.
+Preparing to unpack .../07-cmake-data_3.22.1-1ubuntu1.22.04.2_all.deb ...
+Unpacking cmake-data (3.22.1-1ubuntu1.22.04.2) ...
+Selecting previously unselected package cmake.
+Preparing to unpack .../08-cmake_3.22.1-1ubuntu1.22.04.2_amd64.deb ...
+Unpacking cmake (3.22.1-1ubuntu1.22.04.2) ...
+Selecting previously unselected package libgfortran5:amd64.
+Preparing to unpack .../09-libgfortran5_12.3.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking libgfortran5:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Selecting previously unselected package libgfortran-11-dev:amd64.
+Preparing to unpack .../10-libgfortran-11-dev_11.4.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking libgfortran-11-dev:amd64 (11.4.0-1ubuntu1~22.04.3) ...
+Selecting previously unselected package gfortran-11.
+Preparing to unpack .../11-gfortran-11_11.4.0-1ubuntu1~22.04.3_amd64.deb ...
+Unpacking gfortran-11 (11.4.0-1ubuntu1~22.04.3) ...
+Selecting previously unselected package gfortran.
+Preparing to unpack .../12-gfortran_4%3a11.2.0-1ubuntu1_amd64.deb ...
+Unpacking gfortran (4:11.2.0-1ubuntu1) ...
+Selecting previously unselected package hwdata.
+Preparing to unpack .../13-hwdata_0.357-1_all.deb ...
+Unpacking hwdata (0.357-1) ...
+Selecting previously unselected package libhwloc15:amd64.
+Preparing to unpack .../14-libhwloc15_2.7.0-2ubuntu1_amd64.deb ...
+Unpacking libhwloc15:amd64 (2.7.0-2ubuntu1) ...
+Selecting previously unselected package linux-tools-common.
+Preparing to unpack .../15-linux-tools-common_5.15.0-203.213_all.deb ...
+Unpacking linux-tools-common (5.15.0-203.213) ...
+Selecting previously unselected package linux-tools-5.15.0-203.
+Preparing to unpack .../16-linux-tools-5.15.0-203_5.15.0-203.213_amd64.deb ...
+Unpacking linux-tools-5.15.0-203 (5.15.0-203.213) ...
+Selecting previously unselected package linux-tools-5.15.0-203-generic.
+Preparing to unpack .../17-linux-tools-5.15.0-203-generic_5.15.0-203.213_amd64.deb ...
+Unpacking linux-tools-5.15.0-203-generic (5.15.0-203.213) ...
+Selecting previously unselected package linux-tools-generic.
+Preparing to unpack .../18-linux-tools-generic_5.15.0.203.175_amd64.deb ...
+Unpacking linux-tools-generic (5.15.0.203.175) ...
+Selecting previously unselected package numactl.
+Preparing to unpack .../19-numactl_2.0.14-3ubuntu2_amd64.deb ...
+Unpacking numactl (2.0.14-3ubuntu2) ...
+Selecting previously unselected package pkg-config.
+Preparing to unpack .../20-pkg-config_0.29.2-1ubuntu3_amd64.deb ...
+Unpacking pkg-config (0.29.2-1ubuntu3) ...
+Selecting previously unselected package python3-wheel.
+Preparing to unpack .../21-python3-wheel_0.37.1-2ubuntu0.22.04.1_all.deb ...
+Unpacking python3-wheel (0.37.1-2ubuntu0.22.04.1) ...
+Selecting previously unselected package python3-pip.
+Preparing to unpack .../22-python3-pip_22.0.2+dfsg-1ubuntu0.7_all.deb ...
+Unpacking python3-pip (22.0.2+dfsg-1ubuntu0.7) ...
+Selecting previously unselected package python3-pip-whl.
+Preparing to unpack .../23-python3-pip-whl_22.0.2+dfsg-1ubuntu0.7_all.deb ...
+Unpacking python3-pip-whl (22.0.2+dfsg-1ubuntu0.7) ...
+Selecting previously unselected package python3-setuptools-whl.
+Preparing to unpack .../24-python3-setuptools-whl_59.6.0-1.2ubuntu0.22.04.3_all.deb ...
+Unpacking python3-setuptools-whl (59.6.0-1.2ubuntu0.22.04.3) ...
+Selecting previously unselected package python3.10-venv.
+Preparing to unpack .../25-python3.10-venv_3.10.12-1~22.04.18_amd64.deb ...
+Unpacking python3.10-venv (3.10.12-1~22.04.18) ...
+Selecting previously unselected package python3-venv.
+Preparing to unpack .../26-python3-venv_3.10.6-1~22.04.1_amd64.deb ...
+Unpacking python3-venv (3.10.6-1~22.04.1) ...
+Selecting previously unselected package hwloc.
+Preparing to unpack .../27-hwloc_2.7.0-2ubuntu1_amd64.deb ...
+Unpacking hwloc (2.7.0-2ubuntu1) ...
+Setting up python3-setuptools-whl (59.6.0-1.2ubuntu0.22.04.3) ...
+Setting up numactl (2.0.14-3ubuntu2) ...
+Setting up python3-pip-whl (22.0.2+dfsg-1ubuntu0.7) ...
+Setting up hwdata (0.357-1) ...
+Setting up dh-elpa-helper (2.0.9ubuntu1) ...
+Setting up libhwloc15:amd64 (2.7.0-2ubuntu1) ...
+Setting up libjsoncpp25:amd64 (1.9.5-3) ...
+Setting up pkg-config (0.29.2-1ubuntu3) ...
+Setting up hwloc (2.7.0-2ubuntu1) ...
+Setting up libgfortran5:amd64 (12.3.0-1ubuntu1~22.04.3) ...
+Setting up libcpufreq0 (008-2build1) ...
+Setting up librhash0:amd64 (1.4.2-1ubuntu1) ...
+Setting up cmake-data (3.22.1-1ubuntu1.22.04.2) ...
+Install emacsen-common for emacs
+emacsen-common: Handling install of emacsen flavor emacs
+Install cmake-data for emacs
+install/cmake-mode-3.22.1: Handling install of emacsen flavor emacs
+install/cmake-mode-3.22.1: byte-compiling for emacs
+Setting up linux-tools-common (5.15.0-203.213) ...
+Setting up libpython3-stdlib:amd64 (3.10.6-1~22.04.1) ...
+Setting up linux-tools-5.15.0-203 (5.15.0-203.213) ...
+Setting up python3.10-venv (3.10.12-1~22.04.18) ...
+Setting up libgfortran-11-dev:amd64 (11.4.0-1ubuntu1~22.04.3) ...
+Setting up python3 (3.10.6-1~22.04.1) ...
+running python rtupdate hooks for python3.10...
+running python post-rtupdate hooks for python3.10...
+Setting up python3-wheel (0.37.1-2ubuntu0.22.04.1) ...
+Setting up python3-venv (3.10.6-1~22.04.1) ...
+Setting up cpufrequtils (008-2build1) ...
+debconf: unable to initialize frontend: Dialog
+debconf: (Dialog frontend will not work on a dumb terminal, an emacs shell buffer, or without a controlling terminal.)
+debconf: falling back to frontend: Readline
+update-rc.d: warning: start and stop actions are no longer supported; falling back to defaults
+update-rc.d: warning: start and stop actions are no longer supported; falling back to defaults
+Setting up python3-pip (22.0.2+dfsg-1ubuntu0.7) ...
+Setting up gfortran-11 (11.4.0-1ubuntu1~22.04.3) ...
+Setting up linux-tools-5.15.0-203-generic (5.15.0-203.213) ...
+Setting up cmake (3.22.1-1ubuntu1.22.04.2) ...
+Setting up linux-tools-generic (5.15.0.203.175) ...
+Setting up gfortran (4:11.2.0-1ubuntu1) ...
+update-alternatives: using /usr/bin/gfortran to provide /usr/bin/f95 (f95) in auto mode
+update-alternatives: using /usr/bin/gfortran to provide /usr/bin/f77 (f77) in auto mode
+Processing triggers for man-db (2.10.2-1) ...
+Processing triggers for libc-bin (2.35-0ubuntu3.15) ...
+[1;34m[INFO][0m Step 2/4: Installing OpenBLAS and PyTorch CPU Runtime
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following additional packages will be installed:
+  libopenblas0 libopenblas0-openmp libopenblas0-pthread
+The following NEW packages will be installed:
+  libopenblas-dev libopenblas-openmp-dev libopenblas0 libopenblas0-openmp
+  libopenblas0-pthread
+0 upgraded, 5 newly installed, 0 to remove and 93 not upgraded.
+Need to get 18.3 MB of archives.
+After this operation, 153 MB of additional disk space will be used.
+Get:1 http://us.archive.ubuntu.com/ubuntu jammy/universe amd64 libopenblas0-pthread amd64 0.3.20+ds-1 [6,803 kB]
+Get:2 http://us.archive.ubuntu.com/ubuntu jammy/universe amd64 libopenblas0-openmp amd64 0.3.20+ds-1 [6,819 kB]
+Get:3 http://us.archive.ubuntu.com/ubuntu jammy/universe amd64 libopenblas0 amd64 0.3.20+ds-1 [6,098 B]
+Get:4 http://us.archive.ubuntu.com/ubuntu jammy/universe amd64 libopenblas-openmp-dev amd64 0.3.20+ds-1 [4,641 kB]
+Get:5 http://us.archive.ubuntu.com/ubuntu jammy/universe amd64 libopenblas-dev amd64 0.3.20+ds-1 [18.6 kB]
+debconf: unable to initialize frontend: Dialog
+debconf: (Dialog frontend will not work on a dumb terminal, an emacs shell buffer, or without a controlling terminal.)
+debconf: falling back to frontend: Readline
+debconf: unable to initialize frontend: Readline
+debconf: (This frontend requires a controlling tty.)
+debconf: falling back to frontend: Teletype
+dpkg-preconfigure: unable to re-open stdin: 
+Fetched 18.3 MB in 1min 9s (266 kB/s)
+Selecting previously unselected package libopenblas0-pthread:amd64.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 100812 files and directories currently installed.)
+Preparing to unpack .../libopenblas0-pthread_0.3.20+ds-1_amd64.deb ...
+Unpacking libopenblas0-pthread:amd64 (0.3.20+ds-1) ...
+Selecting previously unselected package libopenblas0-openmp:amd64.
+Preparing to unpack .../libopenblas0-openmp_0.3.20+ds-1_amd64.deb ...
+Unpacking libopenblas0-openmp:amd64 (0.3.20+ds-1) ...
+Selecting previously unselected package libopenblas0:amd64.
+Preparing to unpack .../libopenblas0_0.3.20+ds-1_amd64.deb ...
+Unpacking libopenblas0:amd64 (0.3.20+ds-1) ...
+Selecting previously unselected package libopenblas-openmp-dev:amd64.
+Preparing to unpack .../libopenblas-openmp-dev_0.3.20+ds-1_amd64.deb ...
+Unpacking libopenblas-openmp-dev:amd64 (0.3.20+ds-1) ...
+Selecting previously unselected package libopenblas-dev:amd64.
+Preparing to unpack .../libopenblas-dev_0.3.20+ds-1_amd64.deb ...
+Unpacking libopenblas-dev:amd64 (0.3.20+ds-1) ...
+Setting up libopenblas0-pthread:amd64 (0.3.20+ds-1) ...
+update-alternatives: using /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3 to provide /usr/lib/x86_64-linux-gnu/libblas.so.3 (libblas.so.3-x86_64-linux-gnu) in auto mode
+update-alternatives: using /usr/lib/x86_64-linux-gnu/openblas-pthread/liblapack.so.3 to provide /usr/lib/x86_64-linux-gnu/liblapack.so.3 (liblapack.so.3-x86_64-linux-gnu) in auto mode
+update-alternatives: using /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblas.so.0 to provide /usr/lib/x86_64-linux-gnu/libopenblas.so.0 (libopenblas.so.0-x86_64-linux-gnu) in auto mode
+Setting up libopenblas0:amd64 (0.3.20+ds-1) ...
+Setting up libopenblas0-openmp:amd64 (0.3.20+ds-1) ...
+Setting up libopenblas-openmp-dev:amd64 (0.3.20+ds-1) ...
+update-alternatives: using /usr/lib/x86_64-linux-gnu/openblas-openmp/libblas.so to provide /usr/lib/x86_64-linux-gnu/libblas.so (libblas.so-x86_64-linux-gnu) in auto mode
+update-alternatives: using /usr/lib/x86_64-linux-gnu/openblas-openmp/liblapack.so to provide /usr/lib/x86_64-linux-gnu/liblapack.so (liblapack.so-x86_64-linux-gnu) in auto mode
+update-alternatives: using /usr/lib/x86_64-linux-gnu/openblas-openmp/libopenblas.so to provide /usr/lib/x86_64-linux-gnu/libopenblas.so (libopenblas.so-x86_64-linux-gnu) in auto mode
+Setting up libopenblas-dev:amd64 (0.3.20+ds-1) ...
+Processing triggers for libc-bin (2.35-0ubuntu3.15) ...
+[1;32m[OK][0m   OpenBLAS installed (headers in /usr/include/x86_64-linux-gnu or /usr/include).
+[1;32m[OK][0m   libblas.so.3 -> OpenMP OpenBLAS
+[1;32m[OK][0m   liblapack.so.3 -> OpenMP OpenBLAS
+[1;32m[OK][0m   libopenblas.so.0 -> OpenMP OpenBLAS
+[1;34m[INFO][0m Installing PyTorch CPU wheel (~180MB lightweight package)
+Defaulting to user installation because normal site-packages is not writeable
+Looking in indexes: https://download.pytorch.org/whl/cpu
+Collecting torch
+  Downloading https://download-r2.pytorch.org/whl/cpu/torch-2.14.1%2Bcpu-cp310-cp310-manylinux_2_28_x86_64.whl (196.2 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 196.2/196.2 MB 234.4 MB/s eta 0:00:00
+Collecting jinja2
+  Downloading https://download.pytorch.org/whl/jinja2-3.1.6-py3-none-any.whl (134 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 134.9/134.9 KB 7.9 MB/s eta 0:00:00
+Collecting networkx>=2.5.1
+  Downloading networkx-3.4.2-py3-none-any.whl (1.7 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.7/1.7 MB 24.4 MB/s eta 0:00:00
+Collecting setuptools>=77.0.3
+  Downloading https://download.pytorch.org/whl/setuptools-78.1.0-py3-none-any.whl (1.3 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.3/1.3 MB 7.6 MB/s eta 0:00:00
+Collecting sympy>=1.13.3
+  Downloading sympy-1.14.0-py3-none-any.whl (6.3 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.3/6.3 MB 206.8 MB/s eta 0:00:00
+Collecting typing-extensions>=4.10.0
+  Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 45.6/45.6 KB 284.4 MB/s eta 0:00:00
+Collecting fsspec>=0.8.5
+  Downloading fsspec-2026.9.0-py3-none-any.whl (221 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 221.7/221.7 KB 347.1 MB/s eta 0:00:00
+Collecting filelock
+  Downloading filelock-4.1.0-py3-none-any.whl (133 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 133.0/133.0 KB 329.1 MB/s eta 0:00:00
+Collecting mpmath<1.4,>=1.1.0
+  Downloading mpmath-1.3.0-py3-none-any.whl (536 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 536.2/536.2 KB 370.3 MB/s eta 0:00:00
+Collecting MarkupSafe>=2.0
+  Downloading https://download.pytorch.org/whl/markupsafe-3.0.3-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (20 kB)
+Installing collected packages: mpmath, typing-extensions, sympy, setuptools, networkx, MarkupSafe, fsspec, filelock, jinja2, torch
+  WARNING: The script isympy is installed in '/users/Kushal17/.local/bin' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+  WARNING: The scripts torchfrtrace and torchrun are installed in '/users/Kushal17/.local/bin' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+Successfully installed MarkupSafe-3.0.3 filelock-4.1.0 fsspec-2026.9.0 jinja2-3.1.6 mpmath-1.3.0 networkx-3.4.2 setuptools-78.1.0 sympy-1.14.0 torch-2.14.1+cpu typing-extensions-4.16.0
+[1;34m[INFO][0m Step 3/4: Loading AMD hardware monitoring kernel modules (amd_energy, k10temp, msr)
+[1;33m[WARN][0m amd_energy kernel module not available in this kernel.
+[1;32m[OK][0m   Read permissions enabled for /sys/class/hwmon.
+[1;32m[OK][0m   Read permissions enabled for /sys/class/powercap.
+[1;32m[OK][0m   CAP_SYS_RAWIO granted to /usr/bin/python3.10 (MSR telemetry).
+  WARNING: The script pygmentize is installed in '/users/Kushal17/.local/bin' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+  WARNING: The scripts f2py and numpy-config are installed in '/users/Kushal17/.local/bin' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+  WARNING: The scripts py.test and pytest are installed in '/users/Kushal17/.local/bin' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following additional packages will be installed:
+  libexpat1-dev libjs-jquery libjs-sphinxdoc libjs-underscore libpython3-dev
+  libpython3.10-dev libtbb12 libtbbmalloc2 python3.10-dev zlib1g-dev
+Suggested packages:
+  libssl-doc libtbb-doc
+Recommended packages:
+  javascript-common
+The following NEW packages will be installed:
+  libblis3-openmp libexpat1-dev libjemalloc2 libjs-jquery libjs-sphinxdoc
+  libjs-underscore libpython3-dev libpython3.10-dev libssl-dev libtbb-dev
+  libtbb12 libtbbmalloc2 python3-dev python3.10-dev zlib1g-dev
+0 upgraded, 15 newly installed, 0 to remove and 93 not upgraded.
+Need to get 15.3 MB of archives.
+After this operation, 70.0 MB of additional disk space will be used.
+Get:1 http://us.archive.ubuntu.com/ubuntu jammy/universe amd64 libblis3-openmp amd64 0.8.1-2 [6,164 kB]
+Get:2 http://us.archive.ubuntu.com/ubuntu jammy-updates/main amd64 libexpat1-dev amd64 2.4.7-1ubuntu0.9 [151 kB]
+Get:3 http://us.archive.ubuntu.com/ubuntu jammy/universe amd64 libjemalloc2 amd64 5.2.1-4ubuntu1 [240 kB]
+Get:4 http://us.archive.ubuntu.com/ubuntu jammy/main amd64 libjs-jquery all 3.6.0+dfsg+~3.5.13-1 [321 kB]
+Get:5 http://us.archive.ubuntu.com/ubuntu jammy/main amd64 libjs-underscore all 1.13.2~dfsg-2 [118 kB]
+Get:6 http://us.archive.ubuntu.com/ubuntu jammy/main amd64 libjs-sphinxdoc all 4.3.2-1 [139 kB]
+Get:7 http://us.archive.ubuntu.com/ubuntu jammy-updates/main amd64 zlib1g-dev amd64 1:1.2.11.dfsg-2ubuntu9.2 [164 kB]
+Get:8 http://us.archive.ubuntu.com/ubuntu jammy-updates/main amd64 libpython3.10-dev amd64 3.10.12-1~22.04.18 [4,765 kB]
+Get:9 http://us.archive.ubuntu.com/ubuntu jammy-updates/main amd64 libpython3-dev amd64 3.10.6-1~22.04.1 [7,064 B]
+Get:10 http://us.archive.ubuntu.com/ubuntu jammy-updates/main amd64 libssl-dev amd64 3.0.2-0ubuntu1.30 [2,377 kB]
+Get:11 http://us.archive.ubuntu.com/ubuntu jammy/universe amd64 libtbbmalloc2 amd64 2021.5.0-7ubuntu2 [49.6 kB]
+Get:12 http://us.archive.ubuntu.com/ubuntu jammy/universe amd64 libtbb12 amd64 2021.5.0-7ubuntu2 [84.8 kB]
+Get:13 http://us.archive.ubuntu.com/ubuntu jammy-updates/main amd64 python3.10-dev amd64 3.10.12-1~22.04.18 [508 kB]
+Get:14 http://us.archive.ubuntu.com/ubuntu jammy-updates/main amd64 python3-dev amd64 3.10.6-1~22.04.1 [26.0 kB]
+Get:15 http://us.archive.ubuntu.com/ubuntu jammy/universe amd64 libtbb-dev amd64 2021.5.0-7ubuntu2 [191 kB]
+debconf: unable to initialize frontend: Dialog
+debconf: (Dialog frontend will not work on a dumb terminal, an emacs shell buffer, or without a controlling terminal.)
+debconf: falling back to frontend: Readline
+debconf: unable to initialize frontend: Readline
+debconf: (This frontend requires a controlling tty.)
+debconf: falling back to frontend: Teletype
+dpkg-preconfigure: unable to re-open stdin: 
+Fetched 15.3 MB in 1s (15.8 MB/s)
+Selecting previously unselected package libblis3-openmp:amd64.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 100865 files and directories currently installed.)
+Preparing to unpack .../00-libblis3-openmp_0.8.1-2_amd64.deb ...
+Unpacking libblis3-openmp:amd64 (0.8.1-2) ...
+Selecting previously unselected package libexpat1-dev:amd64.
+Preparing to unpack .../01-libexpat1-dev_2.4.7-1ubuntu0.9_amd64.deb ...
+Unpacking libexpat1-dev:amd64 (2.4.7-1ubuntu0.9) ...
+Selecting previously unselected package libjemalloc2:amd64.
+Preparing to unpack .../02-libjemalloc2_5.2.1-4ubuntu1_amd64.deb ...
+Unpacking libjemalloc2:amd64 (5.2.1-4ubuntu1) ...
+Selecting previously unselected package libjs-jquery.
+Preparing to unpack .../03-libjs-jquery_3.6.0+dfsg+~3.5.13-1_all.deb ...
+Unpacking libjs-jquery (3.6.0+dfsg+~3.5.13-1) ...
+Selecting previously unselected package libjs-underscore.
+Preparing to unpack .../04-libjs-underscore_1.13.2~dfsg-2_all.deb ...
+Unpacking libjs-underscore (1.13.2~dfsg-2) ...
+Selecting previously unselected package libjs-sphinxdoc.
+Preparing to unpack .../05-libjs-sphinxdoc_4.3.2-1_all.deb ...
+Unpacking libjs-sphinxdoc (4.3.2-1) ...
+Selecting previously unselected package zlib1g-dev:amd64.
+Preparing to unpack .../06-zlib1g-dev_1%3a1.2.11.dfsg-2ubuntu9.2_amd64.deb ...
+Unpacking zlib1g-dev:amd64 (1:1.2.11.dfsg-2ubuntu9.2) ...
+Selecting previously unselected package libpython3.10-dev:amd64.
+Preparing to unpack .../07-libpython3.10-dev_3.10.12-1~22.04.18_amd64.deb ...
+Unpacking libpython3.10-dev:amd64 (3.10.12-1~22.04.18) ...
+Selecting previously unselected package libpython3-dev:amd64.
+Preparing to unpack .../08-libpython3-dev_3.10.6-1~22.04.1_amd64.deb ...
+Unpacking libpython3-dev:amd64 (3.10.6-1~22.04.1) ...
+Selecting previously unselected package libssl-dev:amd64.
+Preparing to unpack .../09-libssl-dev_3.0.2-0ubuntu1.30_amd64.deb ...
+Unpacking libssl-dev:amd64 (3.0.2-0ubuntu1.30) ...
+Selecting previously unselected package libtbbmalloc2:amd64.
+Preparing to unpack .../10-libtbbmalloc2_2021.5.0-7ubuntu2_amd64.deb ...
+Unpacking libtbbmalloc2:amd64 (2021.5.0-7ubuntu2) ...
+Selecting previously unselected package libtbb12:amd64.
+Preparing to unpack .../11-libtbb12_2021.5.0-7ubuntu2_amd64.deb ...
+Unpacking libtbb12:amd64 (2021.5.0-7ubuntu2) ...
+Selecting previously unselected package python3.10-dev.
+Preparing to unpack .../12-python3.10-dev_3.10.12-1~22.04.18_amd64.deb ...
+Unpacking python3.10-dev (3.10.12-1~22.04.18) ...
+Selecting previously unselected package python3-dev.
+Preparing to unpack .../13-python3-dev_3.10.6-1~22.04.1_amd64.deb ...
+Unpacking python3-dev (3.10.6-1~22.04.1) ...
+Selecting previously unselected package libtbb-dev:amd64.
+Preparing to unpack .../14-libtbb-dev_2021.5.0-7ubuntu2_amd64.deb ...
+Unpacking libtbb-dev:amd64 (2021.5.0-7ubuntu2) ...
+Setting up libtbbmalloc2:amd64 (2021.5.0-7ubuntu2) ...
+Setting up libtbb12:amd64 (2021.5.0-7ubuntu2) ...
+Setting up libjemalloc2:amd64 (5.2.1-4ubuntu1) ...
+Setting up libexpat1-dev:amd64 (2.4.7-1ubuntu0.9) ...
+Setting up libssl-dev:amd64 (3.0.2-0ubuntu1.30) ...
+Setting up zlib1g-dev:amd64 (1:1.2.11.dfsg-2ubuntu9.2) ...
+Setting up libtbb-dev:amd64 (2021.5.0-7ubuntu2) ...
+Setting up libjs-jquery (3.6.0+dfsg+~3.5.13-1) ...
+Setting up libblis3-openmp:amd64 (0.8.1-2) ...
+debconf: unable to initialize frontend: Dialog
+debconf: (Dialog frontend will not work on a dumb terminal, an emacs shell buffer, or without a controlling terminal.)
+debconf: falling back to frontend: Readline
+update-alternatives: using /usr/lib/x86_64-linux-gnu/blis-openmp/libblis.so.3 to provide /usr/lib/x86_64-linux-gnu/libblis.so.3 (libblis.so.3-x86_64-linux-gnu) in auto mode
+Setting up libjs-underscore (1.13.2~dfsg-2) ...
+Setting up libpython3.10-dev:amd64 (3.10.12-1~22.04.18) ...
+Setting up libjs-sphinxdoc (4.3.2-1) ...
+Setting up python3.10-dev (3.10.12-1~22.04.18) ...
+Setting up libpython3-dev:amd64 (3.10.6-1~22.04.1) ...
+Setting up python3-dev (3.10.6-1~22.04.1) ...
+Processing triggers for man-db (2.10.2-1) ...
+Processing triggers for libc-bin (2.35-0ubuntu3.15) ...
+[1;32m[OK][0m   jemalloc preloadable under secure mode
+[1;34m[INFO][0m Step 4/4: Setting CPU Frequency Governor to 'performance'
+[1;32m[OK][0m   CPU frequency governor set to 'performance' via cpupower.
+[1;34m[INFO][0m ======================================================================
+[1;32m[OK][0m   AMD EPYC Provisioning Complete!
+[1;34m[INFO][0m To build all workloads with OpenBLAS, run: make BLAS=openblas cpu_all
+[1;34m[INFO][0m ======================================================================
+[1;34m[v2][0m apt packages (build, NUMA, fastest-library candidates, crypto, extension headers)
+debconf: unable to initialize frontend: Dialog
+debconf: (Dialog frontend will not work on a dumb terminal, an emacs shell buffer, or without a controlling terminal.)
+debconf: falling back to frontend: Readline
+debconf: unable to initialize frontend: Readline
+debconf: (This frontend requires a controlling tty.)
+debconf: falling back to frontend: Teletype
+dpkg-preconfigure: unable to re-open stdin: 
+[1;34m[v2][0m OpenBLAS alternative -> /usr/lib/x86_64-linux-gnu/openblas-openmp/libopenblasp-r0.3.20.so
+[1;34m[v2][0m python packages
+[1;34m[v2][0m telemetry permissions (RAPL energy + APERF/MPERF MSRs)
+[1;34m[v2][0m CAP_SYS_RAWIO -> /usr/bin/python3.10
+[1;34m[v2][0m verification
+  torch 2.14.1+cpu  cuda_available=False
+  RAPL energy readable: yes
+[1;34m[v2][0m done -- next: make test_bench && make bench_smoke

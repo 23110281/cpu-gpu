@@ -57,6 +57,9 @@ else
 fi
 python3 -m pip install -q --no-cache-dir numpy scipy pytest ninja opencv-python-headless cryptography \
     || warn "python deps failed"
+# analysis (make analysis) on the node. Unpinned on purpose: requirements.txt pins versions for the
+# GitHub CI dashboard (e.g. contourpy 1.3.3 needs Python >= 3.11; Ubuntu 22.04 nodes have 3.10).
+python3 -m pip install -q --no-cache-dir pandas matplotlib || warn "analysis deps (pandas, matplotlib) failed"
 
 log "telemetry permissions (RAPL energy + APERF/MPERF MSRs)"
 sudo modprobe msr 2>/dev/null || true

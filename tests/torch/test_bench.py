@@ -326,12 +326,31 @@ def test_llama_decode_inplace_cache_matches_reference(B, monkeypatch):
     assert A.WORKLOAD.validate(s, _cpu_ctx()).ok
 
 
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="needs a GPU")
+@pytest.mark.parametrize("B", [1, 8])
+def test_llama_cudagraph_decode_validates(B, monkeypatch):
+    """lib=cudagraph: the replayed graph validates and equals the eager step."""
+    from bench.core import Ctx
+    from bench.workloads import a1_llama as A
+    monkeypatch.setitem(A.MODELS, "tiny", dict(d=64, L=2, h=4, kv=2, ff=128, V=257, tied=False))
+    monkeypatch.setattr(A, "KV_LEN", 16)
+    ctx = Ctx("gpu", torch.device("cuda"), "t", 1, "gpu0", 0, 1, False, 6 << 20)
+    p = {"precision": "fp32", "variant": "base", "model": "tiny", "phase": "decode", "batch": B, "seq": 1, "lib": "cudagraph"}
+    s = A.WORKLOAD.setup(p, ctx)
+    assert A.WORKLOAD.validate(s, ctx).ok
+    A.WORKLOAD.call(s)
+    eager = A.forward(s["model"], s["tokens"], s["cache"], s["pos0"])
+    assert float((s["out"] - eager).norm() / eager.norm()) < 1e-6
+
+
 def test_llama_configs_cpu_libs_fp32_only():
     from bench.workloads.a1_llama import WORKLOAD
     cpu, gpu = WORKLOAD.configs("cpu"), WORKLOAD.configs("gpu")
     assert {c["lib"] for c in cpu if c["precision"] == "bf16"} == {"torch"}
     assert {c["lib"] for c in cpu if c["precision"] == "fp32"} == {"torch", "openblas", "blis"}
-    assert {c["lib"] for c in gpu} == {"torch"}
+    assert {c["lib"] for c in gpu if c["phase"] == "prefill"} == {"torch"}
+    assert {c["lib"] for c in gpu if c["phase"] == "decode"} == {"torch", "cudagraph"}
+    assert "cudagraph" not in {c["lib"] for c in cpu}
 
 
 def test_analysis_library_label():

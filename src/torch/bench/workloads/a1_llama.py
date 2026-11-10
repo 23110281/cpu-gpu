@@ -18,6 +18,10 @@ Library: torch eager -- matmuls via oneDNN/MKL (CPU) / cuBLAS (GPU). Attention:
            step. The new token's K/V are written in place into a preallocated cache slot (as an
            inference engine does) instead of torch.cat copying the whole cache every step.
   The old cat + SDPA path is kept as the independent fp64 validation reference.
+GPU decode is also timed replayed from a CUDA graph (`lib=cudagraph`, as vLLM/TensorRT-LLM
+serve decode): an eager step issues ~500 small kernels from Python, and on the V100 node
+(Xeon E5-2667 v4) issuing them took 16 ms vs 8.5 ms of GPU work, i.e. eager batch-1 decode
+measured the host's launch rate. Eager rows are kept; the analysis keeps the faster.
 Precision: fp32 everywhere; bf16 (variant ff) only where native.
 CPU fp32 linear layers (config key `lib`, as in C1): torch (MKL on x86 wheels), OpenBLAS,
 BLIS -- the fastest is kept. Batch-1 decode is pure GEMV over the weights; on EPYC 7402P
@@ -170,13 +174,15 @@ class Llama(Workload):
 
     def configs(self, device_class=None):
         cpu_libs = _blas.CPU_LIBS if device_class in (None, "cpu") else ("torch",)
+        graph = ("cudagraph",) if device_class in (None, "gpu") else ()     # GPU decode only
         out = []
         for prec, var, libs in (("fp32", "base", cpu_libs), ("bf16", "ff", ("torch",))):
-            for lib in libs:
-                for mdl in MODELS:
+            for mdl in MODELS:
+                for lib in libs:
                     for S in (512, 2048):
                         out.append({"precision": prec, "variant": var, "model": mdl, "phase": "prefill",
                                     "batch": 1, "seq": S, "lib": lib})
+                for lib in libs + graph:
                     for B in (1, 8, 32):
                         out.append({"precision": prec, "variant": var, "model": mdl, "phase": "decode",
                                     "batch": B, "seq": 1, "lib": lib})
@@ -208,6 +214,8 @@ class Llama(Workload):
         lib = p.get("lib", "torch")
         if lib == "torch":
             return self.library(ctx)
+        if lib == "cudagraph":
+            return self.library(ctx) + "+cudagraph"
         if ctx.device_class != "cpu":
             raise Unsupported(f"{lib} is a CPU library")
         return f"llama-eager/sdpa-prefill,bmm-decode+linear={lib}/{_blas.version(lib)}"
@@ -232,7 +240,9 @@ class Llama(Workload):
     def setup(self, p, ctx: Ctx):
         C.require_native(p, ctx)
         lib = p.get("lib", "torch")
-        if lib == "torch":
+        if lib == "cudagraph" and (ctx.device_class == "cpu" or p["phase"] != "decode"):
+            raise Unsupported("cudagraph: GPU decode only")
+        if lib in ("torch", "cudagraph"):
             mm = torch_linear
         elif ctx.device_class != "cpu":
             raise Unsupported(f"{lib} is a CPU library")
@@ -243,10 +253,32 @@ class Llama(Workload):
         tokens, cache = self._inputs(p, m, ctx.device, dt, ctx.generator(2))
         pos0 = KV_LEN if p["phase"] == "decode" else 0
         torch.set_grad_enabled(False)
-        return {"model": model, "tokens": tokens, "cache": cache, "pos0": pos0, "p": p, "dt": dt, "mm": mm}
+        s = {"model": model, "tokens": tokens, "cache": cache, "pos0": pos0, "p": p, "dt": dt, "mm": mm}
+        if lib == "cudagraph":
+            self._capture(s)
+        return s
+
+    @staticmethod
+    def _capture(s):
+        """Capture one decode step (static tokens / cache / output addresses) in a CUDA graph."""
+        step = lambda: forward(s["model"], s["tokens"], s["cache"], s["pos0"], s["mm"])  # noqa: E731
+        side = torch.cuda.Stream()
+        side.wait_stream(torch.cuda.current_stream())
+        with torch.cuda.stream(side):                     # warm up cuBLAS handles/workspaces off-graph
+            for _ in range(3):
+                step()
+        torch.cuda.current_stream().wait_stream(side)
+        s["graph"] = torch.cuda.CUDAGraph()
+        with torch.cuda.graph(s["graph"]):
+            s["graph_out"] = step()
+        torch.cuda.synchronize()
 
     def call(self, s):
-        s["out"] = forward(s["model"], s["tokens"], s["cache"], s["pos0"], s["mm"])
+        if "graph" in s:
+            s["graph"].replay()
+            s["out"] = s["graph_out"]
+        else:
+            s["out"] = forward(s["model"], s["tokens"], s["cache"], s["pos0"], s["mm"])
 
     def validate(self, s, ctx):
         p, m = s["p"], MODELS[s["p"]["model"]]
@@ -257,8 +289,14 @@ class Llama(Workload):
         ref = forward(small.to(torch.float64, "cpu"), tokens.cpu(),
                       None if cache is None else [(k.double().cpu(), v.double().cpu()) for k, v in cache],
                       s["pos0"], reference=True)
+        tol = 1e-4 if s["dt"] == torch.float32 else 5e-2
         self.call(s)                     # full model once (exercises every layer before timing)
-        return normwise(got, ref, 1e-4 if s["dt"] == torch.float32 else 5e-2)
+        check = normwise(got, ref, tol)
+        if "graph" in s and check.ok:    # the replayed graph must reproduce the eager full model
+            eager = forward(s["model"], s["tokens"], s["cache"], s["pos0"], s["mm"])
+            g = normwise(s["out"], eager, tol)
+            check = g if g.err > check.err else check
+        return check
 
     def transfers(self, s):
         return [s["tokens"]], [s["out"]] if "out" in s else []

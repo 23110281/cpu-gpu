@@ -1,5 +1,5 @@
 {
-  "_about": "Curated explanations shown next to library results by results/plotting/v2/library_report.py. status: 'verified' = backed by the evidence given; 'hypothesis' = plausible but not yet confirmed (say how to confirm). device is a glob on device_id; workload/library may be '*'. Add a note only with evidence.",
+  "_about": "Curated explanations shown next to library results by analysis/library_report.py. status: 'verified' = backed by the evidence given; 'hypothesis' = plausible but not yet confirmed (say how to confirm). device is a glob on device_id; workload/library may be '*'. Add a note only with evidence.",
   "notes": [
     {
       "device": "AMD_*",

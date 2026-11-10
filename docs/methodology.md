@@ -1,6 +1,6 @@
-# Measurement Methodology (v2)
+# Measurement methodology
 
-This document is the measurement protocol for every number this project publishes. The harness in `src/torch/bench/` enforces it, and each rule below names the code that implements it. Data collected any other way, including everything under `results/data/legacy/`, is **preliminary** and is never used in the paper.
+This document is the measurement protocol for every number this project publishes. The harness in `bench/` enforces it, and each rule below names the code that implements it. Data collected any other way, including everything under `legacy/data/`, is **preliminary** and is never used in the paper.
 
 The protocol follows the comparison principle of Lee et al. (ISCA'10): compare *optimized against optimized*, chip against chip, with the GPU measured kernel-only. On top of that it adds the statistical and provenance requirements of current artifact-evaluation practice.
 
@@ -92,6 +92,7 @@ The protocol follows the comparison principle of Lee et al. (ISCA'10): compare *
   - CPU ceiling = max(Dot, Triad·4/3, Copy·3/2, …). On EPYC 7402P: Triad 91.2 → 121.6, Copy 83.4 → 125.0, Dot 123.8 GB/s, consistent with SAXPY's 121 GB/s. SAXPY needs no correction because its output array is also an input.
   - GPU ceiling = reported Triad.
   - Raw per-kernel rates are kept in the calibration file.
+  - **BabelStream licence (publication rule).** BabelStream (v5.0, unmodified, from github.com/UoB-HPC/BabelStream) allows publishing results, but only results that follow its Run Rules may be called "BabelStream benchmark results"; anything else must be labelled as derived. Our runs follow both rules (arrays ≫ last-level cache, 61× on V100; each kernel runs for milliseconds). When publishing, name the kernel ("BabelStream Triad, 845 GB/s"). The CPU ceiling above is **derived from** BabelStream (write-allocate correction), so it must be labelled "derived from BabelStream", never "BabelStream result".
 
 ## 11. Telemetry (`bench/telemetry.py`)
 - A background sampler runs during the measured window:
@@ -109,9 +110,9 @@ The protocol follows the comparison principle of Lee et al. (ISCA'10): compare *
 - A dirty working tree is flagged (`flag=dirty_tree`); data for the paper must come from a clean tree.
 
 ## 13. Output
-- **Rows:** one per (configuration, trial), in `results/data/v2/<cpu|gpu>/<DEVICE>/<ID>_<workload>.csv`. The schema is `bench/schema.py::COLUMNS`.
-- **Raw samples:** `results/data/v2/<cpu|gpu>/<DEVICE>/samples/<run_id>_<cfg>.csv.gz`.
-- **Environment records:** `results/data/v2/<cpu|gpu>/<DEVICE>/env/<run_id>.json`.
+- **Rows:** one per (configuration, trial), in `results/data/<cpu|gpu>/<DEVICE>/<ID>_<workload>.csv`. The schema is `bench/schema.py::COLUMNS`.
+- **Raw samples:** `results/data/<cpu|gpu>/<DEVICE>/samples/<run_id>_<cfg>.csv.gz`.
+- **Environment records:** `results/data/<cpu|gpu>/<DEVICE>/env/<run_id>.json`.
 
 ## Deviations
 Any deviation from this protocol, such as a library that cannot exclude its own planning time, is recorded in the workload module's docstring and in the table below.

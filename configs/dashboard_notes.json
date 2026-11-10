@@ -1,5 +1,5 @@
 {
-  "_about": "Curated findings shown at the top of each device's dashboard page (results/plotting/v2/dashboard_summary.py), below the auto-generated statements. status: 'verified' = backed by the evidence given; 'hypothesis' = plausible, not yet confirmed (say how to confirm). device is a glob on device_id. Numbers here are hand-written: re-check them whenever the device's data is re-collected (date says when they were last checked).",
+  "_about": "Curated findings shown at the top of each device's dashboard page (analysis/dashboard_summary.py), below the auto-generated statements. status: 'verified' = backed by the evidence given; 'hypothesis' = plausible, not yet confirmed (say how to confirm). device is a glob on device_id. Numbers here are hand-written: re-check them whenever the device's data is re-collected (date says when they were last checked).",
   "notes": [
     {
       "device": "NVIDIA_V100",

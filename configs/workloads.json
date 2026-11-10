@@ -1,6 +1,6 @@
 {
   "_doc": "Final workload suite + status. 'impl' = implemented to the measurement protocol (docs/methodology.md) in bench/. Data cells are computed by analysis/build_dashboard.py: our rows (results/data/<cpu|gpu>/<DEVICE>/<ID>_*.csv, status ok, not smoke) -> 'collected'; the sources listed below (frozen legacy data under legacy/data/ and the GH200 study under studies/gh200_c2c/data/, globs relative to the repo root) -> 'preliminary', or 'invalid' when valid=false. Optional source keys: device (when the path does not name it), exclude_devices. Legacy data is never used in the paper.",
-  "plan": "Final suite derived from Lee et al., ISCA'10 ('Debunking the 100X GPU vs CPU myth'): every paper kernel that is primarily compute-, bandwidth- or synchronization-bound, plus LLM inference and cryptography. Each workload gets a tuned CPU and a tuned GPU implementation (fastest well-known library, driven from a PyTorch script in src/torch/), run on the same 6-device core matrix.",
+  "plan": "Final suite derived from Lee et al., ISCA'10 ('Debunking the 100X GPU vs CPU myth'): every paper kernel that is primarily compute-, bandwidth- or synchronization-bound, plus LLM inference and cryptography. Each workload gets a tuned CPU and a tuned GPU implementation (fastest well-known library, driven from the PyTorch-based harness in bench/), run on the same 6-device core matrix.",
   "devices": {
     "cpu": [
       {
@@ -906,7 +906,7 @@
           }
         ]
       },
-      "legacy_note": "legacy CPU: src/torch/bench_llama32_layers.py (cpu_local on Grace only); llama.cpp e2e todo | legacy GPU: src/torch/bench_llama32_layers.py (GH200 only); llama.cpp CUDA / vLLM e2e todo"
+      "legacy_note": "legacy CPU: bench_llama32_layers.py (deleted) (cpu_local on Grace only); llama.cpp e2e todo | legacy GPU: bench_llama32_layers.py (deleted) (GH200 only); llama.cpp CUDA / vLLM e2e todo"
     }
   ],
   "infra_todo": [
@@ -915,8 +915,8 @@
     "M2: telemetry verified vs turbostat on EPYC (200.6 vs 200-203 W; 3295 vs 3280-3302 MHz); repeat on Intel, Grace, GPUs",
     "GH200 residency axis: single t_e2e definition, kernel-only pct_peak, NVML + validation; build protocol suite via Makefile",
     "Parameterize scripts/gpu/lock_clocks.sh per device (locked-clock sensitivity study)",
-    "Plotting v2 (results/plotting/v2/): ratio-of-medians with bootstrap CI, rooflines, bound verification; make paper-figures",
-    "Native cross-checks: per-iteration samples + v2 schema (status/label/MSR/fabricated-SpGEMM already fixed)",
+    "Cross-device ratio pages and paper figures (analysis/): ratio-of-medians with bootstrap CI, rooflines (bound verification already in analyze.py)",
+    "Native cross-checks (crosscheck/): per-iteration samples + the harness CSV schema (status/label/MSR/fabricated-SpGEMM already fixed)",
     "GH200 C2C residency benches: remove stub AES / closed-form 'montecarlo' / unmerged sort paths (needs a GH200 to test)",
     "Sweep preflight: 2.5x working-set margin skips problems that likely fit (V100 16 GB: 8-9 GB problems skipped)"
   ],

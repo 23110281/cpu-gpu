@@ -164,6 +164,13 @@ def variant_effects() -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _names() -> dict:
+    try:
+        return {w["id"]: w["name"] for w in json.loads(MANIFEST.read_text())["workloads"]}
+    except (OSError, ValueError, KeyError):
+        return {}
+
+
 def _order() -> list[str]:
     try:
         return [w["id"] for w in json.loads(MANIFEST.read_text())["workloads"]]
@@ -174,7 +181,7 @@ def _order() -> list[str]:
 def readme_block(summ: pd.DataFrame, var: pd.DataFrame, notes: list[dict]) -> str:
     """Markdown for README.md: rows = workload (precision), columns = devices with full campaigns."""
     devs = sorted(summ["device"].unique())
-    order = _order()
+    order, names = _order(), _names()
     keys = sorted({(w, p, n) for w, p, n in zip(summ["workload_id"], summ["precision"], summ["workload"])},
                   key=lambda k: (order.index(k[0]) if k[0] in order else 99, k[1]))
     L = [MARK_START,
@@ -203,7 +210,7 @@ def readme_block(summ: pd.DataFrame, var: pd.DataFrame, notes: list[dict]) -> st
                     used_notes.append(n)
                 cell += f" [{used_notes.index(n) + 1}]"
             cells.append(cell)
-        L.append(f"| {wid} {wname} ({prec}) | " + " | ".join(cells) + " |")
+        L.append(f"| {wid} {names.get(wid, wname)} ({prec}) | " + " | ".join(cells) + " |")
     if len(var):
         L += ["", "Variants (not library choices):"]
         for (dev, wid, v), g in var.groupby(["device", "workload_id", "variant"]):

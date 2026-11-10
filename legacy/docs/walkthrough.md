@@ -1,3 +1,5 @@
+> **Legacy document (frozen).** It describes the first-generation pipeline. For running the benchmarks today, follow [`docs/RUNNING.md`](../../docs/RUNNING.md).
+
 # CloudLab CPU Benchmarking Walkthrough
 
 This guide details the end-to-end execution workflow for running CPU benchmarks (Dense GEMM, Dense GEMV & Sparse SpMV, Vector SAXPY, Sparse SpGEMM, Monte Carlo Option Pricing, Cryptography SHA-256/SHA-512, PCA, and K-Means Clustering) on CloudLab bare-metal nodes, covering both **Intel Xeon** and **AMD EPYC** architectures.

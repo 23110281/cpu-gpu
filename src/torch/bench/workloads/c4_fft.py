@@ -44,7 +44,7 @@ class FFT(Workload):
         return {"flops": f, "bytes": 2.0 * 8 * N, "metric_name": "GFLOP/s", "metric_units_per_call": f / 1e9}
 
     def library(self, ctx):
-        return C.library_tag(ctx, "fft/" + ("MKL" if ctx.device_class == "cpu" else "cuFFT"))
+        return C.library_tag(ctx, "fft/" + (C.cpu_backend("fft") if ctx.device_class == "cpu" else "cuFFT"))
 
     def setup(self, p, ctx: Ctx):
         shape = (p["n"],) if p["dim"] == 1 else (p["n"], p["n"])

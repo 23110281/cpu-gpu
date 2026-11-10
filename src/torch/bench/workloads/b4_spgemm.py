@@ -44,7 +44,7 @@ class SpGEMM(Workload):
                 "metric_units_per_call": float("nan")}
 
     def library(self, ctx):
-        return C.library_tag(ctx, "spgemm/" + ("MKL" if ctx.device_class == "cpu" else "cuSPARSE"))
+        return C.library_tag(ctx, "spgemm/" + (C.cpu_backend("sparse") if ctx.device_class == "cpu" else "cuSPARSE"))
 
     def setup(self, p, ctx: Ctx):
         a = _sparse.build(p["matrix"], p["size"])

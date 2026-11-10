@@ -4,17 +4,19 @@ Equal work: "same"-size output (zero border) of ONE k x k filter applied to ever
 of an H x W image with C in {1 (grayscale), 3 (RGB)} -- the image-filtering definition
 (cross-correlation, as both libraries compute); identical seeded image and filter.
 Libraries (config key `lib`):
-  torch  : F.conv2d, groups=C, filter replicated per channel -> oneDNN (CPU) / cuDNN (GPU);
+  torch  : F.conv2d, groups=C, filter replicated per channel -> torch's CPU conv / cuDNN (GPU);
            cuDNN autotuning (cudnn.benchmark) happens during warmup, never in samples.
-  opencv : cv2.filter2D on the HxWxC image (CPU only). Measured on EPYC 7402P, 16K^2, k=5:
-           OpenCV 444 ms vs oneDNN 1521 ms -> NN-oriented conv kernels are not the fastest
-           image-filter library, so both are timed and the faster is kept.
+  opencv : cv2.filter2D on the HxWxC image (CPU only), inside _common.widened_affinity (OpenCV
+           rows before commit d51fa7e ran on one core). NN-oriented conv kernels are not built
+           for one small filter, so all three are timed and the fastest is kept.
   native : direct convolution, same algorithm on both devices, K in {3,5,7} a compile-time
            constant (all K*K taps unrolled). CPU: OpenMP over (channel, row), x loop vectorised,
            rows outside the image read a zero row prepared in setup (no allocation in the
            timed call). CUDA: 32x32 output tile per block, (32+K-1)^2 input tile in shared
            memory with a zero halo, 4 outputs per thread. Added because the library paths
-           reached ~2% of peak on EPYC (oneDNN/OpenCV are not built for one small filter).
+           reached ~2% of peak on EPYC; it wins every size on EPYC 9354P and on V100.
+  The torch CPU path is tagged `aten-cpu`: which kernel torch dispatches to (oneDNN or
+  ATen's own) is not verified yet (check with ONEDNN_VERBOSE=1 on the next CPU node).
 Validation: normwise vs an fp64 convolution of the same inputs; k*k-term reductions.
 Work model: 2*k*k*C*H*W FLOPs; compulsory bytes = input + output (+ filter).
 """
@@ -194,7 +196,7 @@ class Conv2d(Workload):
                 "metric_name": "Mpixels/s", "metric_units_per_call": p["hw"] ** 2 / 1e6}
 
     def library(self, ctx):
-        return C.library_tag(ctx, "conv2d/" + ("oneDNN" if ctx.device_class == "cpu" else "cuDNN"))
+        return C.library_tag(ctx, "conv2d/" + ("aten-cpu" if ctx.device_class == "cpu" else "cuDNN"))
 
     def _library_for(self, p, ctx):
         if p.get("lib") == "native":

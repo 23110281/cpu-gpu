@@ -3,9 +3,11 @@
 Equal work: full N x N output materialised into a preallocated tensor (`out=`), same
 seeded inputs on both devices.
 Library: GPU `torch.mm` -> cuBLAS. CPU: every well-known BLAS on the node is timed on the
-same tensors (config key `lib`): torch's own backend (MKL/oneDNN on x86 wheels), OpenBLAS,
+same tensors (config key `lib`): torch's own backend (MKL on x86 wheels), OpenBLAS,
 BLIS (AMD AOCL's basis) via CBLAS (workloads/_blas.py); analysis keeps the fastest per
-(device, precision). Measured on EPYC 7402P: no single library wins (MKL fp64, OpenBLAS fp32).
+(device, precision). No single library wins everywhere: on EPYC 9354P (Zen 4) OpenBLAS wins
+fp32 and MKL wins fp64 (results/library_notes.json); earlier EPYC 7402P (Zen 2) results were
+lost and must be re-measured.
 TF32 is disabled (devices.configure_torch_cuda), so fp32 is IEEE fp32 end to end.
 Variant `ff` (bf16): tensor cores on GPU / AMX or native bf16 on CPU; only where native.
 Validation (validate.gemm_check, full size, fp64): row-scaled Freivalds with tolerance

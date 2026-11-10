@@ -9,7 +9,7 @@ Equal work: identical shapes, seeds, precision and token inputs on both devices.
   prefill : B=1 sequence of S tokens, causal SDPA, logits for the last token
   decode  : B sequences x 1 new token attending to a KV cache of 2048 past tokens (the
             cache is pre-filled in setup); logits for all B
-Library: torch eager -- matmuls via oneDNN/MKL (CPU) / cuBLAS (GPU). Attention:
+Library: torch eager -- matmuls via torch's CPU BLAS (MKL on x86 wheels) / cuBLAS (GPU). Attention:
   prefill: F.scaled_dot_product_attention (causal, GQA via enable_gqa)
   decode : `decode_attention` -- GQA as a reshape (no K/V copies) + two batched matmuls
            (q.K^T, softmax, .V) that stream the KV cache once. SDPA's fused kernels tile over
@@ -208,7 +208,7 @@ class Llama(Workload):
         return {"flops": flops, "bytes": float(byt), "metric_name": "tokens/s", "metric_units_per_call": float(tok)}
 
     def library(self, ctx):
-        return C.library_tag(ctx, "llama-eager/sdpa-prefill,bmm-decode+" + ("oneDNN" if ctx.device_class == "cpu" else "cuBLAS"))
+        return C.library_tag(ctx, "llama-eager/sdpa-prefill,bmm-decode+" + ("torch-blas" if ctx.device_class == "cpu" else "cuBLAS"))
 
     def _library_for(self, p, ctx):
         lib = p.get("lib", "torch")

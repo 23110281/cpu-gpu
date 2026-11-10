@@ -79,6 +79,13 @@ def require_native(p: dict, ctx: Ctx) -> None:
         raise Unsupported("bf16 not native on this device")
 
 
+def cpu_backend(kind: str) -> str:
+    """The CPU library torch dispatches to, as far as torch itself reports it: MKL only when
+    the wheel has MKL (x86 builds), otherwise ATen's own kernels / pocketfft (e.g. aarch64)."""
+    mkl = bool(torch.backends.mkl.is_available())
+    return {"sparse": "MKL" if mkl else "ATen", "fft": "MKL" if mkl else "pocketfft"}[kind]
+
+
 def library_tag(ctx: Ctx, kernel: str) -> str:
     from .. import devices
     if ctx.device_class == "cpu":

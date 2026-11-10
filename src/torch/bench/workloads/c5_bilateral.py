@@ -7,8 +7,9 @@ radius r (offsets with dx^2+dy^2 <= r^2), reflect-101 border,
 The padded (reflect-101) input is built in setup, identically on both devices.
 Implementations (config key `lib`):
   cpu opencv : cv2.bilateralFilter (library reference; range weights from a lookup table ->
-               approximate: validated with a documented looser tolerance 1e-2). Measured on
-               EPYC 7402P 4096^2: OpenCV 65 / 6.4 Mpx/s vs native exact 452 / 37 Mpx/s (r=2/7).
+               approximate: validated with a documented looser tolerance 1e-2). OpenCV runs
+               inside _common.widened_affinity: before commit d51fa7e it ran on ONE core,
+               so OpenCV rows older than that (and comparisons drawn from them) are invalid.
   cpu native : exact algorithm, OpenMP over rows, SIMD over x, libmvec expf
   gpu native : exact algorithm, one thread per pixel, precise expf
   gpu fast   : same with __expf (SFU fast-math) -- isolates the paper's fixed-function effect

@@ -3,7 +3,8 @@
 Equal work: y (length N) fully rewritten on both devices, same inputs (seeded).
 Library: ATen's vectorised in-place `add_` on both sides (OpenMP-parallel on CPU,
 vectorised elementwise kernel on CUDA) — a single fused streaming pass, which is the
-fastest form available; cuBLAS/MKL axpy is what the native C/CUDA cross-check uses.
+fastest form available. The native cross-check (crosscheck/) calls cblas_?axpy from
+OpenBLAS or MKL, whichever it was built against.
 Work model: 2N FLOPs, 3N*e compulsory bytes (read x, read y, write y).
 Inputs are first-touched in parallel under the run's thread placement (§3).
 """

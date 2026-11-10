@@ -1,4 +1,4 @@
-"""C6 — Key-value sort   (compute-bound via SIMD inefficiency + cache-limited digits; ISCA'10 kernel 10)
+"""C6 — Key-value sort (GPU: radix sort; CPU: comparison sorts)   (compute-bound via SIMD inefficiency + cache-limited digits; ISCA'10 kernel 10)
 
 Equal work: FULL global stable sort of N int32 keys, producing sorted keys and the int64
 source index of every key (the "value" = original position), into preallocated outputs.

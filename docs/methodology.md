@@ -20,7 +20,7 @@ The protocol follows the comparison principle of Lee et al. (ISCA'10): compare *
 **Clock sensitivity (planned, not yet collected):** SAXPY, GEMM and Histogram repeated with clocks locked (`scripts/gpu/lock_clocks.sh`, still to be parameterised) and reported separately. Until collected, all results are at default clocks only.
 
 ## 3. Threads and memory placement (`bench/devices.py`)
-- **Pinning.** `OMP_PLACES=cores`, `OMP_PROC_BIND=close`, `MKL_DYNAMIC=FALSE`, and `OMP_NUM_THREADS` = the thread count. `torch.set_num_threads` / `set_num_interop_threads(1)` are each called exactly **once per process**. Each configuration runs in its own process (`bench/sweep.py`).
+- **Pinning.** `OMP_PLACES` lists the exact CPUs of the placement, one place each (`{c0},{c1},…`), with `OMP_PROC_BIND=close`, `OMP_DYNAMIC=FALSE`, `MKL_DYNAMIC=FALSE`, `KMP_AFFINITY=disabled` (no double binding), and `OMP_NUM_THREADS` = `MKL_NUM_THREADS` = `OPENBLAS_NUM_THREADS` = `BLIS_NUM_THREADS` = the thread count (`bench/devices.py:placement_env`). `torch.set_num_threads` / `set_num_interop_threads(1)` are each called exactly **once per process**. Each configuration runs in its own process (`bench/sweep.py`).
 - **Placements:**
   - `socket<S>`: one thread per physical core of socket S.
   - `socket<S>-smt`: every hardware thread of socket S.
@@ -66,7 +66,7 @@ The protocol follows the comparison principle of Lee et al. (ISCA'10): compare *
 | Element-wise / BLAS-1 | normwise ‖y − y_ref‖₂ / ‖y_ref‖₂, reference in fp64 | `c · ε(dtype)`, c = 8 |
 | GEMM-like (k-term reductions) | `validate.gemm_check`, two independent checks, both at full size in fp64. (a) **Row-scaled Freivalds:** max_i \|(C r − A(B r))_i\| / (‖A_i,:‖ · ‖colnorm(B)∘r‖), Gaussian r, 2 trials. (b) **2048 sampled entries** recomputed exactly and checked componentwise against c·(ε_out\|ref\| + ε_acc√k‖A_i‖‖B_j‖). `max_err` is reported in units of tolerance (`tol = 1`). | (a) `c · (ε_out + ε_acc · √k)`; (b) as stated; c = 8 |
 | Statistical (Monte Carlo) | \|price − analytic\| ≤ 4 · standard error | — |
-| Exact (sort, histogram, search, crypto) | bit-exact match against the reference / official test vectors | 0 |
+| Exact (sort, histogram, search, crypto) | bit-exact match against the reference: official test vectors (NIST AES, FIPS SHA-256) plus the full output vs OpenSSL / hashlib for crypto; numpy (`bincount`, `searchsorted`) or structural checks (sortedness, permutation checksums, stability) for the others | 0 |
 
 `ε` is the unit roundoff of the *compute* dtype; bf16 ε = 2⁻⁸. TF32 is disabled, so fp32 means fp32.
 
@@ -126,7 +126,7 @@ Any deviation from this protocol, such as a library that cannot exclude its own 
 | A1 Llama-3 decode (all devices) | Decode attention is two batched matmuls (q·Kᵀ, softmax, ·V) with GQA as a reshape, and the new token's K/V are written in place into a preallocated cache, instead of `torch.cat` + `scaled_dot_product_attention`. Prefill still uses SDPA. The old path is the fp64 validation reference. | SDPA's fused kernels tile over queries; with one query token most of the tile is idle. On the V100 SDPA took 47% (B=1) / 64% (B=8) of the decode step while the weight GEMVs ran at ~800 of 845 GB/s (pitfall 12). |
 | A1 Llama-3 decode (GPU) | Also timed replayed from a CUDA graph (`lib=cudagraph`); the faster of eager / graph is the headline. The graph output is validated against the eager step. | Eager decode issues ~500 kernels per step from Python; on a slow host this, not the GPU, sets the time (pitfall 13). |
 | B2 LBM (CPU) | Non-temporal (streaming) stores on x86/AVX; normal stores elsewhere (Grace). | The 19 destination arrays are write-only; a normal store reads each line first (write-allocate), +50% DRAM traffic. |
-| C5 bilateral (OpenCV) | OpenCV approximates the range weights with a lookup table, so it is validated with tolerance 1e-2 instead of 1e-4. | It is a library approximation. Native exact kernels are 7× faster on EPYC anyway. |
+| C5 bilateral (OpenCV) | OpenCV approximates the range weights with a lookup table, so it is validated with tolerance 1e-2 instead of 1e-4. | It is a library approximation. (An earlier "native is 7× faster than OpenCV" measurement on EPYC 7402P is invalid: OpenCV ran on one core before commit d51fa7e; pitfall in `results/library_notes.json`.) |
 | Size grids | GEMM ≤ 8192, conv ≤ 8192², sort ≤ 2²⁷ pairs; the thread-scaling sweep uses the median size. | The larger sizes cost hours per device without new information: the GEMM peak is already reached at 8192, and every bandwidth workload still has rows ≥ 4× LLC. |
 | C3 conv2d (torch) | `F.conv2d` allocates its output on every call. | It has no `out=` variant. The GPU caching allocator reuses the block. On the CPU, glibc vs jemalloc (verified loaded) measured 1552 vs 1552 ms (1 channel) and 6143 vs 6306 ms (3 channels) at 16K², so allocation inside the call is not a bottleneck. Default: glibc; jemalloc is opt-in (`BENCH_ALLOCATOR=jemalloc`, row flag `alloc=jemalloc`). |
 
@@ -139,7 +139,7 @@ Each of these would have silently produced a weak CPU baseline. The harness or s
    - Effect: 80 vs 1760 GFLOP/s at N=4096 fp32.
    - Fix: the setup script selects the OpenMP OpenBLAS build.
    - The same issue hit oneTBB sort (10 vs 94 Mpairs/s); `_cpusort.WidenAffinity` widens the caller's mask to the placement for the duration of the call.
-2. **torch's default CPU BLAS (MKL) is not the fastest on AMD.** At N=4096: BLIS 1966 / OpenBLAS ~1760 / MKL ~1700 GFLOP/s in fp32; BLIS 916 / OpenBLAS ~890 / MKL ~854 in fp64. C1 therefore times every library on the node.
+2. **torch's default CPU BLAS (MKL) is not the fastest on AMD.** At N=4096: BLIS 1966 / OpenBLAS ~1760 / MKL ~1700 GFLOP/s in fp32; BLIS 916 / OpenBLAS ~890 / MKL ~854 in fp64 (EPYC 7402P, Zen 2; the raw rows were lost with that campaign, so re-measure). On EPYC 9354P (Zen 4) the order changes again: OpenBLAS wins fp32 (3495 vs MKL 3066), MKL wins fp64 (1643 vs OpenBLAS 1542), and Ubuntu 22.04's BLIS 0.8.1 is ~3.5× slower. C1 therefore times every library on the node.
 3. **ATen's CPU sort scales only 5× on 24 cores** (100 Mpairs/s). libstdc++ parallel mode reaches 170–203 Mpairs/s.
 4. **torch `conv2d` (oneDNN) is 3.4× slower than OpenCV `filter2D` for image filtering** (1521 vs 444 ms, 16K², k=5).
 5. **`torch.bincount` scales only 1.5× on 24 cores; `torch.histc` scales 17×.** histc is therefore run in exact 2²⁴-sample chunks.

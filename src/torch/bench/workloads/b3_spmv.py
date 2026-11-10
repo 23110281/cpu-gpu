@@ -47,7 +47,7 @@ class SpMV(Workload):
                 "metric_units_per_call": b / 1e9}
 
     def library(self, ctx):
-        return C.library_tag(ctx, "spmv/" + ("MKL" if ctx.device_class == "cpu" else "cuSPARSE"))
+        return C.library_tag(ctx, "spmv/" + (C.cpu_backend("sparse") if ctx.device_class == "cpu" else "cuSPARSE"))
 
     def setup(self, p, ctx: Ctx):
         a = _sparse.build(p["matrix"], p["size"])

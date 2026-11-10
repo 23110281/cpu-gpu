@@ -323,7 +323,7 @@
       ],
       "cpu": {
         "impl": "done",
-        "where": "src/torch/bench/workloads/c1_gemm.py: torch(MKL) | OpenBLAS | BLIS via CBLAS, fastest kept (EPYC: BLIS fastest)"
+        "where": "src/torch/bench/workloads/c1_gemm.py: torch(MKL) | OpenBLAS | BLIS via CBLAS, fastest kept (EPYC 9354P: OpenBLAS fastest fp32, MKL fastest fp64)"
       },
       "gpu": {
         "impl": "partial",
@@ -433,7 +433,7 @@
       ],
       "cpu": {
         "impl": "done",
-        "where": "src/torch/bench/workloads/c3_conv.py: torch/oneDNN | OpenCV filter2D (3.4x faster on EPYC)"
+        "where": "src/torch/bench/workloads/c3_conv.py: torch F.conv2d | OpenCV filter2D | native direct convolution (OpenMP+SIMD), fastest kept (native wins 18/18 on EPYC 9354P)"
       },
       "gpu": {
         "impl": "done",
@@ -539,7 +539,7 @@
       ],
       "cpu": {
         "impl": "done",
-        "where": "src/torch/bench/workloads/c5_bilateral.py: OpenCV bilateralFilter | native exact OpenMP+SIMD (7x OpenCV on EPYC)"
+        "where": "src/torch/bench/workloads/c5_bilateral.py: OpenCV bilateralFilter | native exact OpenMP+SIMD"
       },
       "gpu": {
         "impl": "done",
@@ -557,7 +557,7 @@
     },
     {
       "id": "C6",
-      "name": "Radix sort (key-value)",
+      "name": "Sort (key-value)",
       "bound": "C",
       "field": "Database",
       "tags": [
@@ -839,13 +839,14 @@
       ],
       "cpu": {
         "impl": "done",
-        "where": "src/torch/bench/workloads/a1_llama.py: full Llama-3 forward (1B/3B/8B shapes, random weights), prefill + decode, oneDNN"
+        "where": "src/torch/bench/workloads/a1_llama.py: full Llama-3 forward (1B/3B/8B shapes, random weights), prefill + decode; linear layers via torch (MKL) | OpenBLAS | BLIS, fastest kept; SDPA for prefill, batched-matmul attention over an in-place KV cache for decode"
       },
       "gpu": {
         "impl": "partial",
         "where": "src/torch/bench/workloads/a1_llama.py: cuBLAS; SDPA for prefill, batched-matmul attention over an in-place KV cache for decode; decode also replayed from a CUDA graph [validated on V100, 3 trials; bf16 variant not yet run: Volta has no bf16]"
       },
       "todo": [
+        "Re-run on CPUs: decode attention changed in commit 72ab4db (r6615 rows predate it)",
         "Run the bf16 variant on a bf16-capable GPU (A100 or newer)",
         "Real weights (gated on HF) + llama.cpp/vLLM end-to-end rows: needs HF token",
         "Run on core GPU nodes (A100, L40S, H100)",

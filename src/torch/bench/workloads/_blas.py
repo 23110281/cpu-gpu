@@ -1,7 +1,8 @@
 """CBLAS backends callable on torch CPU tensors (fastest-library rule, methodology §7).
 
 torch's built-in CPU BLAS is MKL on x86 wheels — including on AMD, where MKL is not always
-the fastest (measured on EPYC 7402P: OpenBLAS +11% fp32, MKL +25% fp64). For BLAS-backed
+the fastest (EPYC 9354P / Zen 4, r6615: OpenBLAS wins fp32 3495 vs MKL 3066 GFLOP/s, MKL wins
+fp64 1643 vs 1542; Ubuntu's BLIS 0.8.1 is ~3.5x slower there). For BLAS-backed
 workloads the harness therefore times every well-known library available on the node on the
 *same* tensors, and the analysis keeps the fastest per (device, precision).
 

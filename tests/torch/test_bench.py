@@ -291,6 +291,41 @@ def test_llama_blas_linear_matches_torch(lib, monkeypatch):
         assert float((got - want).norm() / want.norm()) < 1e-5
 
 
+@pytest.mark.parametrize("B,h,kv", [(1, 4, 2), (3, 8, 2), (2, 4, 4)])
+def test_llama_decode_attention_matches_sdpa(B, h, kv):
+    """decode_attention (GQA reshape + 2 matmuls) == SDPA with enable_gqa, on a strided cache view."""
+    import torch.nn.functional as F
+    from bench.workloads.a1_llama import decode_attention
+    g = torch.Generator().manual_seed(3)
+    P, hd = 37, 16
+    q = torch.randn(B, h, 1, hd, generator=g, dtype=torch.float64)
+    buf_k = torch.randn(B, kv, P + 5, hd, generator=g, dtype=torch.float64)
+    buf_v = torch.randn(B, kv, P + 5, hd, generator=g, dtype=torch.float64)
+    k, v = buf_k[:, :, :P], buf_v[:, :, :P]
+    want = F.scaled_dot_product_attention(q, k, v, enable_gqa=True)
+    got = decode_attention(q, k, v)
+    assert float((got - want).norm() / want.norm()) < 1e-12
+
+
+@pytest.mark.parametrize("B", [1, 8])
+def test_llama_decode_inplace_cache_matches_reference(B, monkeypatch):
+    """New decode path (in-place KV write + decode_attention) == old cat + SDPA path; the past
+    cache positions are untouched and repeated steps give identical logits (timing is idempotent)."""
+    from bench.workloads import a1_llama as A
+    monkeypatch.setitem(A.MODELS, "tiny", dict(d=64, L=2, h=4, kv=2, ff=128, V=257, tied=False))
+    monkeypatch.setattr(A, "KV_LEN", 16)
+    p = {"precision": "fp32", "variant": "base", "model": "tiny", "phase": "decode", "batch": B, "seq": 1, "lib": "torch"}
+    s = A.WORKLOAD.setup(p, _cpu_ctx())
+    past = [k[:, :, :16].clone() for k, _ in s["cache"]]
+    want = A.forward(s["model"], s["tokens"], s["cache"], s["pos0"], reference=True)
+    got1 = A.forward(s["model"], s["tokens"], s["cache"], s["pos0"])
+    got2 = A.forward(s["model"], s["tokens"], s["cache"], s["pos0"])
+    assert float((got1 - want).norm() / want.norm()) < 1e-5
+    assert torch.equal(got1, got2)
+    assert all(torch.equal(a, k[:, :, :16]) for a, (k, _) in zip(past, s["cache"]))
+    assert A.WORKLOAD.validate(s, _cpu_ctx()).ok
+
+
 def test_llama_configs_cpu_libs_fp32_only():
     from bench.workloads.a1_llama import WORKLOAD
     cpu, gpu = WORKLOAD.configs("cpu"), WORKLOAD.configs("gpu")

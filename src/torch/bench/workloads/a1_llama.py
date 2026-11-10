@@ -9,9 +9,16 @@ Equal work: identical shapes, seeds, precision and token inputs on both devices.
   prefill : B=1 sequence of S tokens, causal SDPA, logits for the last token
   decode  : B sequences x 1 new token attending to a KV cache of 2048 past tokens (the
             cache is pre-filled in setup); logits for all B
-Library: torch eager -- matmuls via oneDNN/MKL (CPU) / cuBLAS (GPU),
-F.scaled_dot_product_attention (flash/mem-efficient on GPU, flash CPU kernel), GQA via
-enable_gqa. Precision: fp32 everywhere; bf16 (variant ff) only where native.
+Library: torch eager -- matmuls via oneDNN/MKL (CPU) / cuBLAS (GPU). Attention:
+  prefill: F.scaled_dot_product_attention (causal, GQA via enable_gqa)
+  decode : `decode_attention` -- GQA as a reshape (no K/V copies) + two batched matmuls
+           (q.K^T, softmax, .V) that stream the KV cache once. SDPA's fused kernels tile over
+           queries (64-row tiles on the V100's mem-efficient kernel), so with ONE query token
+           they wasted most of the work: on V100 SDPA was 47% (B=1) / 64% (B=8) of the decode
+           step. The new token's K/V are written in place into a preallocated cache slot (as an
+           inference engine does) instead of torch.cat copying the whole cache every step.
+  The old cat + SDPA path is kept as the independent fp64 validation reference.
+Precision: fp32 everywhere; bf16 (variant ff) only where native.
 CPU fp32 linear layers (config key `lib`, as in C1): torch (MKL on x86 wheels), OpenBLAS,
 BLIS -- the fastest is kept. Batch-1 decode is pure GEMV over the weights; on EPYC 7402P
 torch/MKL streamed only ~20 GB/s (one core's worth of the 125 GB/s socket), while the same
@@ -107,9 +114,27 @@ def blas_linear(lib: str, prec: str):
     return mm
 
 
-def forward(model: Model, tokens, kv_cache=None, pos0=0, mm=torch_linear):
-    """tokens [B, S]. kv_cache: list of (k, v) [B, kv, P, hd] (decode) or None (prefill).
-    mm(x, w) = x @ w.T for every linear layer. Returns logits of the last position [B, V]."""
+def decode_attention(q, kc, vc):
+    """Attention of S (=1) new query tokens over a KV cache, as two batched matmuls.
+    q [B, h, S, hd]; kc, vc [B, kv, P, hd] (may be strided views of a larger buffer).
+    GQA: query head i uses kv head i // (h/kv), so the h/kv heads of each group are stacked
+    as extra rows of one matmul -- every K/V element is read once and never copied.
+    The new token attends to every cached position, itself included (no mask needed)."""
+    B, h, S, hd = q.shape
+    kv = kc.shape[1]
+    g = h // kv
+    qg = q.reshape(B, kv, g * S, hd)
+    scores = torch.matmul(qg, kc.transpose(-1, -2)) * (1.0 / math.sqrt(hd))      # [B, kv, g*S, P]
+    acc = torch.float32 if q.dtype in (torch.bfloat16, torch.float16) else q.dtype      # bf16: fp32 softmax
+    probs = torch.softmax(scores, dim=-1, dtype=acc).to(q.dtype)
+    return torch.matmul(probs, vc).reshape(B, h, S, hd)
+
+
+def forward(model: Model, tokens, kv_cache=None, pos0=0, mm=torch_linear, reference=False):
+    """tokens [B, S]. kv_cache (decode): list of (k, v) buffers [B, kv, >= pos0+S, hd] whose
+    first pos0 positions hold the past; the new K/V are written in place at pos0..pos0+S.
+    None = prefill. mm(x, w) = x @ w.T for every linear layer. reference=True uses the
+    independent cat + SDPA path (validation). Returns logits of the last position [B, V]."""
     m, hd = model.m, model.hd
     B, S = tokens.shape
     x = model.emb[tokens]
@@ -121,11 +146,16 @@ def forward(model: Model, tokens, kv_cache=None, pos0=0, mm=torch_linear):
         k = mm(h, l["wk"]).view(B, S, m["kv"], hd).transpose(1, 2)
         v = mm(h, l["wv"]).view(B, S, m["kv"], hd).transpose(1, 2)
         q, k = apply_rope(q, cos, sin), apply_rope(k, cos, sin)
-        if kv_cache is not None:
+        if kv_cache is not None and reference:
             kc, vc = kv_cache[li]
-            k = torch.cat([kc, k], 2)
-            v = torch.cat([vc, v], 2)
+            k = torch.cat([kc[:, :, :pos0], k], 2)
+            v = torch.cat([vc[:, :, :pos0], v], 2)
             a = F.scaled_dot_product_attention(q, k, v, enable_gqa=True)        # new token sees all past
+        elif kv_cache is not None:
+            kc, vc = kv_cache[li]
+            kc[:, :, pos0:pos0 + S] = k
+            vc[:, :, pos0:pos0 + S] = v
+            a = decode_attention(q, kc[:, :, :pos0 + S], vc[:, :, :pos0 + S])
         else:
             a = F.scaled_dot_product_attention(q, k, v, is_causal=True, enable_gqa=True)
         x = x + mm(a.transpose(1, 2).reshape(B, S, m["h"] * hd), l["wo"])
@@ -172,7 +202,7 @@ class Llama(Workload):
         return {"flops": flops, "bytes": float(byt), "metric_name": "tokens/s", "metric_units_per_call": float(tok)}
 
     def library(self, ctx):
-        return C.library_tag(ctx, "llama-eager/sdpa+" + ("oneDNN" if ctx.device_class == "cpu" else "cuBLAS"))
+        return C.library_tag(ctx, "llama-eager/sdpa-prefill,bmm-decode+" + ("oneDNN" if ctx.device_class == "cpu" else "cuBLAS"))
 
     def _library_for(self, p, ctx):
         lib = p.get("lib", "torch")
@@ -180,7 +210,7 @@ class Llama(Workload):
             return self.library(ctx)
         if ctx.device_class != "cpu":
             raise Unsupported(f"{lib} is a CPU library")
-        return f"llama-eager/sdpa+linear={lib}/{_blas.version(lib)}"
+        return f"llama-eager/sdpa-prefill,bmm-decode+linear={lib}/{_blas.version(lib)}"
 
     def _inputs(self, p, m, device, dtype, gen):
         B, S = p["batch"], p["seq"]
@@ -188,9 +218,15 @@ class Llama(Workload):
         cache = None
         if p["phase"] == "decode":
             hd = m["d"] // m["h"]
-            cache = [(torch.randn(B, m["kv"], KV_LEN, hd, generator=gen, device=device).to(dtype),
-                      torch.randn(B, m["kv"], KV_LEN, hd, generator=gen, device=device).to(dtype))
-                     for _ in range(m["L"])]
+            # preallocated: KV_LEN past positions (random) + S slots the step writes in place
+            cache = []
+            for _ in range(m["L"]):
+                kv_pair = []
+                for _ in range(2):
+                    t = torch.zeros(B, m["kv"], KV_LEN + S, hd, device=device, dtype=dtype)
+                    t[:, :, :KV_LEN] = torch.randn(B, m["kv"], KV_LEN, hd, generator=gen, device=device).to(dtype)
+                    kv_pair.append(t)
+                cache.append(tuple(kv_pair))
         return tokens, cache
 
     def setup(self, p, ctx: Ctx):
@@ -220,7 +256,7 @@ class Llama(Workload):
         got = forward(small, tokens, cache, s["pos0"], s["mm"]).float().cpu()
         ref = forward(small.to(torch.float64, "cpu"), tokens.cpu(),
                       None if cache is None else [(k.double().cpu(), v.double().cpu()) for k, v in cache],
-                      s["pos0"])
+                      s["pos0"], reference=True)
         self.call(s)                     # full model once (exercises every layer before timing)
         return normwise(got, ref, 1e-4 if s["dt"] == torch.float32 else 5e-2)
 

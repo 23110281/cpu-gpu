@@ -61,6 +61,14 @@ def lib_name(lib: str) -> str:
 
 
 def _calibration(dev: str) -> dict:
+    """The machine's THEORETICAL peaks (configs/devices/<DEV>.json datasheet), the base of every
+    percentage on the dashboard; falls back to the measured calibration when no datasheet exists."""
+    try:
+        ds = json.loads((ROOT / "configs" / "devices" / f"{dev}.json").read_text()).get("datasheet", {})
+        if ds.get("bandwidth_gbps") or ds.get("peak_gflops"):
+            return {"bandwidth_gbps": ds.get("bandwidth_gbps"), "peak_gflops": ds.get("peak_gflops") or {}}
+    except (OSError, ValueError):
+        pass
     try:
         return json.loads((CAL / f"{dev}.json").read_text()).get("measured", {})
     except (OSError, ValueError):

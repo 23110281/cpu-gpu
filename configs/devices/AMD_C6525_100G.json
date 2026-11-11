@@ -27,12 +27,12 @@
   "datasheet": {
     "bandwidth_gbps": 204.8,
     "peak_gflops": {
-      "fp64": 1075.2,
-      "fp32": 2150.4
+      "fp64": 1286.4,
+      "fp32": 2572.8
     },
     "derivation": {
       "bandwidth": "8 channels x DDR4-3200 x 8 B = 204.8 GB/s (dmidecode: 8x16 GB DDR4-3200, DIMMs A1-A8, one per channel)",
-      "compute": "24 cores x 2.8 GHz base x 16 FP64 FLOP/cycle (2x 256-bit FMA pipes, Zen 2) = 1075.2; fp32 = 2x. All-core boost observed 3.3 GHz (APERF/MPERF) is NOT used for the datasheet figure."
+      "compute": "24 cores × 3.35 GHz (maximum boost; AMD publishes no all-core figure, so this is an upper bound) × 16 fp64 FLOP/cycle (2 × 256-bit FMA) = 1.29 TFLOP/s fp64; fp32 = 2×"
     }
   },
   "display": {

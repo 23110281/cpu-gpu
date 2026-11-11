@@ -10,12 +10,12 @@
   "datasheet": {
     "bandwidth_gbps": 119.4,
     "peak_gflops": {
-      "fp32": 665.6,
-      "fp64": 332.8
+      "fp32": 870.4,
+      "fp64": 435.2
     },
     "derivation": {
       "bandwidth": "2 sockets × 4 channels × 1866 MT/s × 8 B = 119.4 GB/s",
-      "compute": "16 cores × 2.6 GHz base × 8 fp64 FLOP/cycle (AVX, no FMA) = 333 GFLOP/s fp64; fp32 = 2×"
+      "compute": "2 sockets × 8 cores × 3.4 GHz (maximum turbo, an upper bound) × 8 fp64 FLOP/cycle (AVX, no FMA) = 435 GFLOP/s fp64; fp32 = 2×"
     }
   }
 }

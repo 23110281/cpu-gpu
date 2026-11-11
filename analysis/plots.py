@@ -237,8 +237,9 @@ def lines(series: list[tuple[str, list, list, list | None]], path: Path, title: 
             ax.errorbar(xs, y, yerr=[np.maximum(0, np.array(y) - np.array(lo)), np.maximum(0, np.array(hi) - np.array(y))],
                         fmt="none", ecolor=c, elinewidth=1.2, capsize=2)
         ys += [v for v in y if v == v]
-    for val, name in limits:
-        ax.axhline(val, color=F.LIMIT, ls="--", lw=1.2, alpha=0.8)
+    for lm in limits:
+        val, name = lm[0], lm[1]
+        ax.axhline(val, color=F.LIMIT if len(lm) < 3 else F.INK_MUTED, ls="--" if len(lm) < 3 else ":", lw=1.2, alpha=0.8)
         ax.annotate(name, xy=(1, val), xycoords=("axes fraction", "data"), ha="right", va="bottom",
                     fontsize=8, color=F.INK_MUTED)
         ys.append(val)
@@ -340,15 +341,17 @@ def workload_plots(dev: str, wid: str, d: pd.DataFrame, scaling: pd.DataFrame, l
         ser.append((name, list(range(len(xs_all))), g["metric"].tolist(), (g["metric_ci_lo"].tolist(), g["metric_ci_hi"].tolist())))
     ser = ser[:len(F.SERIES)]
     if unit == "GB/s" and lim.get("bw"):
-        limits.append((lim["bw"], f"measured memory limit {lim['bw']:,.0f} GB/s"))
+        limits.append((lim["bw"], f"theoretical memory limit {lim['bw']:,.0f} GB/s"))
+        if lim.get("mbw"):
+            limits.append((lim["mbw"], f"measured {lim['mbw']:,.0f} GB/s", "measured"))
     if unit == "GFLOP/s":
         precs = sorted(set(fast_main["precision"]))
         for pr in precs:
             pk = (lim.get("peak") or {}).get("fp32" if pr == "c64" else pr)
             if pk and wid in ("C1",):
-                limits.append((pk, f"{pr} compute limit {pk:,.0f}"))
+                limits.append((pk, f"{pr} theoretical limit {pk:,.0f}"))
     r = lines(ser, p("speed"), f"Speed vs problem size ({unit})", unit, xl,
-              "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits.",
+              "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are theoretical limits, the dotted line the measured memory limit.",
               limits, xlabels)
     if r:
         plots.append(r)
@@ -364,10 +367,10 @@ def workload_plots(dev: str, wid: str, d: pd.DataFrame, scaling: pd.DataFrame, l
             name = _label(keys, dict(zip(keys, gk if isinstance(gk, tuple) else (gk,)))) if keys else "fastest software"
             ser.append((name, list(range(len(xs_all))), g["pct"].tolist(), None))
         kind = "memory" if d["bound"].iloc[0] == "B" else ("both" if wid == "A1" else "compute")
-        cap = {"memory": "100% (dashed) is the measured memory limit; sizes that fit in the cache are left out, and sizes only a few times larger than the cache can still pass 100%.",
-               "compute": "100% (dashed) is the best speed measured when calibrating this machine; single runs can be slightly faster.",
-               "both": "Token generation is compared with the memory limit, prompt processing with the compute limit; 100% (dashed) is the limit."}[kind]
-        r = lines(ser[:len(F.SERIES)], p("share"), "Share of the machine's measured limit (%)", "% of measured limit", xl, cap,
+        cap = {"memory": "100% (dashed) is the theoretical memory speed; sizes that fit in the cache are left out.",
+               "compute": "100% (dashed) is the theoretical compute peak of the machine.",
+               "both": "Token generation is compared with the theoretical memory speed, prompt processing with the theoretical compute peak."}[kind]
+        r = lines(ser[:len(F.SERIES)], p("share"), "Share of the theoretical peak (%)", "% of theoretical peak", xl, cap,
                   xlabels=xlabels, ref100=True, logy_auto=False)
         if r:
             plots.append(r)
@@ -528,16 +531,16 @@ def overview(entries: list[dict], path: Path, limit_word: str) -> dict | None:
     ax.set_yticklabels([e["label"] for e in entries])
     ax.set_xlim(0, 200)
     ax.set_xticks([0, 25, 50, 75, 100])
-    ax.set_xlabel(f"% of this machine's {limit_word} limit (largest size, fastest software)")
+    ax.set_xlabel(f"% of this machine's {limit_word} peak (largest size, fastest software)")
     from matplotlib.patches import Patch
     ax.legend(handles=[Patch(color=colors["memory"], label="limited by memory speed (GB/s)"),
                        Patch(color=colors["compute"], label="limited by compute (GFLOP/s)")],
               loc="upper center", bbox_to_anchor=(0.5, -0.12 - 0.3 / max(1, len(entries))), ncol=2)
     ax.grid(axis="y", visible=False)
-    title = f"How close each workload gets to the {limit_word} limit"
+    title = f"How close each workload gets to the {limit_word} peak"
     ax.set_xlabel(ax.get_xlabel())
     pass  # title is shown by the page
-    return _save(fig, path, title, "Each bar is one workload at its largest size; 100% (dashed) is the hardware limit.")
+    return _save(fig, path, title, "Each bar is one workload at its largest size; 100% (dashed) is the theoretical peak of the hardware.")
 
 
 # ── earlier-script (legacy) pages ──────────────────────────────────────────
@@ -589,15 +592,15 @@ def legacy_plots(dev: str, bench: str, rows: pd.DataFrame, main: pd.DataFrame, l
         ser.append((pr, list(range(len(xs))), g.tolist(), None))
     limits = []
     if unit == "GB/s" and lim.get("bw"):
-        limits.append((lim["bw"], f"memory limit (datasheet) {lim['bw']:,.0f} GB/s"))
+        limits.append((lim["bw"], f"theoretical memory limit {lim['bw']:,.0f} GB/s"))
     if unit == "GFLOP/s":
         for pr in ("fp32", "fp64"):
             pk = (lim.get("peak") or {}).get(pr)
             if pk and pr in set(mview["precision"]):
-                limits.append((pk, f"{pr} compute limit (datasheet) {pk:,.0f}"))
+                limits.append((pk, f"{pr} theoretical limit {pk:,.0f}"))
     xlabels = [F.fmt_num(int(v)) for v in xs]
     r = lines(ser, p("speed"), f"Speed vs problem size ({unit})", unit, xl,
-              "Each line is one number format (mean of the earlier script's runs); dashed lines are datasheet limits."
+              "Each line is one number format (mean of the earlier script's runs); dashed lines are theoretical limits."
               + (" Small sizes can exceed the memory limit because they fit in the on-chip cache." if unit == "GB/s" else ""),
               limits, xlabels)
     if r:
@@ -615,8 +618,8 @@ def legacy_plots(dev: str, bench: str, rows: pd.DataFrame, main: pd.DataFrame, l
             continue
         sh.append((pr, list(range(len(xs))), v.reindex(xs).tolist(), None))
     if sh and not sparse:
-        r = lines(sh, p("share"), "Share of the datasheet limit (%)", "% of datasheet limit", xl,
-                  "100% (dashed) is the vendor's datasheet limit; memory-limited sizes that fit in cache are left out.",
+        r = lines(sh, p("share"), "Share of the theoretical peak (%)", "% of theoretical peak", xl,
+                  "100% (dashed) is the theoretical peak; memory-limited sizes that fit in cache are left out.",
                   xlabels=xlabels, ref100=True, logy_auto=False)
         if r:
             plots.append(r)

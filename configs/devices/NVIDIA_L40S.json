@@ -13,12 +13,12 @@
     "bandwidth_gbps": 864,
     "peak_gflops": {
       "fp32": 91600,
-      "fp64": 1400,
+      "fp64": 1431.3,
       "bf16": 362000
     },
     "derivation": {
       "bandwidth": "48 GB GDDR6, 864 GB/s (NVIDIA L40S product page)",
-      "compute": "18,176 cores × 2 × 2.52 GHz boost = 91.6 TFLOP/s fp32; bf16 tensor 362 (dense); fp64 not listed by NVIDIA, ~1.4 at Ada's 1/64 rate (derived)"
+      "compute": "18,176 cores × 2 × 2.52 GHz boost = 91.6 TFLOP/s fp32; bf16 tensor 362 (dense); fp64 not listed by NVIDIA, 91.6 / 64 = 1.43 at Ada's 1/64 rate (derived)"
     }
   }
 }

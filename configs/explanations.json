@@ -54,6 +54,36 @@
       "device": "AMD_C6525_100G",
       "workload": "B*",
       "text": "The measured memory limit (125 GB/s) is 61% of the datasheet figure; the same value was measured in an earlier session, so it is stable, but the cause (for example how the memory is installed) is not yet known."
+    },
+    {
+      "device": "INTEL_M510",
+      "workload": "B3",
+      "text": "Caution: this earlier-script result is at 97–99% of the theoretical memory speed, which is unusually high (real memory systems usually reach 70–90%). The earlier script averaged its runs and did not check results, so treat it as an upper bound until it is re-measured with the final scripts. The memory may also run faster than the DDR4-2133 that CloudLab lists."
+    },
+    {
+      "device": "INTEL_M510",
+      "workload": "GEMV",
+      "text": "Caution: this earlier-script result is at 93–99% of the theoretical memory speed, which is unusually high (real memory systems usually reach 70–90%). The earlier script averaged its runs and did not check results, so treat it as an upper bound until it is re-measured with the final scripts. The memory may also run faster than the DDR4-2133 that CloudLab lists."
+    },
+    {
+      "device": "NVIDIA_L40S",
+      "workload": "B3",
+      "text": "Caution: this earlier-script result is at 97% of the theoretical memory speed, which is unusually high (real memory systems usually reach 70–90%). The earlier script averaged its runs and did not check results, so treat it as an upper bound until it is re-measured with the final scripts."
+    },
+    {
+      "device": "NVIDIA_L40S",
+      "workload": "GEMV",
+      "text": "Caution: this earlier-script result is at 98% of the theoretical memory speed, which is unusually high (real memory systems usually reach 70–90%). The earlier script averaged its runs and did not check results, so treat it as an upper bound until it is re-measured with the final scripts."
+    },
+    {
+      "device": "NVIDIA_GH200_480GB",
+      "workload": "GEMV",
+      "text": "Caution: this earlier-script result is at 96% of the theoretical memory speed, which is unusually high (real memory systems usually reach 70–90%). The earlier script averaged its runs and did not check results, so treat it as an upper bound until it is re-measured with the final scripts."
+    },
+    {
+      "device": "NVIDIA_A100",
+      "workload": "C1",
+      "text": "Caution: fp64 on tensor cores reached 99.6% of its theoretical peak in the earlier script, which is unusually high; treat it as an upper bound until it is re-measured with the final scripts."
     }
   ],
   "no_limit": {

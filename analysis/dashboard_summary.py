@@ -111,25 +111,27 @@ def final_device(dev: str, cls: str, raw: pd.DataFrame, names: dict, core: bool)
     cfg = _json(CONFIGS / "devices" / f"{dev}.json")
     meas = _json(CAL / f"{dev}.json").get("measured", {})
     th = theory_lines(cfg)
-    lim = {"bw": meas.get("bandwidth_gbps"), "peak": meas.get("peak_gflops") or {}}
+    m = {"bw": meas.get("bandwidth_gbps"), "peak": meas.get("peak_gflops") or {}}
+    # every percentage on the dashboard is relative to the THEORETICAL peak; the measured limit is a reference line
+    lim = {"bw": th["bw"], "peak": th["peak"], "mbw": m["bw"], "mpeak": m["peak"]}
     out = SITE / dev
     shutil.rmtree(out, ignore_errors=True)
     out.mkdir(parents=True)
     limits = [x for x in (th["memory"], th["compute"]) if x]
     mline = []
-    if lim["bw"]:
-        pct = f" ({100 * lim['bw'] / th['bw']:.0f}% of theory)" if th["bw"] else ""
+    if m["bw"]:
+        pct = f" ({100 * m['bw'] / th['bw']:.0f}% of theory)" if th["bw"] else ""
         conv = _json(CAL / f"{dev}.json").get("measured", {}).get("bandwidth_convention", "")
         how = ("pure-read memory test" if "Dot" in conv else
                "memory copy test, counting the extra read before each write" if "write-allocate" in conv
                else "memory streaming test")
-        mline.append(f"memory {fmt(lim['bw'], 'GB/s')}{pct}, {how}")
-    if lim["peak"]:
+        mline.append(f"memory {fmt(m['bw'], 'GB/s')}{pct}, {how}")
+    if m["peak"]:
         parts = []
         for pr in ("fp32", "fp64"):
-            if pr in lim["peak"]:
+            if pr in m["peak"]:
                 t = th["peak"].get(pr)
-                parts.append(f"{fmt(lim['peak'][pr], 'GFLOP/s')} {pr}" + (f" ({100 * lim['peak'][pr] / t:.0f}% of theory)" if t else ""))
+                parts.append(f"{fmt(m['peak'][pr], 'GFLOP/s')} {pr}" + (f" ({100 * m['peak'][pr] / t:.0f}% of theory)" if t else ""))
         mline.append("compute " + " · ".join(parts) + ", best matrix multiply")
     if mline:
         limits.append("Measured: " + "; ".join(mline))
@@ -153,12 +155,12 @@ def final_device(dev: str, cls: str, raw: pd.DataFrame, names: dict, core: bool)
         rows = main.to_dict("records")
         for r in rows:
             r["pct"] = P.pct_of_limit(r, wid, lim)
-        header = header_box(wid, rows, unit, th, lim, "measured")
+        header = header_box(wid, rows, unit, th, lim, "theoretical")
         pages.append({"id": wid, **names.get(wid, {"name": wid, "what": ""}), "key": key_result(rows, wid, unit),
                       "header": {**header, "why": why_lines(dev, wid)}, "figures": figs,
                       "note": "Final scripts: every result checked against a reference; median of 3 separate runs."})
         entries += overview_entries(wid, rows, unit, lim, names)
-    ov = P.overview(entries, out / "overview.png", "measured")
+    ov = P.overview(entries, out / "overview.png", "theoretical")
     no_lim = [names[w]["name"] for w in [p["id"] for p in pages] if w not in {e["wid"] for e in entries}]
     return {"device": dev, "cls": cls, "category": "final", "core": core, **display(cfg, dev),
             "limits": limits, "overview": ov, "no_limit": no_lim, "workloads": pages}
@@ -170,14 +172,16 @@ def header_box(wid: str, rows: list[dict], unit: str, th: dict, lim: dict, word:
     if wid in MEMORY_BOUND or wid == "A1":
         if th["memory"]:
             peak.append(th["memory"])
-        if lim.get("bw") and word == "measured":
-            measured.append(f"Measured memory limit: {fmt(lim['bw'], 'GB/s')}")
+        if lim.get("mbw"):
+            measured.append(f"Measured memory limit: {fmt(lim['mbw'], 'GB/s')} ({100 * lim['mbw'] / th['bw']:.0f}% of theory)" if th["bw"] else
+                            f"Measured memory limit: {fmt(lim['mbw'], 'GB/s')}")
     if wid in COMPUTE_WITH_FLOPS or wid == "A1":
         if th["compute"]:
             peak.append(th["compute"])
-        if lim.get("peak") and word == "measured":
+        if lim.get("mpeak"):
             measured.append("Measured compute limit: " + " · ".join(
-                f"{fmt(v, 'GFLOP/s')} {k}" for k, v in lim["peak"].items() if k in ("fp32", "fp64")))
+                f"{fmt(v, 'GFLOP/s')} {k}" + (f" ({100 * v / th['peak'][k]:.0f}% of theory)" if th["peak"].get(k) else "")
+                for k, v in lim["mpeak"].items() if k in ("fp32", "fp64")))
     if not peak:
         peak.append(f"No single hardware limit applies: speed is set by {no_limit.get(wid, 'the algorithm')}, "
                     f"so results are reported in {unit}.")
@@ -333,7 +337,7 @@ def legacy_device(dev: str, cls: str, names: dict, core: bool) -> dict | None:
             else:
                 r["pct"] = float("nan")
             recs.append(r)
-        header = header_box(wid if wid != "GEMV" else "GEMV", recs, unit, th, {}, "datasheet")
+        header = header_box(wid if wid != "GEMV" else "GEMV", recs, unit, th, {}, "theoretical")
         if bench == "spgemm":
             header["peak"] = [f"No single hardware limit applies: building a sparse result needs scattered memory accesses, so results are reported in {unit}."]
         rr = [r for r in recs if r["dram"]] if bench in ("saxpy", "gemv", "spmv") else recs
@@ -362,7 +366,7 @@ def legacy_device(dev: str, cls: str, names: dict, core: bool) -> dict | None:
                     entries.append({"wid": wid, "label": f"{names[wid]['name']} ({pr})", "pct": r["pct"], "kind": kind,
                                     "text": f"{fmt(r['metric'], unit)} of {fmt(lv, unit)}"})
     pages.sort(key=lambda p: ORDER.index(p["id"]))
-    ov = P.overview(entries, out / "overview.png", "datasheet")
+    ov = P.overview(entries, out / "overview.png", "theoretical")
     no_lim = [p["name"] for p in pages if p["id"] not in {e["wid"] for e in entries}]
     return {"device": dev, "cls": cls, "category": "earlier", "core": core, **display(cfg, dev),
             "limits": limits, "overview": ov, "no_limit": no_lim, "workloads": pages}

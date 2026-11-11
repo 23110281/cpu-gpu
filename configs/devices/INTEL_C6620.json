@@ -28,11 +28,11 @@
     "bandwidth_gbps": 307.2,
     "derivation": {
       "bandwidth": "8 channels x DDR5-4800 x 8 B = 307.2 GB/s (dmidecode on er110: 8x16 GB DDR5 rated 5600, configured 4800 MT/s, DIMMs A1-A8, one per channel)",
-      "compute": "28 cores × 2.1 GHz base × 32 fp64 FLOP/cycle (2 AVX-512 FMA units, Intel ARK) = 1882 GFLOP/s fp64; fp32 = 2×"
+      "compute": "28 cores × 3.0 GHz (the highest clock the processor reached while running matrix multiply; Intel does not publish an all-core AVX-512 clock) × 32 fp64 FLOP/cycle (2 AVX-512 FMA units) = 2.69 TFLOP/s fp64; fp32 = 2×"
     },
     "peak_gflops": {
-      "fp32": 3763.2,
-      "fp64": 1881.6
+      "fp32": 5376.0,
+      "fp64": 2688.0
     }
   },
   "display": {

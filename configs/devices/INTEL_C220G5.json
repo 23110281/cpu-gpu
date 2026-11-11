@@ -10,12 +10,12 @@
   "datasheet": {
     "bandwidth_gbps": 230.4,
     "peak_gflops": {
-      "fp32": 1408,
-      "fp64": 704
+      "fp32": 1920.0,
+      "fp64": 960.0
     },
     "derivation": {
       "bandwidth": "2 sockets × 6 channels × 2400 MT/s × 8 B = 230.4 GB/s (DIMMs run at the CPU's 2400 limit)",
-      "compute": "20 cores × 2.2 GHz base × 16 fp64 FLOP/cycle (1 AVX-512 FMA unit) = 704 GFLOP/s fp64; fp32 = 2×"
+      "compute": "2 sockets × 10 cores × 3.0 GHz (maximum turbo, an upper bound) × 16 fp64 FLOP/cycle (1 AVX-512 FMA unit) = 960 GFLOP/s fp64; fp32 = 2×"
     }
   }
 }

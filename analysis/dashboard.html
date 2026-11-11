@@ -193,7 +193,7 @@ function renderNav() {
   const [v, a, b] = route;
   const item = (h, label, active, extra = '', cls = '') =>
     `<a class="nav-item ${cls} ${active ? 'active' : ''}" href="#${h}"><span>${label}</span>${extra}</a>`;
-  let h = `<div class="brand">CPU <span>vs</span> GPU</div><div class="tagline">Replicating "Debunking the 100× GPU vs CPU myth" (ISCA 2010)</div>
+  let h = `<div class="brand">CPU <span>vs</span> GPU</div><div class="tagline"></div>
     <div class="nav-h">Project Status</div>
     ${item('progress', 'Project progress', v === 'progress' || !v)}
     ${item('compare', 'CPU vs GPU', v === 'compare')}
@@ -219,14 +219,10 @@ function viewProgress() {
   const sym = { final: '<span class="s-final">✓</span>', earlier: '<span class="s-earlier">✓</span>',
                 bad: '<span class="s-bad">TODO</span>', todo: '<span class="s-todo">TODO</span>' };
   let h = `<h1>Project progress</h1>
-    <p class="lead">Sixteen workloads from the original study, each with a tuned processor (CPU) and graphics-card (GPU) version,
+    <p class="lead">Sixteen workloads, each with a tuned processor (CPU) and graphics-card (GPU) version,
     measured on the core machines below. Click a machine in the sidebar for its results.</p>
     <div class="cards">${P.cards.map(c => `<div class="card"><div class="label">${esc(c.label)}</div><div class="value">${esc(c.value)}</div><div class="sub">${esc(c.sub)}</div></div>`).join('')}</div>
-    <div class="legend">
-      <span><b class="s-final">✓</b>measured with the final scripts</span>
-      <span><b class="s-earlier">✓</b>earlier scripts, results correct</span>
-      <span><b class="s-bad">TODO</b>ran, but the earlier method was wrong</span>
-      <span><b class="s-todo">TODO</b>not run yet</span></div>
+
     <div class="tbl-wrap"><table><thead><tr><th rowspan="2">Workload</th>
       <th class="side" colspan="${P.columns.cpu.length}">Core CPUs</th><th class="side" colspan="${P.columns.gpu.length}">Core GPUs</th></tr><tr>
       ${cols.map(c => `<th style="text-align:center">${esc(c.name)}<span class="node">${esc(c.node)}</span></th>`).join('')}</tr></thead><tbody>`;
@@ -453,7 +449,7 @@ function viewLibrary() {
     const [dev, wid, prec] = libOpen.split('|');
     const g = summ.filter(r => r.device === dev && r.workload_id === wid && r.precision === prec).sort((a, b) => b.best_metric - a.best_metric);
     h += `<div class="box" style="margin-top:18px"><h3>${esc(wn(wid))} on ${esc(pages[dev]?.name || dev)}</h3>
-      <div class="tbl-wrap"><table><thead><tr><th>Library</th><th class="num">Best result</th><th class="num">Share of the machine's limit</th></tr></thead><tbody>
+      <div class="tbl-wrap"><table><thead><tr><th>Library</th><th class="num">Best result</th><th class="num">Share of the theoretical peak</th></tr></thead><tbody>
       ${g.map(r => `<tr><td>${esc(libName(r.library))}</td><td class="num">${esc(fmtU(r.best_metric, r.metric_name))}</td><td class="num">${r.best_pct_measured_peak == null ? '—' : Math.round(r.best_pct_measured_peak) + '%'}</td></tr>`).join('')}</tbody></table></div>
       <button class="lnk" id="lib-all">${libAll ? 'Hide' : 'Show'} every size</button>`;
     if (libAll) {

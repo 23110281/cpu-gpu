@@ -24,7 +24,7 @@ need_device = @test -n "$(DEVICE)" || { echo "usage: make $@ DEVICE=<id in confi
 # GPU if a working NVIDIA driver is present, else CPU (override: make smoke SMOKE_DEVICE=cpu)
 SMOKE_DEVICE ?= $(shell nvidia-smi -L >/dev/null 2>&1 && echo cuda || echo cpu)
 
-.PHONY: setup test smoke calibrate sweep sweep_dry campaign analysis site readme list venv clean
+.PHONY: setup test smoke calibrate sweep sweep_dry campaign pack analysis site readme list venv clean
 
 setup:
 	bash scripts/setup_node.sh
@@ -50,6 +50,10 @@ sweep_dry:
 campaign:
 	$(need_device)
 	bash scripts/run_campaign.sh start $(DEVICE)
+
+# merge per-job samples/ and env/ files into samples.tar + machine.json per device (after copy-back)
+pack:
+	$(PYTHON) scripts/pack_results.py
 
 analysis:
 	SOURCE_DATE_EPOCH=0 $(PYTHON) analysis/analyze.py

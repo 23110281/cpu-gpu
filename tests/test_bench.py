@@ -451,3 +451,25 @@ def test_build_error_summary_keeps_the_compiler_error():
                      + "-I/very/long/include/path " * 20 + "\nmain.cpp:4:52: error: 'f' was not declared in this scope\n"
                      "ninja: build stopped: subcommand failed.")
     assert "'f' was not declared" in build_error_summary(e)
+
+
+def test_pack_results_roundtrip(tmp_path):
+    """pack_results merges per-job files losslessly, deletes them, and merges a second copy-back."""
+    import gzip, importlib.util, json, tarfile
+    spec = importlib.util.spec_from_file_location("pack", Path(__file__).resolve().parents[1] / "scripts/pack_results.py")
+    pack = importlib.util.module_from_spec(spec); spec.loader.exec_module(pack)
+    d = tmp_path / "DEV"
+    def write(i):
+        (d / "samples").mkdir(parents=True, exist_ok=True); (d / "env").mkdir(exist_ok=True)
+        (d / "samples" / f"r{i}_h_t1.csv.gz").write_bytes(gzip.compress(f"{i}.5\n".encode()))
+        (d / "env" / f"r{i}.json").write_text(json.dumps({"run_id": f"r{i}", "x": [i], "kernel": "k"}))
+    write(1); write(2)
+    assert pack.pack_samples(d) == 2 and pack.pack_env(d) == 2
+    assert not (d / "samples").exists() and not (d / "env").exists()
+    write(3)                                                   # second copy-back
+    pack.pack_samples(d); pack.pack_env(d)
+    with tarfile.open(d / "samples.tar") as t:
+        assert sorted(t.getnames()) == ["r1_h_t1.csv.gz", "r2_h_t1.csv.gz", "r3_h_t1.csv.gz"]
+        assert gzip.decompress(t.extractfile("r3_h_t1.csv.gz").read()) == b"3.5\n"
+    m = json.loads((d / "machine.json").read_text())
+    assert m["jobs"] == 3 and "changed_during_campaign" in m and m["changed_during_campaign"]["x"] == [[1], [2], [3]]

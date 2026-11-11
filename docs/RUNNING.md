@@ -112,12 +112,19 @@ Run on your laptop, from the repo folder. Use `gpu` instead of `cpu` for GPU mac
 ```bash
 NODE=<user>@<node-hostname>; DEV=<DEVICE>; SIDE=cpu
 SSH="ssh -i $HOME/.ssh/cloudlab"
+mkdir -p results/data/$SIDE/$DEV results/data/sessions/${DEV}_$(date +%Y%m%d)/logs   # rsync does not create parent folders
 rsync -av -e "$SSH" $NODE:cpu-gpu/results/data/$SIDE/$DEV/ results/data/$SIDE/$DEV/ </dev/null
 rsync -av -e "$SSH" $NODE:cpu-gpu/results/calibration/ results/calibration/ </dev/null
 rsync -av -e "$SSH" $NODE:cpu-gpu/results/logs/ results/data/sessions/${DEV}_$(date +%Y%m%d)/logs/ </dev/null
 ```
 
-You can run this while the campaign is still going, as a backup; it only copies what is new.
+Then pack the per-job files (thousands of tiny `samples/` and `env/` files) into two files per machine: `samples.tar` (every raw timing, unchanged; the analysis reads it) and `machine.json` (software versions, machine state and per-placement thread settings: one record per machine, since they are identical across jobs; per-job ids and git commits are already in the CSV rows):
+
+```bash
+make pack
+```
+
+You can copy while the campaign is still going, as a backup. Copy, then `make pack` again; new files are merged into the existing packs.
 
 ## 10. Analyse and publish (on your laptop)
 

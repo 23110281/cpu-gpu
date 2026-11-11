@@ -44,7 +44,7 @@ The protocol follows the comparison principle of Lee et al. (ISCA'10): compare *
 | Trials | 3 independent process launches per configuration. The configuration order is shuffled per trial with a recorded seed. |
 | Reported per row (one trial) | median, IQR, min, coefficient of variation, 95% bootstrap CI of the median (2000 resamples, fixed seed) |
 | Stability flag | `flag=unstable` if CV > 5% |
-| Analysis | Rows from all trials are pooled using their raw samples (`samples/*.csv.gz`). GPU/CPU ratios are ratios of medians, with a bootstrap CI. |
+| Analysis | Rows from all trials are pooled using their raw samples (`samples/*.csv.gz` on the node, packed into `samples.tar` after copy-back). GPU/CPU ratios are ratios of medians, with a bootstrap CI. |
 
 ## 6. Working set (`bench/devices.py`, workload `working_set_bytes`)
 - Every row records `working_set_bytes` and `ws_over_llc`.
@@ -112,7 +112,7 @@ The protocol follows the comparison principle of Lee et al. (ISCA'10): compare *
 ## 13. Output
 - **Rows:** one per (configuration, trial), in `results/data/<cpu|gpu>/<DEVICE>/<ID>_<workload>.csv`. The schema is `bench/schema.py::COLUMNS`.
 - **Raw samples:** `results/data/<cpu|gpu>/<DEVICE>/samples/<run_id>_<cfg>.csv.gz`.
-- **Environment records:** `results/data/<cpu|gpu>/<DEVICE>/env/<run_id>.json`.
+- **Environment records:** `env/<run_id>.json` per job on the node; after copy-back `scripts/pack_results.py` reduces them to one `results/data/<cpu|gpu>/<DEVICE>/machine.json` (fields constant across jobs, per-placement thread settings, campaigns, git commits, count of dirty-tree jobs; anything that changed mid-campaign is listed under `changed_during_campaign`).
 
 ## Deviations
 Any deviation from this protocol, such as a library that cannot exclude its own planning time, is recorded in the workload module's docstring and in the table below.

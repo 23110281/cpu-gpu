@@ -2,7 +2,7 @@
 """Analysis: headline numbers, library comparison, bound verification, device ratios with
 bootstrap CIs, and per-workload plots -- from our raw data only (results/data).
 
-Inputs : results/data/<cpu|gpu>/<DEVICE>/<ID>_<name>.csv (+ samples/*.csv.gz)
+Inputs : results/data/<cpu|gpu>/<DEVICE>/<ID>_<name>.csv (+ samples.tar, or loose samples/*.csv.gz on a node)
          results/calibration/<DEVICE>.json
 Outputs: results/analysis/<DEVICE>_headline.csv   best (library, placement) per problem
          results/analysis/<DEVICE>_libraries.csv  every library per problem (fairness evidence)
@@ -23,6 +23,8 @@ import math
 import os
 import re
 import sys
+import tarfile
+from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
@@ -72,13 +74,24 @@ def load() -> pd.DataFrame:
     return df
 
 
+@lru_cache(maxsize=None)
+def _sample_pack(d: str) -> dict:
+    """name -> bytes from <dir>/samples.tar (written by scripts/pack_results.py); {} if not packed."""
+    t = Path(d) / "samples.tar"
+    if not t.exists():
+        return {}
+    with tarfile.open(t) as tf:
+        return {m.name: tf.extractfile(m).read() for m in tf.getmembers()}
+
+
 def samples_for(rows: pd.DataFrame) -> np.ndarray:
     out = []
     for _, r in rows.iterrows():
-        f = Path(r["_file_dir"]) / "samples" / f"{r['run_id']}_{r['config_hash']}_t{int(r['trial'])}.csv.gz"
-        if f.exists():
-            with gzip.open(f, "rt") as fh:
-                out += [float(l) for l in fh if l and l[0] not in "#m"]
+        name = f"{r['run_id']}_{r['config_hash']}_t{int(r['trial'])}.csv.gz"
+        f = Path(r["_file_dir"]) / "samples" / name               # loose (on a node, before packing)
+        data = f.read_bytes() if f.exists() else _sample_pack(r["_file_dir"]).get(name)
+        if data:
+            out += [float(l) for l in gzip.decompress(data).decode().splitlines() if l and l[0] not in "#m"]
     return np.asarray(out, dtype=float)
 
 

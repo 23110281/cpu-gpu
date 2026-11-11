@@ -1,4 +1,4 @@
-# Handover: CPU vs GPU benchmark project (state as of 2026-11-11 01:00 UTC: CPU campaigns running)
+# Handover: CPU vs GPU benchmark project (state as of 2026-11-11 05:45 UTC: CPU campaigns running)
 
 This is for an AI coding session picking up the work. **Verify every claim here against the code, git log and data before acting on it.** If something here disagrees with the repo, the repo wins; note the discrepancy. Keep this file current: update it at every milestone and delete what is no longer true (the user's standing request).
 
@@ -104,6 +104,10 @@ Make targets: `setup test smoke calibrate sweep sweep_dry campaign analysis site
 | Calibration | 273.5 GB/s (89% of datasheet); GEMM fp32 3797 (MKL) / fp64 1852 (MKL); OpenBLAS 3479/1573, BLIS 2206/1022 | 125.0 GB/s (61%; same as the lost 11-05 campaign); GEMM fp32 2030 / fp64 969 (BLIS); MKL 1674/867, OpenBLAS 1874/892 |
 | Campaign | `c_intel_c6620_20261111T0036Z`, 3 trials × 630 jobs, ETA ~10 h | `c_amd_c6525_100g_20261111T0036Z`, 3 trials × 630 jobs, ETA ~9 h |
 | Code | `2d52043` (fresh clone from a bundle in `~/cpu-gpu`) | same |
+
+**Progress 05:45 UTC:** Intel 990/1890 jobs (ETA ~10:30 UTC), AMD 783/1890 (ETA ~13:00 UTC; slower than estimated). 0 errors, 0 validation failures. OOM only for A1 llama3-8b fp32 decode batch 32 (preflight: the working set × 2.5 exceeds 125 GB), which is expected. Unstable ≈ 20% of rows, mostly sub-ms calls; review during analysis.
+
+**After copy-back:** `make analysis site readme`. Both CPUs then appear on the Library analysis page automatically (C1 torch/MKL vs OpenBLAS vs BLIS, A1 libs, C3/C5/C6 etc.). The page/report now also lists every library's absolute result (best value + unit, GFLOP/s, GB/s, % of measured peak, version string, and per-size values); see `library_summary.csv` `best_*` columns and `library_report.md`.
 
 Check / resume: `ssh ... 'cd ~/cpu-gpu && bash scripts/run_campaign.sh status <DEVICE>'` (resume with `resume`). Copy back per docs/RUNNING.md step 9.
 

@@ -699,6 +699,8 @@
         const probText = p => { try { return Object.entries(JSON.parse(p)).filter(([k]) => k !== 'variant')
             .map(([k, v]) => `${k}=${v}`).join(' '); } catch (e) { return p; } };
 
+        const fmtNum = v => Math.abs(v) >= 100 ? Math.round(v).toLocaleString('en-US') : Number(v.toPrecision(3)).toString();
+
         function renderLibrary() {
             const R = libraryReport, view = document.getElementById('library-view');
             const summ = R.summary || [], order = R.order || [];
@@ -737,14 +739,25 @@
                 const [dev, wid, prec] = libOpen.split('|');
                 const probs = (R.problems || []).filter(p => p.device === dev && p.workload_id === wid && p.precision === prec);
                 const libs = [...new Set(probs.flatMap(p => Object.keys(p).filter(c => c.startsWith('vs_winner[') && p[c] !== null).map(c => c.slice(10, -1))))];
+                const best = summ.filter(r => r.device === dev && r.workload_id === wid && r.precision === prec)
+                    .sort((a, b) => b.best_metric - a.best_metric);
+                html += `<div class="panel"><h3>${esc(wid)} on ${esc(dev.replace(/_/g, ' '))}: each library at its best size</h3><div class="table-wrap" style="margin-bottom:0">
+                    <table class="results"><thead><tr><th>Library</th><th style="text-align:right">Best measured</th><th style="text-align:right">GFLOP/s</th>
+                    <th style="text-align:right">GB/s</th><th style="text-align:right">% of measured peak</th><th>At size</th><th>Version / backend</th></tr></thead><tbody>
+                    ${best.map(r => `<tr><td><b>${esc(libName(r.library))}</b></td><td class="num">${fmtNum(r.best_metric)} ${esc(r.metric_name)}</td>
+                        <td class="num">${r.best_gflops == null ? '—' : fmtNum(r.best_gflops)}</td><td class="num">${r.best_gbps == null ? '—' : fmtNum(r.best_gbps)}</td>
+                        <td class="num">${r.best_pct_measured_peak == null ? '—' : r.best_pct_measured_peak.toFixed(0) + '%'}</td>
+                        <td class="prob">${esc(probText(r.best_problem))}</td><td class="prob">${esc(r.library_detail || '')}</td></tr>`).join('')}
+                    </tbody></table></div></div>`;
                 html += `<div class="panel"><h3>${esc(wid)} on ${esc(dev.replace(/_/g, ' '))}: every size</h3><div class="table-wrap" style="margin-bottom:0">
                     <table class="results"><thead><tr><th>Problem</th><th>Winner</th><th style="text-align:right">Margin</th><th>Tie?</th>
                     <th style="text-align:right">Winner % of peak</th>${libs.map(l => `<th style="text-align:right">${esc(libName(l))}</th>`).join('')}</tr></thead><tbody>
                     ${probs.map(p => `<tr><td class="prob">${esc(probText(p.problem))}</td><td><b>${esc(libName(p.winner))}</b></td>
                         <td class="num">+${p.margin_pct.toFixed(1)}%</td><td>${p.tie ? 'tie' : ''}</td>
                         <td class="num">${p.winner_pct_measured_peak === null ? '—' : p.winner_pct_measured_peak.toFixed(0) + '%'}</td>
-                        ${libs.map(l => `<td class="num">${p['vs_winner[' + l + ']'] === null || p['vs_winner[' + l + ']'] === undefined ? '—' : p['vs_winner[' + l + ']'].toFixed(2) + '×'}</td>`).join('')}</tr>`).join('')}
-                    </tbody></table></div></div>`;
+                        ${libs.map(l => { const v = p['metric[' + l + ']'], x = p['vs_winner[' + l + ']'];
+                    return `<td class="num">${v === null || v === undefined ? '—' : `${fmtNum(v)} <small>(${x.toFixed(2)}×)</small>`}</td>`; }).join('')}</tr>`).join('')}
+                    </tbody></table></div><p class="muted" style="margin:8px 0 0">Library columns: measured ${esc(probs.length ? probs[0].metric_name : '')} (speed vs the winner).</p></div>`;
             }
             const notes = (R.notes || []).filter(n => devs.some(d => compared(d, n.workload).size && notesFor(d, n.workload, n.library).includes(n)));
             if ((R.variants || []).length) {

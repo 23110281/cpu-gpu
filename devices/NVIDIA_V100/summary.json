@@ -1,0 +1,395 @@
+{
+ "device": "NVIDIA_V100",
+ "label": "NVIDIA Tesla V100-SXM2-16GB (Volta) — CloudLab c4130 (Wisconsin)",
+ "device_class": "gpu",
+ "tiles": [
+  {
+   "k": "Memory bandwidth (measured)",
+   "v": "845 GB/s",
+   "s": "94% of the 900 GB/s datasheet"
+  },
+  {
+   "k": "GEMM peak fp32 (measured)",
+   "v": "14.1 TFLOP/s",
+   "s": "90% of the 15.7 TFLOP/s datasheet"
+  },
+  {
+   "k": "GEMM peak fp64 (measured)",
+   "v": "7.0 TFLOP/s",
+   "s": "90% of the 7.8 TFLOP/s datasheet"
+  },
+  {
+   "k": "Validated results",
+   "v": "522",
+   "s": "150 problems × 3 trials · 0 errors · 8 unstable"
+  }
+ ],
+ "statements": [
+  "Measured ceilings: memory bandwidth 845 GB/s (94% of the datasheet 900 GB/s); GEMM 7.0 TFLOP/s fp64, 14.1 TFLOP/s fp32. Every percentage below is relative to these measured ceilings.",
+  "Bandwidth-bound workloads at their largest size reach B1 SAXPY 100%; B2 LBM D3Q19 95–96%; B3 SpMV (CSR) 9–78%; B4 SpGEMM (CSR) 2–9% of measured bandwidth.",
+  "Compute-bound workloads with a FLOP model reach C1 GEMM 96–99%; C3 2D Convolution 11–27% of the measured GEMM peak.",
+  "Llama-3 inference (llama3.2-1b): decode B=1 at 71% of measured bandwidth; decode B=8 at 60% of measured bandwidth; prefill at 103% of measured GEMM peak.",
+  "Fastest implementation where several were timed — A1: PyTorch + CUDA graph fastest on 2/2 sizes (PyTorch at 0.44× median); C3: native kernel fastest on 18/18 sizes (PyTorch at 0.42× median); S1: torch.histc fastest on 15/18 sizes (torch.bincount at 0.66× median); S2: CUDA graph launch fastest on 4/4 sizes (cooperative launch at 0.90× median).",
+  "Clocks were not locked: the median clock during the largest GEMM was 1,392 MHz (recorded in every row as freq_mhz).",
+  "Data: 522 validated rows from 3 process-isolated trials (commits 09d3e54, 2999f37, 3b1a3f2); 36 unsupported (unsupported:bf16 not native on this device); 117 skipped because the working set exceeds device memory; 0 errors; 8 rows flagged unstable (CV > 5%)."
+ ],
+ "table": [
+  {
+   "id": "B1",
+   "name": "SAXPY",
+   "bound": "B",
+   "result": "848 GB/s",
+   "problem": "n=256M, fp64",
+   "pct": 100.3,
+   "kind": "bandwidth",
+   "impl": "PyTorch",
+   "n_impl": 1,
+   "problems": 10
+  },
+  {
+   "id": "B2",
+   "name": "LBM D3Q19",
+   "bound": "B",
+   "result": "2,654 MLUPS",
+   "problem": "n=256, fp64",
+   "pct": 95.5,
+   "kind": "bandwidth",
+   "impl": "native kernel",
+   "n_impl": 1,
+   "problems": 6
+  },
+  {
+   "id": "B3",
+   "name": "SpMV (CSR)",
+   "bound": "B",
+   "result": "72.7 GB/s",
+   "problem": "index=int32, matrix=powerlaw, size=16M, fp32",
+   "pct": 8.6,
+   "kind": "bandwidth",
+   "impl": "PyTorch",
+   "n_impl": 1,
+   "problems": 6
+  },
+  {
+   "id": "B4",
+   "name": "SpGEMM (CSR)",
+   "bound": "B",
+   "result": "21.6 GFLOP/s",
+   "problem": "matrix=poisson3d, size=128, fp32",
+   "pct": 8.8,
+   "kind": "bandwidth",
+   "impl": "PyTorch",
+   "n_impl": 1,
+   "problems": 6
+  },
+  {
+   "id": "C1",
+   "name": "GEMM",
+   "bound": "C",
+   "result": "7.0 TFLOP/s",
+   "problem": "n=8K, fp64",
+   "pct": 96.4,
+   "kind": "GEMM peak",
+   "impl": "PyTorch",
+   "n_impl": 1,
+   "problems": 8
+  },
+  {
+   "id": "C2",
+   "name": "Monte Carlo option pricing (fp64)",
+   "bound": "C",
+   "result": "45.4 Gpaths/s",
+   "problem": "paths=16M, fp64",
+   "pct": null,
+   "kind": "",
+   "impl": "native kernel",
+   "n_impl": 1,
+   "problems": 4
+  },
+  {
+   "id": "C3",
+   "name": "2D Convolution",
+   "bound": "C",
+   "result": "29.8K Mpixels/s",
+   "problem": "c=3, hw=8K, k=3, fp32",
+   "pct": 11.4,
+   "kind": "GEMM peak",
+   "impl": "native kernel",
+   "n_impl": 2,
+   "problems": 18
+  },
+  {
+   "id": "C4",
+   "name": "FFT 1D/2D",
+   "bound": "C",
+   "result": "1.7 TFLOP/s",
+   "problem": "dim=2, n=8K, c64",
+   "pct": null,
+   "kind": "",
+   "impl": "PyTorch",
+   "n_impl": 1,
+   "problems": 9
+  },
+  {
+   "id": "C5",
+   "name": "Bilateral filter",
+   "bound": "C",
+   "result": "31.2K Mpixels/s",
+   "problem": "hw=8K, r=2, fp32",
+   "pct": null,
+   "kind": "",
+   "impl": "native, fast exp (__expf)",
+   "n_impl": 2,
+   "problems": 18
+  },
+  {
+   "id": "C6",
+   "name": "Sort (key-value)",
+   "bound": "C",
+   "result": "6,196 Mpairs/s",
+   "problem": "dist=zipf, n=128M, int32",
+   "pct": null,
+   "kind": "",
+   "impl": "PyTorch",
+   "n_impl": 1,
+   "problems": 6
+  },
+  {
+   "id": "C7",
+   "name": "Index search",
+   "bound": "C",
+   "result": "5,057 Mqueries/s",
+   "problem": "keys=512M, order=sorted, queries=16M, int32",
+   "pct": null,
+   "kind": "",
+   "impl": "PyTorch",
+   "n_impl": 1,
+   "problems": 10
+  },
+  {
+   "id": "C8",
+   "name": "AES-128-CTR",
+   "bound": "C",
+   "result": "126 GB/s",
+   "problem": "bytes=1G, uint8",
+   "pct": null,
+   "kind": "",
+   "impl": "custom CUDA kernel",
+   "n_impl": 1,
+   "problems": 2
+  },
+  {
+   "id": "C9",
+   "name": "SHA-256 multi-buffer",
+   "bound": "C",
+   "result": "51.9 GB/s",
+   "problem": "msg_len=64, total=1G, uint8",
+   "pct": null,
+   "kind": "",
+   "impl": "custom CUDA kernel",
+   "n_impl": 1,
+   "problems": 3
+  },
+  {
+   "id": "S1",
+   "name": "Histogram",
+   "bound": "S",
+   "result": "51.3K Msamples/s",
+   "problem": "bins=64K, dist=uniform, n=1G, fp32",
+   "pct": null,
+   "kind": "",
+   "impl": "torch.histc",
+   "n_impl": 2,
+   "problems": 36
+  },
+  {
+   "id": "S2",
+   "name": "Constraint solver (batched PGS)",
+   "bound": "S",
+   "result": "4,480 iterations/s",
+   "problem": "batch=64K, bodies=128K, colors=8, fp32",
+   "pct": null,
+   "kind": "",
+   "impl": "CUDA graph launch",
+   "n_impl": 2,
+   "problems": 4
+  },
+  {
+   "id": "A1",
+   "name": "Llama-3 inference",
+   "bound": "A",
+   "result": "679 tokens/s",
+   "problem": "llama3.2-1b decode batch 8, fp32",
+   "pct": 60.4,
+   "kind": "bandwidth",
+   "impl": "PyTorch + CUDA graph",
+   "n_impl": 2,
+   "problems": 4
+  }
+ ],
+ "findings": [
+  {
+   "device": "NVIDIA_V100",
+   "title": "Llama decode measures the memory system only after two fixes",
+   "status": "verified",
+   "date": "2026-11-11",
+   "text": "Generating one token at a time should be limited by reading the weights. Two harness problems hid that: (1) PyTorch's fused attention kernel tiles over query tokens, so with one query most of each tile was idle (47% of the step at batch 1, 64% at batch 8), and (2) each step issues ~500 small kernels from Python, which this node's 2016 Xeon could not launch as fast as the GPU ran them. Decode attention is now two batched matmuls over an in-place KV cache, and decode is also timed replayed from a CUDA graph (as serving engines run it). llama3.2-1b fp32: batch 1 66.8 → 117.6 tokens/s, batch 8 251 → 678.5 tokens/s."
+  },
+  {
+   "device": "NVIDIA_V100",
+   "title": "Clock speed explains the GEMM gap to the datasheet",
+   "status": "verified",
+   "date": "2026-11-11",
+   "text": "GEMM reached 14.1 TFLOP/s fp32 against a 15.7 datasheet figure. The datasheet assumes the 1530 MHz boost clock; under its 300 W power limit this GPU ran GEMM at ~1392 MHz (15.34 × 1392/1520 = 14.05 matches the September legacy run, which held 1520 MHz). Clocks are recorded, not locked. Because the ceiling is measured at whatever clock that GEMM ran at, a kernel that ran faster can exceed it slightly: Llama prefill ran at ~1493 MHz and shows 103% of the measured GEMM peak."
+  },
+  {
+   "device": "NVIDIA_V100",
+   "title": "Small problems can beat the memory ceiling",
+   "status": "verified",
+   "date": "2026-11-11",
+   "text": "Sizes whose data fits in the 6 MB L2 cache are not limited by HBM bandwidth (SAXPY n=1M: 1,010 GB/s vs the 845 GB/s ceiling). The ceiling markers are drawn only for problems that stream from device memory."
+  },
+  {
+   "device": "NVIDIA_V100",
+   "title": "Irregular sparse workloads sit far below the bandwidth line",
+   "status": "verified",
+   "date": "2026-11-11",
+   "text": "SpMV on a regular 3-D Poisson matrix reaches 78% of bandwidth, but on a power-law matrix only 9%, and SpGEMM 2–9%: random gathers and the symbolic phase (inside the timer, by design) waste most of each memory transaction. These are cuSPARSE results as measured; the 'bandwidth-bound' label does not hold for them."
+  },
+  {
+   "device": "NVIDIA_V100",
+   "title": "What the 16 GB Volta card cannot run",
+   "status": "verified",
+   "date": "2026-11-11",
+   "text": "Volta has no bf16 hardware, so every bf16 row is recorded 'unsupported' instead of emulated. Problems are skipped before running when 2.5× their working set exceeds ~14 GB of usable memory: Llama-3.2-3B and Llama-3-8B, Llama-3.2-1B decode at batch 32, SAXPY n=1G, LBM n=512 and AES on 4 GB. The 2.5× safety margin is conservative; some of the 8–9 GB problems would probably fit (open item)."
+  },
+  {
+   "device": "NVIDIA_V100",
+   "title": "SHA-256 may be below well-tuned GPU code",
+   "status": "hypothesis",
+   "date": "2026-11-11",
+   "text": "The custom CUDA SHA-256 reaches 52–105 GB/s. Each thread reads its own message, so loads are not coalesced; a layout that interleaves messages may be much faster. To confirm: profile with Nsight Compute (memory throughput vs instruction throughput) before using C9 in a CPU-GPU ratio."
+  }
+ ],
+ "figures": [
+  {
+   "file": "overview.png",
+   "title": "Overview: % of measured ceiling",
+   "wide": true,
+   "caption": "One bar per workload variant at its largest problem size. Not shown (no simple hardware ceiling): C2, C4, C5, C6, C7, C8, C9, S1, S2."
+  },
+  {
+   "file": "B1.png",
+   "title": "B1 SAXPY",
+   "caption": "10 problem sizes; largest: 848 GB/s (n=256M, fp64), 100% of measured bandwidth.",
+   "wide": false
+  },
+  {
+   "file": "B2.png",
+   "title": "B2 LBM D3Q19",
+   "caption": "6 problem sizes; largest: 2,654 MLUPS (n=256, fp64), 96% of measured bandwidth.",
+   "wide": false
+  },
+  {
+   "file": "B3.png",
+   "title": "B3 SpMV (CSR)",
+   "caption": "6 problem sizes; largest: 72.7 GB/s (index=int32, matrix=powerlaw, size=16M, fp32), 9% of measured bandwidth.",
+   "wide": false
+  },
+  {
+   "file": "B4.png",
+   "title": "B4 SpGEMM (CSR)",
+   "caption": "6 problem sizes; largest: 21.6 GFLOP/s (matrix=poisson3d, size=128, fp32), 9% of measured bandwidth.",
+   "wide": false
+  },
+  {
+   "file": "C1.png",
+   "title": "C1 GEMM",
+   "caption": "8 problem sizes; largest: 7.0 TFLOP/s (n=8K, fp64), 96% of measured GEMM peak.",
+   "wide": false
+  },
+  {
+   "file": "C2.png",
+   "title": "C2 Monte Carlo option pricing (fp64)",
+   "caption": "4 problem sizes; largest: 45.4 Gpaths/s (paths=16M, fp64).",
+   "wide": false
+  },
+  {
+   "file": "C3.png",
+   "title": "C3 2D Convolution",
+   "caption": "18 problem sizes; largest: 29.8K Mpixels/s (c=3, hw=8K, k=3, fp32), 11% of measured GEMM peak.",
+   "wide": true
+  },
+  {
+   "file": "C4.png",
+   "title": "C4 FFT 1D/2D",
+   "caption": "9 problem sizes; largest: 1.7 TFLOP/s (dim=2, n=8K, c64).",
+   "wide": false
+  },
+  {
+   "file": "C5.png",
+   "title": "C5 Bilateral filter",
+   "caption": "18 problem sizes; largest: 31.2K Mpixels/s (hw=8K, r=2, fp32).",
+   "wide": true
+  },
+  {
+   "file": "C6.png",
+   "title": "C6 Sort (key-value)",
+   "caption": "6 problem sizes; largest: 6,196 Mpairs/s (dist=zipf, n=128M, int32).",
+   "wide": false
+  },
+  {
+   "file": "C7.png",
+   "title": "C7 Index search",
+   "caption": "10 problem sizes; largest: 5,057 Mqueries/s (keys=512M, order=sorted, queries=16M, int32).",
+   "wide": false
+  },
+  {
+   "file": "C8.png",
+   "title": "C8 AES-128-CTR",
+   "caption": "2 problem sizes; largest: 126 GB/s (bytes=1G, uint8).",
+   "wide": false
+  },
+  {
+   "file": "C9.png",
+   "title": "C9 SHA-256 multi-buffer",
+   "caption": "3 problem sizes; largest: 51.9 GB/s (msg_len=64, total=1G, uint8).",
+   "wide": false
+  },
+  {
+   "file": "S1.png",
+   "title": "S1 Histogram",
+   "caption": "36 problem sizes; largest: 51.3K Msamples/s (bins=64K, dist=uniform, n=1G, fp32).",
+   "wide": true
+  },
+  {
+   "file": "S2.png",
+   "title": "S2 Constraint solver (batched PGS)",
+   "caption": "4 problem sizes; largest: 4,480 iterations/s (batch=64K, bodies=128K, colors=8, fp32).",
+   "wide": false
+  },
+  {
+   "file": "A1.png",
+   "title": "A1 Llama-3 inference",
+   "caption": "4 problem sizes; largest: 679 tokens/s (llama3.2-1b decode batch 8, fp32), 60% of measured bandwidth.",
+   "wide": false
+  }
+ ],
+ "counts": {
+  "ok": 522,
+  "unsupported": 36,
+  "oom": 117,
+  "error": 0,
+  "validation_failed": 0,
+  "unstable": 8,
+  "trials": 3,
+  "git_shas": [
+   "09d3e54",
+   "2999f37",
+   "3b1a3f2"
+  ],
+  "unsupported_reasons": [
+   "unsupported:bf16 not native on this device"
+  ]
+ }
+}

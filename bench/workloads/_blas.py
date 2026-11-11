@@ -9,11 +9,20 @@ workloads the harness therefore times every well-known library available on the 
 Threading: OpenBLAS (OpenMP build) and BLIS (OpenMP build) follow OMP_NUM_THREADS /
 BLIS_NUM_THREADS, both set by devices.placement_env from the pinned placement.
 Library paths can be overridden with BENCH_LIB_<NAME>=/path/to/lib.so (e.g. AOCL-BLIS).
+
+OpenBLAS CPU detection: a DYNAMIC_ARCH build older than the CPU can fail to recognise it and fall
+back to a generic kernel (Ubuntu 22.04's OpenBLAS 0.3.20 on Xeon Gold 5512U / Emerald Rapids:
+"Prescott", 893 vs 3381 GFLOP/s sgemm). `load` probes the detected core in a subprocess and, only
+when it is a generic fallback on a CPU with AVX-512 / AVX2, forces the matching kernel family via
+OPENBLAS_CORETYPE (SkylakeX / Haswell) before loading. The core actually used is part of
+`version()` (and so of every row's `library` column); an explicit OPENBLAS_CORETYPE is respected.
 """
 from __future__ import annotations
 
 import ctypes
 import os
+import subprocess
+import sys
 from functools import lru_cache
 
 from ..core import Unsupported
@@ -33,11 +42,47 @@ CANDIDATES = {
 CPU_LIBS = ("torch", "openblas", "blis")
 
 
+# OpenBLAS core names that mean "CPU not recognised, generic x86 kernel"
+_GENERIC_CORES = {"prescott", "katmai", "coppermine", "northwood", "banias", "core2", "penryn",
+                  "dunnington", "nehalem", "atom", "unknown"}
+_forced_core = None
+
+
+def _openblas_corename(path: str, env: dict) -> str:
+    code = ("import ctypes,sys; l=ctypes.CDLL(sys.argv[1]); f=l.openblas_get_corename; "
+            "f.restype=ctypes.c_char_p; print(f().decode())")
+    try:
+        r = subprocess.run([sys.executable, "-c", code, path], env=env, capture_output=True, text=True, timeout=60)
+        return r.stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def _fix_openblas_coretype(path: str):
+    """Force OPENBLAS_CORETYPE only when auto-detection fell back to a generic core."""
+    global _forced_core
+    if "OPENBLAS_CORETYPE" in os.environ:
+        return
+    env = {k: v for k, v in os.environ.items() if k != "OPENBLAS_CORETYPE"}
+    env["OMP_NUM_THREADS"] = "1"
+    detected = _openblas_corename(path, env)
+    if detected.lower() not in _GENERIC_CORES:
+        return
+    from ..devices import cpu_flags
+    flags = cpu_flags()
+    target = "SkylakeX" if "avx512f" in flags else "Haswell" if "avx2" in flags else None
+    if target:
+        os.environ["OPENBLAS_CORETYPE"] = target
+        _forced_core = f"{target} (forced; auto-detected {detected})"
+
+
 @lru_cache(maxsize=None)
 def load(name: str):
     paths = [os.environ[f"BENCH_LIB_{name.upper()}"]] if os.environ.get(f"BENCH_LIB_{name.upper()}") \
         else CANDIDATES.get(name, [])
     for p in paths:
+        if name == "openblas" and os.path.exists(p):
+            _fix_openblas_coretype(p)
         try:
             lib = ctypes.CDLL(p, mode=ctypes.RTLD_LOCAL)
             lib.cblas_sgemm
@@ -53,7 +98,9 @@ def version(name: str) -> str:
         if name == "openblas":
             f = lib.openblas_get_config
             f.restype = ctypes.c_char_p
-            return f.decode()
+            g = lib.openblas_get_corename
+            g.restype = ctypes.c_char_p
+            return f"{f().decode()} core={_forced_core or g().decode()}"
         if name == "blis":
             f = lib.bli_info_get_version_str
             f.restype = ctypes.c_char_p

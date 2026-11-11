@@ -343,6 +343,24 @@ def test_llama_cudagraph_decode_validates(B, monkeypatch):
     assert float((s["out"] - eager).norm() / eager.norm()) < 1e-6
 
 
+@pytest.mark.parametrize("detected,flags,expect", [
+    ("Prescott", {"avx512f", "avx2"}, "SkylakeX"),     # Emerald Rapids misdetected by OpenBLAS 0.3.20
+    ("Prescott", {"avx2"}, "Haswell"),
+    ("Zen", {"avx2"}, None),                         # correct detection: never overridden
+    ("Cooperlake", {"avx512f"}, None),
+])
+def test_openblas_coretype_override_only_on_generic_fallback(detected, flags, expect, monkeypatch):
+    from bench import devices
+    from bench.workloads import _blas
+    monkeypatch.delenv("OPENBLAS_CORETYPE", raising=False)
+    monkeypatch.setattr(_blas, "_openblas_corename", lambda path, env: detected)
+    monkeypatch.setattr(devices, "cpu_flags", lambda: flags)
+    monkeypatch.setattr(_blas, "_forced_core", None)
+    _blas._fix_openblas_coretype("/nonexistent/libopenblas.so.0")
+    assert __import__("os").environ.get("OPENBLAS_CORETYPE") == expect
+    monkeypatch.delenv("OPENBLAS_CORETYPE", raising=False)
+
+
 def test_llama_configs_cpu_libs_fp32_only():
     from bench.workloads.a1_llama import WORKLOAD
     cpu, gpu = WORKLOAD.configs("cpu"), WORKLOAD.configs("gpu")

@@ -39,6 +39,31 @@ if [ "$KIND" = cpu ]; then
         [ -e "$t" ] && sudo update-alternatives --set "${alt}-$(uname -m)-linux-gnu" "$t" >/dev/null || true
     done
     log "OpenBLAS alternative -> $(readlink -f "$ARCH_DIR/libopenblas.so.0")"
+
+    # Ubuntu 22.04's BLIS 0.8.1 has no kernels for newer CPUs (Zen 4: 'generic', 960 vs 2900 GFLOP/s) and
+    # its BLIS_ARCH_TYPE override aborts. Only then: build a pinned upstream release into ~/.local/blis,
+    # which bench/workloads/_blas.py prefers when present. Rows record 'BLIS <ver> arch=<kernels>'.
+    BLIS_TAG=2.1
+    blis_arch() { python3 -c 'import ctypes,sys
+b=ctypes.CDLL(sys.argv[1]); b.bli_arch_string.restype=ctypes.c_char_p; b.bli_arch_query_id.restype=ctypes.c_int
+print(b.bli_arch_string(b.bli_arch_query_id()).decode())' "$1" 2>/dev/null || echo none; }
+    distro_blis="$ARCH_DIR/blis-openmp/libblis.so.3"
+    if [ "$(uname -m)" = x86_64 ] && [ "$(blis_arch "$distro_blis")" = generic ] \
+       && [ ! -e "$HOME/.local/blis/lib/libblis.so.4" ]; then
+        log "BLIS: Ubuntu's $(basename "$distro_blis") has no kernels for this CPU -> building upstream BLIS $BLIS_TAG"
+        src="$HOME/.cache/blis-$BLIS_TAG"; rm -rf "$src"
+        if git clone -q --depth 1 -b "$BLIS_TAG" https://github.com/flame/blis.git "$src" 2>/dev/null \
+           && (cd "$src" && ./configure --prefix="$HOME/.local/blis" --enable-threading=openmp --enable-cblas x86_64 \
+               && make -j"$(nproc)" && make install) > "$HOME/.cache/blis-build.log" 2>&1; then
+            log "BLIS $BLIS_TAG -> $HOME/.local/blis (kernels: $(blis_arch "$HOME/.local/blis/lib/libblis.so.4"))"
+        else
+            warn "BLIS build failed (see ~/.cache/blis-build.log); BLIS rows will use the generic distro build"
+        fi
+    elif [ -e "$HOME/.local/blis/lib/libblis.so.4" ]; then
+        log "BLIS: using built $HOME/.local/blis (kernels: $(blis_arch "$HOME/.local/blis/lib/libblis.so.4"))"
+    else
+        log "BLIS: distro build OK (kernels: $(blis_arch "$distro_blis"))"
+    fi
 fi
 
 log "python packages"

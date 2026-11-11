@@ -33,7 +33,8 @@ CANDIDATES = {
     "openblas": ["/usr/lib/x86_64-linux-gnu/openblas-openmp/libopenblas.so.0",
                  "/usr/lib/aarch64-linux-gnu/openblas-openmp/libopenblas.so.0",
                  "libopenblas.so.0"],
-    "blis": ["/usr/lib/x86_64-linux-gnu/blis-openmp/libblis.so.4",
+    "blis": [os.path.expanduser("~/.local/blis/lib/libblis.so.4"),        # built by setup_node.sh only when
+             "/usr/lib/x86_64-linux-gnu/blis-openmp/libblis.so.4",         # the distro BLIS is 'generic'
              "/usr/lib/x86_64-linux-gnu/blis-openmp/libblis.so.3",      # Ubuntu 22.04: libblis3-openmp
              "/usr/lib/aarch64-linux-gnu/blis-openmp/libblis.so.4",
              "/usr/lib/aarch64-linux-gnu/blis-openmp/libblis.so.3",

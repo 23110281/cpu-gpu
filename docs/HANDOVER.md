@@ -1,4 +1,4 @@
-# Handover: CPU vs GPU benchmark project (state as of 2026-11-11 05:45 UTC: CPU campaigns running)
+# Handover: CPU vs GPU benchmark project (state as of 2026-11-11 06:45 UTC: 3 CPU campaigns running)
 
 This is for an AI coding session picking up the work. **Verify every claim here against the code, git log and data before acting on it.** If something here disagrees with the repo, the repo wins; note the discrepancy. Keep this file current: update it at every milestone and delete what is no longer true (the user's standing request).
 
@@ -63,7 +63,14 @@ Make targets: `setup test smoke calibrate sweep sweep_dry campaign analysis site
 
 ## 5. Hardware sessions so far
 
-### r6615 (Clemson, AMD EPYC 9354P Zen 4, 32C, NPS4), 2026-11-10, 4 h, node released
+### r6615 full campaign (Clemson `Kushal17@clnode373.clemson.cloudlab.us`, reserved 24 h from 2026-11-11 ~06:00 UTC)
+- Campaign `c_amd_r6615_20261111T0632Z`, 3 trials × 630 jobs, code `1b1bff8`, sweep started 06:38 UTC (first ETA 14 h, expect less).
+- Setup ok (no cpufreq driver, like c6525: frequency recorded per row via APERF/MPERF); 51 tests passed; smoke 35/35 ok.
+- Calibration: 360.3 GB/s; fp32 3385 (OpenBLAS) / BLIS 3349 / MKL 3059; fp64 1600 (BLIS) / OpenBLAS 1598 / MKL 1582.
+- **Fixed:** Ubuntu's BLIS 0.8.1 ran Zen 4 on 'generic' kernels (960 GFLOP/s), and its override aborts. setup_node.sh now builds pinned upstream BLIS 2.1 into ~/.local/blis only when the distro BLIS reports generic (user approved the GitHub build). Rows record `BLIS 2.1 arch=zen3`. Methodology pitfall 14.
+- **After it finishes:** copy back, cross-check against the test session below, then `git rm` the test session (`results/data/sessions/r6615_ctest_20261110`, `results/analysis/sessions/r6615_20261110`) as the user asked, and repoint `configs/library_notes.json` evidence that cites `ctest_r6615` to the new campaign.
+
+### r6615 test session (same node type), 2026-11-10, 4 h, node released (to be deleted after the cross-check)
 - **Data:** `results/data/sessions/r6615_ctest_20261110/` (README inside), committed and pushed. Test data: one trial, partial grid, **not paper data**.
 - **Analysis:** `results/analysis/sessions/r6615_20261110/`.
 - **Passed:** setup, all tests, smoke 35/35 (incl. bf16).

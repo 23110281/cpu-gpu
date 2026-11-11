@@ -46,7 +46,7 @@ Details per workload: [`docs/methodology.md`](docs/methodology.md) and the docst
 | oneDNN | Intel's neural-network kernel library, built into PyTorch | open (Apache-2.0) | C3 (CPU: PyTorch `conv2d` runs oneDNN's depthwise kernel) |
 | pocketfft | small FFT library PyTorch uses on CPUs without oneMKL (Arm) | open (BSD-3) | C4 on Arm CPUs |
 | OpenBLAS | open-source BLAS (matrix maths), OpenMP build | open (BSD-3) | C1, A1 (CPU); native cross-check |
-| BLIS | open-source BLAS framework (basis of AMD's AOCL) | open (BSD-3) | C1, A1 (CPU) |
+| BLIS | open-source BLAS framework (basis of AMD's AOCL); Ubuntu's 0.8.1, or upstream 2.1 built by setup on CPUs it doesn't know (Zen 4) | open (BSD-3) | C1, A1 (CPU) |
 | OpenCV | computer-vision library with fast image filters | open (Apache-2.0 for 4.x) | C3, C5 (CPU) |
 | oneTBB | Intel's parallel-algorithms library | open (Apache-2.0) | C6 (CPU) |
 | GNU libstdc++ parallel mode | GCC's parallel versions of standard algorithms (`sort`) | open (GPL-3 with runtime exception) | C6 (CPU) |

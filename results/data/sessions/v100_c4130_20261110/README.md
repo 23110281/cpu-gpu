@@ -11,7 +11,7 @@ Machine: CloudLab c4130 `c4130-110133.wisc.cloudlab.us`, 4x Tesla V100-SXM2-16GB
 | `logs/` | setup, smoke, full campaign, A1 re-runs |
 | `superseded/` | A1 rows replaced by the re-run, kept for the record: `pre72ab4db` = old cat + SDPA decode (batch 1: 66.8 tok/s); `72ab4db` = new decode attention, eager only (batch 1: 44 tok/s, host-launch-bound) |
 
-Found and fixed during this session (see docs/HANDOVER.md): driver 580 for Volta; torch wheel with sm_70
+Found and fixed during this session (see docs/PROGRESS.md): driver 580 for Volta; torch wheel with sm_70
 kernels (cu126); CUDA-extension declarations (`cuda_declarations`); BabelStream built for the GPU's
 own arch; A1 decode attention (batched matmuls + in-place KV cache); A1 GPU decode timed from a CUDA
 graph (`lib=cudagraph`).

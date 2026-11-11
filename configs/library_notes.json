@@ -9,35 +9,36 @@
       "date": "2026-11-11",
       "note": "torch's fp32 linear layers (MKL GEMV) stream only ~25-35 GB/s at batch-1 decode on AMD EPYC, i.e. about one core's worth of bandwidth; OpenBLAS sgemv on the same tensors streams 218-285 GB/s. That the slowdown is inside MKL's AMD code path is a hypothesis (MKL_VERBOSE would show the dispatched kernel).",
       "plain": "On AMD processors, PyTorch's default math library (Intel MKL) reads the model weights at roughly one core's speed when generating a single token; OpenBLAS uses the full memory speed.",
-      "evidence": "c6525-100g campaign c_amd_c6525_100g_20261111T0036Z, llama3-8b fp32 batch-1 decode: torch/MKL 0.74 tok/s (23 GB/s), OpenBLAS 3.21 (98 GB/s, 78% of 125), BLIS 0.85 (26 GB/s). Intel c6620, same problem: torch/MKL 6.58 tok/s (201 GB/s), so MKL's GEMV is fast on Intel. r6615 test 2026-11-10: torch 0.89 vs OpenBLAS 9.31 tok/s."
+      "evidence": "c6525-100g campaign c_amd_c6525_100g_20261111T0036Z, llama3-8b fp32 batch-1 decode: torch/MKL 0.74 tok/s (23 GB/s), OpenBLAS 3.21 (98 GB/s, 78% of 125), BLIS 0.85 (26 GB/s). Intel c6620, same problem: torch/MKL 6.58 tok/s (201 GB/s), so MKL's GEMV is fast on Intel. r6615 campaign c_amd_r6615_20261111T0632Z, same problem: torch/MKL 0.9 vs OpenBLAS 9.1 tok/s (BLIS 1.2)."
     },
     {
       "device": "AMD_*",
       "workload": "A1",
       "library": "*",
       "status": "verified",
-      "date": "2026-11-11",
-      "note": "Batch-8 decode was 9-13% of bandwidth with all three libraries on r6615 before commit 72ab4db. The cause was the harness's attention step, not the BLAS: decode attention is now batched matmuls over an in-place KV cache. After the fix, BLIS's small-GEMM path is the fastest at batch 8 on both CPUs.",
-      "plain": "When several tokens are generated at once, BLIS handles the small matrix shapes best on both processors.",
-      "evidence": "llama3-8b fp32 batch-8 decode, campaigns of 2026-11-11: c6525-100g BLIS 18.9 tok/s (81 GB/s, 65% of 125) vs OpenBLAS 10.4, torch 5.8; c6620 BLIS 32.9 (141 GB/s, 66% of 214) vs OpenBLAS 19.2, torch 18.3. Before the fix (r6615 test): 35-46 GB/s of 364."
+      "date": "2026-11-12",
+      "note": "Batch-8 decode was 9-13% of bandwidth with all three libraries in the first r6615 test (before commit 72ab4db). The cause was the harness's attention step, not the BLAS: decode attention is now batched matmuls over an in-place KV cache. After the fix, BLIS's small-GEMM path is the fastest at batch 8 on all three CPUs.",
+      "plain": "When several tokens are generated at once, BLIS handles the small matrix shapes best on all three processors.",
+      "evidence": "llama3-8b fp32 batch-8 decode, campaigns of 2026-11-11: c6525-100g BLIS 18.9 tok/s (81 GB/s, 65% of 125) vs OpenBLAS 10.4, torch 5.8; c6620 BLIS 32.9 (141 GB/s, 66% of 214) vs OpenBLAS 19.2, torch 18.3. r6615 campaign: BLIS 43.0 tok/s vs OpenBLAS 21.1, torch 14.0 (the test session before the fix measured 10.8 tok/s with BLIS)."
     },
     {
       "device": "AMD_R6615",
       "workload": "C1",
       "library": "blis",
-      "status": "hypothesis",
-      "date": "2026-11-10",
-      "note": "Ubuntu 22.04's BLIS 0.8.1 is about 3.5x slower than OpenBLAS/MKL on Zen 4; likely it has no Zen 4 kernel set and falls back to an older one. Confirm by recording BLIS's selected architecture (bli_arch_query_id) in the row provenance.",
-      "evidence": "r6615 calibration: GEMM fp32 blis 994 vs openblas 3495 GFLOP/s; fp64 blis 506 vs torch/MKL 1643."
+      "status": "verified",
+      "date": "2026-11-12",
+      "note": "Ubuntu 22.04's BLIS 0.8.1 has no Zen 4 kernels: it reported arch=generic and ran sgemm at ~960 GFLOP/s. scripts/setup_node.sh now builds upstream BLIS 2.1 (Zen 3 kernels) only on such CPUs; with it BLIS is the fastest fp64 GEMM library on Zen 4.",
+      "evidence": "r6615 2026-11-11: distro BLIS 0.8.1 arch=generic 960 vs BLIS 2.1 arch=zen3 2923 GFLOP/s (sgemm 4096 probe). Campaign c_amd_r6615_20261111T0632Z fp64: BLIS wins 4/4 sizes (n=4096: 1616 vs torch/MKL 1524, OpenBLAS 1308); rows record 'BLIS 2.1 arch=zen3'.",
+      "plain": "On AMD Zen 4, BLIS (built from its newest release) is the fastest library for 64-bit matrix multiply at every size."
     },
     {
       "device": "AMD_R6615",
       "workload": "C1",
       "library": "openblas",
       "status": "verified",
-      "date": "2026-11-10",
-      "note": "On Zen 4 the fastest GEMM library depends on precision: OpenBLAS wins fp32, torch/MKL wins fp64 (on Zen 2 BLIS won both). Reason not yet investigated.",
-      "evidence": "r6615 calibration: fp32 openblas 3495 / MKL 3066 / blis 994; fp64 MKL 1643 / openblas 1542 / blis 506 GFLOP/s."
+      "date": "2026-11-12",
+      "note": "On Zen 4 fp32 GEMM the three libraries are within ~10% of each other and the winner changes with size (PyTorch/MKL at n=1024-2048, BLIS at 4096, OpenBLAS at 8192); BLIS wins fp64. The first r6615 test (BLIS 0.8.1) had OpenBLAS fp32 / MKL fp64.",
+      "evidence": "Campaign c_amd_r6615_20261111T0632Z fp32 GFLOP/s: n=1024 torch 2582 / BLIS 2391 / OpenBLAS 2304; n=8192 OpenBLAS 3469 / BLIS 3353 / torch 3209."
     },
     {
       "device": "*",
@@ -47,7 +48,7 @@
       "date": "2026-11-10",
       "note": "The native direct convolution (filter size a compile-time constant, all K*K taps unrolled, vectorised x loop) wins every size: neural-network convolution libraries are not built for one small filter over a large image.",
       "plain": "Our own kernel wins: neural-network libraries are built for many small images and filters, not for one small filter over a large image.",
-      "evidence": "r6615 ctest_r6615: native wins 18/18 problems at 15-45% of measured GEMM peak; next best OpenCV at 0.04-0.71x of native. V100 c_v100_20261110: native wins 18/18 vs cuDNN (median 0.42x)."
+      "evidence": "r6615 campaign c_amd_r6615_20261111T0632Z: native wins 18/18 problems at 14-42% of the theoretical fp32 peak; next best OpenCV at 0.04-0.79x of native. V100 c_v100_20261110: native wins 18/18 vs cuDNN (median 0.42x)."
     },
     {
       "device": "*",
@@ -56,7 +57,7 @@
       "status": "hypothesis",
       "date": "2026-11-11",
       "note": "torch CPU conv2d for this shape (groups = channels, one 3/5/7 filter) IS oneDNN (verified: jit_dw depthwise kernel, ONEDNN_VERBOSE on Xeon Gold 5512U), but each call also reorders the whole image into oneDNN's blocked layout and back. That extra memory traffic is the likely reason it stays near ~160 Mpx/s (AMD) regardless of filter size: hypothesis; confirm by timing the reorders (ONEDNN_VERBOSE exec times).",
-      "evidence": "r6615 ctest_r6615: 155-169 Mpx/s for every k at c=1, 67-83 at c=3, across 1024^2..8192^2."
+      "evidence": "r6615 campaign c_amd_r6615_20261111T0632Z: 154-168 Mpx/s for every k at c=1, 67-83 at c=3, across 1024^2..8192^2 (the same as the earlier test session)."
     },
     {
       "device": "*",

@@ -71,8 +71,13 @@ def why_lines(dev: str, wid: str) -> list[str]:
     return [x for x in out if x]
 
 
+SOURCE_WORDS = ("dmidecode", "datasheet", "product", "whitepaper", "ARK", "CloudLab", "brief", "page", "DIMM")
+
+
 def _short(text: str) -> str:
-    return text.split(" (")[0].strip()
+    """Drop bracketed source citations (kept in the config), keep bracketed explanations of the clock used."""
+    import re
+    return re.sub(r"\s*\(([^()]*)\)", lambda m: "" if any(w in m.group(1) for w in SOURCE_WORDS) else m.group(0), text).strip()
 
 
 def theory_lines(cfg: dict) -> dict:
@@ -161,7 +166,8 @@ def final_device(dev: str, cls: str, raw: pd.DataFrame, names: dict, core: bool)
                       "note": "Final scripts: every result checked against a reference; median of 3 separate runs."})
         entries += overview_entries(wid, rows, unit, lim, names)
     ov = P.overview(entries, out / "overview.png", "theoretical")
-    no_lim = [names[w]["name"] for w in [p["id"] for p in pages] if w not in {e["wid"] for e in entries}]
+    nl = _json(CONFIGS / "explanations.json").get("no_limit", {})
+    no_lim = [names[p["id"]]["name"] for p in pages if p["id"] in nl]
     return {"device": dev, "cls": cls, "category": "final", "core": core, **display(cfg, dev),
             "limits": limits, "overview": ov, "no_limit": no_lim, "workloads": pages}
 
@@ -367,7 +373,8 @@ def legacy_device(dev: str, cls: str, names: dict, core: bool) -> dict | None:
                                     "text": f"{fmt(r['metric'], unit)} of {fmt(lv, unit)}"})
     pages.sort(key=lambda p: ORDER.index(p["id"]))
     ov = P.overview(entries, out / "overview.png", "theoretical")
-    no_lim = [p["name"] for p in pages if p["id"] not in {e["wid"] for e in entries}]
+    nl = _json(CONFIGS / "explanations.json").get("no_limit", {})
+    no_lim = [p["name"] for p in pages if p["id"] in nl]
     return {"device": dev, "cls": cls, "category": "earlier", "core": core, **display(cfg, dev),
             "limits": limits, "overview": ov, "no_limit": no_lim, "workloads": pages}
 

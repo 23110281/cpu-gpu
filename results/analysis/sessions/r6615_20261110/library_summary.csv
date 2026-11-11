@@ -1,7 +1,0 @@
-device,workload_id,workload,precision,library,problems,wins,clear_wins,tied_wins,median_speed_vs_winner,worst_speed_vs_winner
-AMD_R6615,A1,llama3,fp32,blis,4,2,2,0,0.5667542560204327,0.11204978327407483
-AMD_R6615,A1,llama3,fp32,openblas,4,2,2,0,0.9761481029861345,0.917092764335557
-AMD_R6615,A1,llama3,fp32,torch,4,0,0,0,0.43303291901858254,0.09602462625002262
-AMD_R6615,C3,conv2d,fp32,native,18,18,18,0,1.0,1.0
-AMD_R6615,C3,conv2d,fp32,opencv,18,0,0,0,0.3463011155364024,0.04226137279728276
-AMD_R6615,C3,conv2d,fp32,torch,18,0,0,0,0.007626396919999564,0.0019678187655580515

@@ -1,0 +1,13 @@
+[1;34m[setup][0m node type: cpu (AMD EPYC 9354P 32-Core Processor)
+[1;34m[setup][0m apt packages (build, NUMA, fastest-library candidates, crypto, extension headers)
+[1;34m[setup][0m OpenBLAS alternative -> /usr/lib/x86_64-linux-gnu/openblas-openmp/libopenblasp-r0.3.20.so
+[1;34m[setup][0m BLIS: Ubuntu's libblis.so.3 has no kernels for this CPU -> building upstream BLIS 2.1
+[1;34m[setup][0m BLIS 2.1 -> /users/Kushal17/.local/blis (kernels: zen3)
+[1;34m[setup][0m python packages
+[1;34m[setup][0m telemetry permissions (RAPL energy + APERF/MPERF MSRs)
+[1;34m[setup][0m CAP_SYS_RAWIO -> /usr/bin/python3.10
+[1;33m[setup WARN][0m no cpufreq interface (governor not set; frequency is still recorded per row)
+[1;34m[setup][0m verification
+  torch 2.14.1+cpu  cuda_available=False
+  RAPL energy readable: yes
+[1;34m[setup][0m done -- next: bash scripts/run_campaign.sh start <DEVICE>   (or step by step: make test && make smoke)

@@ -1,0 +1,12 @@
+python3 scripts/calibrate.py --device-config configs/devices/AMD_R6615.json
+BabelStream (reported, GB/s): Copy 217.8, Mul 214.1, Add 243.9, Triad 244.6, Dot 362.4
+-> bandwidth ceiling 362.4 GB/s (actual DRAM traffic incl. write-allocate (CPU))
+GEMM fp32: {'torch': 3090.7693742614956, 'openblas': 3510.5600569543153, 'blis': 994.2279540298887} -> peak 3511 GFLOP/s
+GEMM fp64: {'torch': 1601.0059793584621, 'openblas': 1553.5102018363468, 'blis': 507.0755289048925} -> peak 1601 GFLOP/s
+-> /users/Kushal17/cpu-gpu/results/calibration/AMD_R6615.json
+{
+  "bandwidth": 0.7865639930555556,
+  "gemm_fp32": 1.0548557863444457,
+  "gemm_fp64": 0.9621430164413834
+}
+FIN

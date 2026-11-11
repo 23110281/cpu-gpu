@@ -23,13 +23,13 @@
       },
       {
         "id": "INTEL_C220G5",
-        "label": "2 × Intel Xeon Silver 4114 (c220g5)",
+        "label": "Intel Xeon Silver 4114 (c220g5, 2 sockets)",
         "short": "Xeon Silver 4114",
         "core": false
       },
       {
         "id": "INTEL_C6220",
-        "label": "2 × Intel Xeon E5-2650 v2 (c6220)",
+        "label": "Intel Xeon E5-2650 v2 (c6220, 2 sockets)",
         "short": "Xeon E5-2650 v2",
         "core": false
       },

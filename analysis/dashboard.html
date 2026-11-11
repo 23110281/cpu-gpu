@@ -203,8 +203,7 @@ function renderNav() {
   for (const side of ['cpu', 'gpu']) {
     h += `<div class="nav-sub">${side === 'cpu' ? 'CPUs' : 'GPUs'}</div>`;
     for (const d of (navData[side] || [])) {
-      const tag = d.category === 'final' ? '<span class="tag final">final</span>' : '<span class="tag">earlier scripts</span>';
-      h += item(`m/${d.id}`, esc(d.name), v === 'm' && a === d.id && !b, tag);
+      h += item(`m/${d.id}`, esc(d.name), v === 'm' && a === d.id && !b);
       if (v === 'm' && a === d.id) {
         h += item(`m/${d.id}`, 'Overview', !b, '', 'child');
         for (const w of pages[d.id].workloads) h += item(`m/${d.id}/${w.id}`, esc(w.name), b === w.id, '', 'child');

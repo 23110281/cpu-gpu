@@ -36,7 +36,7 @@
     }
   },
   "display": {
-    "name": "AMD EPYC 7402P",
+    "name": "AMD EPYC 7402P (C6525-100G)",
     "spec": "Zen 2 · 24 cores · 8 × DDR4-3200 · CloudLab c6525-100g"
   },
   "llc_mb": 128

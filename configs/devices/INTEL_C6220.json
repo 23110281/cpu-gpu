@@ -3,7 +3,7 @@
   "device_class": "cpu",
   "_note": "Earlier-script machine: only the datasheet is used (dashboard pages).",
   "display": {
-    "name": "2 × Intel Xeon E5-2650 v2",
+    "name": "Intel Xeon E5-2650 v2 (C6220)",
     "spec": "Ivy Bridge · 2 sockets × 8 cores · 8 × DDR3-1866 · CloudLab c6220"
   },
   "llc_mb": 40,

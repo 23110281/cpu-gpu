@@ -3,7 +3,7 @@
   "device_class": "cpu",
   "_note": "Earlier-script machine: only the datasheet is used (dashboard pages).",
   "display": {
-    "name": "Intel Xeon D-1548",
+    "name": "Intel Xeon D-1548 (M510)",
     "spec": "Broadwell-DE · 8 cores · 2 × DDR4-2133 · CloudLab m510"
   },
   "llc_mb": 12,

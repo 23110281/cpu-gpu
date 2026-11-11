@@ -3,7 +3,7 @@
   "device_class": "cpu",
   "_note": "Earlier-script machine: only the datasheet is used (dashboard pages).",
   "display": {
-    "name": "2 × Intel Xeon Silver 4114",
+    "name": "Intel Xeon Silver 4114 (C220G5)",
     "spec": "Skylake · 2 sockets × 10 cores · DDR4-2400 · CloudLab c220g5"
   },
   "llc_mb": 27.5,

@@ -36,7 +36,7 @@
     }
   },
   "display": {
-    "name": "Intel Xeon Gold 5512U",
+    "name": "Intel Xeon Gold 5512U (C6620)",
     "spec": "Emerald Rapids · 28 cores · 8 × DDR5-4800 · CloudLab c6620"
   },
   "llc_mb": 52.5

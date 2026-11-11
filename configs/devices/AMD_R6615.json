@@ -36,7 +36,7 @@
     }
   },
   "display": {
-    "name": "AMD EPYC 9354P",
+    "name": "AMD EPYC 9354P (R6615)",
     "spec": "Zen 4 · 32 cores · 12 × DDR5-4800 · CloudLab r6615"
   },
   "llc_mb": 256

@@ -12,8 +12,8 @@
  ],
  "overview": {
   "file": "overview.png",
-  "title": "How close each workload gets to the datasheet limit",
-  "caption": "Each bar is one workload at its largest size; 100% (dashed) is the hardware limit."
+  "title": "How close each workload gets to the theoretical peak",
+  "caption": "Each bar is one workload at its largest size; 100% (dashed) is the theoretical peak of the hardware."
  },
  "no_limit": [
   "Sparse matrix \u00d7 vector (SpMV)",
@@ -30,7 +30,7 @@
      "Memory: 96 GB HBM3, up to 4000 GB/s"
     ],
     "measured": [],
-    "achieved": "At sizes larger than the cache: 2.81 TB/s to 3.65 TB/s (70\u201391% of the datasheet limit); best at size 16384, density 0.25, fp64.",
+    "achieved": "At sizes larger than the cache: 2.81 TB/s to 3.65 TB/s (70\u201391% of the theoretical limit); best at size 16384, density 0.25, fp64.",
     "why": [
      "Mostly streams the matrix from memory; the irregular (power-law) matrix reads the vector at scattered places, which wastes part of the memory bandwidth."
     ]
@@ -44,7 +44,7 @@
     {
      "file": "B3_speed.png",
      "title": "Speed vs problem size (GB/s)",
-     "caption": "Each line is one number format (mean of the earlier script's runs); dashed lines are datasheet limits. Small sizes can exceed the memory limit because they fit in the on-chip cache."
+     "caption": "Each line is one number format (mean of the earlier script's runs); dashed lines are theoretical limits. Small sizes can exceed the memory limit because they fit in the on-chip cache."
     },
     {
      "file": "B3_precision.png",
@@ -98,7 +98,7 @@
     {
      "file": "B4_speed.png",
      "title": "Speed vs problem size (GB/s)",
-     "caption": "Each line is one number format (mean of the earlier script's runs); dashed lines are datasheet limits. Small sizes can exceed the memory limit because they fit in the on-chip cache."
+     "caption": "Each line is one number format (mean of the earlier script's runs); dashed lines are theoretical limits. Small sizes can exceed the memory limit because they fit in the on-chip cache."
     },
     {
      "file": "B4_precision.png",
@@ -138,7 +138,7 @@
      "Compute: 132 SMs \u00d7 128 fp32 cores \u00d7 2 \u00d7 ~1.98 GHz = 67 TFLOP/s fp32; fp64 34, fp64 tensor 67, bf16 tensor 990"
     ],
     "measured": [],
-    "achieved": "Reached 5.6 TFLOP/s to 54.2 TFLOP/s across sizes (16\u201381% of the datasheet limit); best at size 32768, fp32. 16-bit (bf16): up to 846.1 TFLOP/s. fp64 on tensor cores: up to 63.1 TFLOP/s.",
+    "achieved": "Reached 5.6 TFLOP/s to 54.2 TFLOP/s across sizes (16\u201381% of the theoretical limit); best at size 32768, fp32. 16-bit (bf16): up to 846.1 TFLOP/s. fp64 on tensor cores: up to 63.1 TFLOP/s.",
     "why": [
      "Matrix multiply reuses each value many times, so large matrices run close to the compute limit; small matrices are held back by start-up overhead."
     ]
@@ -152,12 +152,12 @@
     {
      "file": "C1_speed.png",
      "title": "Speed vs problem size (GFLOP/s)",
-     "caption": "Each line is one number format (mean of the earlier script's runs); dashed lines are datasheet limits."
+     "caption": "Each line is one number format (mean of the earlier script's runs); dashed lines are theoretical limits."
     },
     {
      "file": "C1_share.png",
-     "title": "Share of the datasheet limit (%)",
-     "caption": "100% (dashed) is the vendor's datasheet limit; memory-limited sizes that fit in cache are left out."
+     "title": "Share of the theoretical peak (%)",
+     "caption": "100% (dashed) is the theoretical peak; memory-limited sizes that fit in cache are left out."
     },
     {
      "file": "C1_precision.png",
@@ -192,9 +192,10 @@
      "Memory: 96 GB HBM3, up to 4000 GB/s"
     ],
     "measured": [],
-    "achieved": "At sizes larger than the cache: 792 GB/s to 3.86 TB/s (20\u201396% of the datasheet limit); best at size 32768, fp64.",
+    "achieved": "At sizes larger than the cache: 792 GB/s to 3.86 TB/s (20\u201396% of the theoretical limit); best at size 32768, fp64.",
     "why": [
-     "Each matrix value is used exactly once, so memory speed sets the limit; small sizes fit in the cache."
+     "Each matrix value is used exactly once, so memory speed sets the limit; small sizes fit in the cache.",
+     "Caution: this earlier-script result is at 96% of the theoretical memory speed, which is unusually high (real memory systems usually reach 70\u201390%). The earlier script averaged its runs and did not check results, so treat it as an upper bound until it is re-measured with the final scripts."
     ]
    },
    "figures": [
@@ -206,12 +207,12 @@
     {
      "file": "GEMV_speed.png",
      "title": "Speed vs problem size (GB/s)",
-     "caption": "Each line is one number format (mean of the earlier script's runs); dashed lines are datasheet limits. Small sizes can exceed the memory limit because they fit in the on-chip cache."
+     "caption": "Each line is one number format (mean of the earlier script's runs); dashed lines are theoretical limits. Small sizes can exceed the memory limit because they fit in the on-chip cache."
     },
     {
      "file": "GEMV_share.png",
-     "title": "Share of the datasheet limit (%)",
-     "caption": "100% (dashed) is the vendor's datasheet limit; memory-limited sizes that fit in cache are left out."
+     "title": "Share of the theoretical peak (%)",
+     "caption": "100% (dashed) is the theoretical peak; memory-limited sizes that fit in cache are left out."
     },
     {
      "file": "GEMV_precision.png",

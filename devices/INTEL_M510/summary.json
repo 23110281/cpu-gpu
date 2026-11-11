@@ -3,17 +3,17 @@
  "cls": "cpu",
  "category": "earlier",
  "core": false,
- "name": "Intel Xeon D-1548",
+ "name": "Intel Xeon D-1548 (M510)",
  "spec": "Broadwell-DE \u00b7 8 cores \u00b7 2 \u00d7 DDR4-2133 \u00b7 CloudLab m510",
  "limits": [
   "Memory: 2 channels \u00d7 2133 MT/s \u00d7 8 B = 34.1 GB/s",
-  "Compute: 8 cores \u00d7 2.0 GHz base \u00d7 16 fp64 FLOP/cycle = 512 GFLOP/s fp32 \u00b7 256 GFLOP/s fp64",
-  "Measured by the earlier scripts: memory 31.1 GB/s (91% of theory), best SAXPY larger than the cache; compute 450 GFLOP/s fp32 (88% of theory) \u00b7 220 GFLOP/s fp64 (86% of theory), best matrix multiply"
+  "Compute: 8 cores \u00d7 2.6 GHz = 666 GFLOP/s fp32 \u00b7 333 GFLOP/s fp64",
+  "Measured by the earlier scripts: memory 31.1 GB/s (91% of theory), best SAXPY larger than the cache; compute 450 GFLOP/s fp32 (68% of theory) \u00b7 220 GFLOP/s fp64 (66% of theory), best matrix multiply"
  ],
  "overview": {
   "file": "overview.png",
-  "title": "How close each workload gets to the datasheet limit",
-  "caption": "Each bar is one workload at its largest size; 100% (dashed) is the hardware limit."
+  "title": "How close each workload gets to the theoretical peak",
+  "caption": "Each bar is one workload at its largest size; 100% (dashed) is the theoretical peak of the hardware."
  },
  "no_limit": [
   "Sparse matrix \u00d7 vector (SpMV)",
@@ -30,7 +30,7 @@
      "Memory: 2 channels \u00d7 2133 MT/s \u00d7 8 B = 34.1 GB/s"
     ],
     "measured": [],
-    "achieved": "At sizes larger than the cache: 30 GB/s to 31.1 GB/s (88\u201391% of the datasheet limit); best at size 2^27, fp64.",
+    "achieved": "At sizes larger than the cache: 30 GB/s to 31.1 GB/s (88\u201391% of the theoretical limit); best at size 2^27, fp64.",
     "why": [
      "Each element is read and written once with almost no arithmetic, so memory speed sets the limit; sizes that fit in the cache can run faster than memory allows."
     ]
@@ -44,12 +44,12 @@
     {
      "file": "B1_speed.png",
      "title": "Speed vs problem size (GB/s)",
-     "caption": "Each line is one number format (mean of the earlier script's runs); dashed lines are datasheet limits. Small sizes can exceed the memory limit because they fit in the on-chip cache."
+     "caption": "Each line is one number format (mean of the earlier script's runs); dashed lines are theoretical limits. Small sizes can exceed the memory limit because they fit in the on-chip cache."
     },
     {
      "file": "B1_share.png",
-     "title": "Share of the datasheet limit (%)",
-     "caption": "100% (dashed) is the vendor's datasheet limit; memory-limited sizes that fit in cache are left out."
+     "title": "Share of the theoretical peak (%)",
+     "caption": "100% (dashed) is the theoretical peak; memory-limited sizes that fit in cache are left out."
     },
     {
      "file": "B1_threads.png",
@@ -74,9 +74,10 @@
      "Memory: 2 channels \u00d7 2133 MT/s \u00d7 8 B = 34.1 GB/s"
     ],
     "measured": [],
-    "achieved": "At sizes larger than the cache: 33 GB/s to 33.7 GB/s (97\u201399% of the datasheet limit); best at size 8192, density 0.1, fp32.",
+    "achieved": "At sizes larger than the cache: 33 GB/s to 33.7 GB/s (97\u201399% of the theoretical limit); best at size 8192, density 0.1, fp32.",
     "why": [
-     "Mostly streams the matrix from memory; the irregular (power-law) matrix reads the vector at scattered places, which wastes part of the memory bandwidth."
+     "Mostly streams the matrix from memory; the irregular (power-law) matrix reads the vector at scattered places, which wastes part of the memory bandwidth.",
+     "Caution: this earlier-script result is at 97\u201399% of the theoretical memory speed, which is unusually high (real memory systems usually reach 70\u201390%). The earlier script averaged its runs and did not check results, so treat it as an upper bound until it is re-measured with the final scripts. The memory may also run faster than the DDR4-2133 that CloudLab lists."
     ]
    },
    "figures": [
@@ -88,7 +89,7 @@
     {
      "file": "B3_speed.png",
      "title": "Speed vs problem size (GB/s)",
-     "caption": "Each line is one number format (mean of the earlier script's runs); dashed lines are datasheet limits. Small sizes can exceed the memory limit because they fit in the on-chip cache."
+     "caption": "Each line is one number format (mean of the earlier script's runs); dashed lines are theoretical limits. Small sizes can exceed the memory limit because they fit in the on-chip cache."
     },
     {
      "file": "B3_threads.png",
@@ -132,7 +133,7 @@
     {
      "file": "B4_speed.png",
      "title": "Speed vs problem size (GB/s)",
-     "caption": "Each line is one number format (mean of the earlier script's runs); dashed lines are datasheet limits. Small sizes can exceed the memory limit because they fit in the on-chip cache."
+     "caption": "Each line is one number format (mean of the earlier script's runs); dashed lines are theoretical limits. Small sizes can exceed the memory limit because they fit in the on-chip cache."
     },
     {
      "file": "B4_threads.png",
@@ -159,10 +160,10 @@
    "key": "450 GFLOP/s",
    "header": {
     "peak": [
-     "Compute: 8 cores \u00d7 2.0 GHz base \u00d7 16 fp64 FLOP/cycle = 512 GFLOP/s fp32 \u00b7 256 GFLOP/s fp64"
+     "Compute: 8 cores \u00d7 2.6 GHz = 666 GFLOP/s fp32 \u00b7 333 GFLOP/s fp64"
     ],
     "measured": [],
-    "achieved": "Reached 110 GFLOP/s to 450 GFLOP/s across sizes (31\u201388% of the datasheet limit); best at size 4096, fp32.",
+    "achieved": "Reached 110 GFLOP/s to 450 GFLOP/s across sizes (24\u201368% of the theoretical limit); best at size 4096, fp32.",
     "why": [
      "Matrix multiply reuses each value many times, so large matrices run close to the compute limit; small matrices are held back by start-up overhead."
     ]
@@ -176,12 +177,12 @@
     {
      "file": "C1_speed.png",
      "title": "Speed vs problem size (GFLOP/s)",
-     "caption": "Each line is one number format (mean of the earlier script's runs); dashed lines are datasheet limits."
+     "caption": "Each line is one number format (mean of the earlier script's runs); dashed lines are theoretical limits."
     },
     {
      "file": "C1_share.png",
-     "title": "Share of the datasheet limit (%)",
-     "caption": "100% (dashed) is the vendor's datasheet limit; memory-limited sizes that fit in cache are left out."
+     "title": "Share of the theoretical peak (%)",
+     "caption": "100% (dashed) is the theoretical peak; memory-limited sizes that fit in cache are left out."
     },
     {
      "file": "C1_threads.png",
@@ -206,9 +207,10 @@
      "Memory: 2 channels \u00d7 2133 MT/s \u00d7 8 B = 34.1 GB/s"
     ],
     "measured": [],
-    "achieved": "At sizes larger than the cache: 31.9 GB/s to 33.8 GB/s (93\u201399% of the datasheet limit); best at size 4096, fp32.",
+    "achieved": "At sizes larger than the cache: 31.9 GB/s to 33.8 GB/s (93\u201399% of the theoretical limit); best at size 4096, fp32.",
     "why": [
-     "Each matrix value is used exactly once, so memory speed sets the limit; small sizes fit in the cache."
+     "Each matrix value is used exactly once, so memory speed sets the limit; small sizes fit in the cache.",
+     "Caution: this earlier-script result is at 93\u201399% of the theoretical memory speed, which is unusually high (real memory systems usually reach 70\u201390%). The earlier script averaged its runs and did not check results, so treat it as an upper bound until it is re-measured with the final scripts. The memory may also run faster than the DDR4-2133 that CloudLab lists."
     ]
    },
    "figures": [
@@ -220,12 +222,12 @@
     {
      "file": "GEMV_speed.png",
      "title": "Speed vs problem size (GB/s)",
-     "caption": "Each line is one number format (mean of the earlier script's runs); dashed lines are datasheet limits. Small sizes can exceed the memory limit because they fit in the on-chip cache."
+     "caption": "Each line is one number format (mean of the earlier script's runs); dashed lines are theoretical limits. Small sizes can exceed the memory limit because they fit in the on-chip cache."
     },
     {
      "file": "GEMV_share.png",
-     "title": "Share of the datasheet limit (%)",
-     "caption": "100% (dashed) is the vendor's datasheet limit; memory-limited sizes that fit in cache are left out."
+     "title": "Share of the theoretical peak (%)",
+     "caption": "100% (dashed) is the theoretical peak; memory-limited sizes that fit in cache are left out."
     },
     {
      "file": "GEMV_threads.png",

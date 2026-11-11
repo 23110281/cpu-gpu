@@ -7,13 +7,13 @@
  "spec": "Volta \u00b7 80 SMs \u00b7 16 GB HBM2 \u00b7 CloudLab c4130",
  "limits": [
   "Memory: NVIDIA V100 SXM2 datasheet: 900 GB/s HBM2",
-  "Compute: NVIDIA datasheet at the 1530 MHz boost clock: 80 SMs x 64 FP32 lanes x 2 FLOP x 1.53 GHz = 15.7 TFLOP/s; FP64 = half",
+  "Compute: 80 SMs \u00d7 64 fp32 cores \u00d7 2 \u00d7 1.53 GHz boost = 15.7 TFLOP/s fp32; fp64 = half",
   "Measured: memory 845 GB/s (94% of theory), memory streaming test; compute 14.1 TFLOP/s fp32 (90% of theory) \u00b7 7.0 TFLOP/s fp64 (90% of theory), best matrix multiply"
  ],
  "overview": {
   "file": "overview.png",
-  "title": "How close each workload gets to the measured limit",
-  "caption": "Each bar is one workload at its largest size; 100% (dashed) is the hardware limit."
+  "title": "How close each workload gets to the theoretical peak",
+  "caption": "Each bar is one workload at its largest size; 100% (dashed) is the theoretical peak of the hardware."
  },
  "no_limit": [
   "Monte Carlo option pricing",
@@ -36,9 +36,9 @@
      "Memory: NVIDIA V100 SXM2 datasheet: 900 GB/s HBM2"
     ],
     "measured": [
-     "Measured memory limit: 845 GB/s"
+     "Measured memory limit: 845 GB/s (94% of theory)"
     ],
-    "achieved": "At sizes larger than the cache: 692 GB/s to 849 GB/s (82\u2013100% of the measured limit); best at vector length 256M, fp32.",
+    "achieved": "At sizes larger than the cache: 692 GB/s to 849 GB/s (77\u201394% of the theoretical limit); best at vector length 256M, fp32.",
     "why": [
      "Each element is read and written once with almost no arithmetic, so memory speed sets the limit; sizes that fit in the cache can run faster than memory allows."
     ]
@@ -52,12 +52,12 @@
     {
      "file": "B1_speed.png",
      "title": "Speed vs problem size (GB/s)",
-     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are theoretical limits, the dotted line the measured memory limit."
     },
     {
      "file": "B1_share.png",
-     "title": "Share of the machine's measured limit (%)",
-     "caption": "100% (dashed) is the measured memory limit; sizes that fit in the cache are left out, and sizes only a few times larger than the cache can still pass 100%."
+     "title": "Share of the theoretical peak (%)",
+     "caption": "100% (dashed) is the theoretical memory speed; sizes that fit in the cache are left out."
     },
     {
      "file": "B1_precision.png",
@@ -87,9 +87,9 @@
      "Memory: NVIDIA V100 SXM2 datasheet: 900 GB/s HBM2"
     ],
     "measured": [
-     "Measured memory limit: 845 GB/s"
+     "Measured memory limit: 845 GB/s (94% of theory)"
     ],
-    "achieved": "At sizes larger than the cache: 2,032 MLUPS to 5,328 MLUPS (69\u201396% of the measured limit); best at grid size 256, fp32.",
+    "achieved": "At sizes larger than the cache: 2,032 MLUPS to 5,328 MLUPS (65\u201390% of the theoretical limit); best at grid size 256, fp32.",
     "why": [
      "Every grid cell reads and writes 19 values per step with little arithmetic, so memory speed sets the limit."
     ]
@@ -103,12 +103,12 @@
     {
      "file": "B2_speed.png",
      "title": "Speed vs problem size (MLUPS)",
-     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are theoretical limits, the dotted line the measured memory limit."
     },
     {
      "file": "B2_share.png",
-     "title": "Share of the machine's measured limit (%)",
-     "caption": "100% (dashed) is the measured memory limit; sizes that fit in the cache are left out, and sizes only a few times larger than the cache can still pass 100%."
+     "title": "Share of the theoretical peak (%)",
+     "caption": "100% (dashed) is the theoretical memory speed; sizes that fit in the cache are left out."
     },
     {
      "file": "B2_precision.png",
@@ -138,9 +138,9 @@
      "Memory: NVIDIA V100 SXM2 datasheet: 900 GB/s HBM2"
     ],
     "measured": [
-     "Measured memory limit: 845 GB/s"
+     "Measured memory limit: 845 GB/s (94% of theory)"
     ],
-    "achieved": "At sizes larger than the cache: 72.7 GB/s to 662 GB/s (9\u201378% of the measured limit); best at matrix size large, 3-D grid matrix.",
+    "achieved": "At sizes larger than the cache: 72.7 GB/s to 662 GB/s (8\u201374% of the theoretical limit); best at matrix size large, 3-D grid matrix.",
     "why": [
      "Mostly streams the matrix from memory; the irregular (power-law) matrix reads the vector at scattered places, which wastes part of the memory bandwidth."
     ]
@@ -154,12 +154,12 @@
     {
      "file": "B3_speed.png",
      "title": "Speed vs problem size (GB/s)",
-     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are theoretical limits, the dotted line the measured memory limit."
     },
     {
      "file": "B3_share.png",
-     "title": "Share of the machine's measured limit (%)",
-     "caption": "100% (dashed) is the measured memory limit; sizes that fit in the cache are left out, and sizes only a few times larger than the cache can still pass 100%."
+     "title": "Share of the theoretical peak (%)",
+     "caption": "100% (dashed) is the theoretical memory speed; sizes that fit in the cache are left out."
     },
     {
      "file": "B3_energy.png",
@@ -184,9 +184,9 @@
      "Memory: NVIDIA V100 SXM2 datasheet: 900 GB/s HBM2"
     ],
     "measured": [
-     "Measured memory limit: 845 GB/s"
+     "Measured memory limit: 845 GB/s (94% of theory)"
     ],
-    "achieved": "Reached 4.6 GFLOP/s to 21.6 GFLOP/s across sizes (2\u20139% of the measured limit); best at matrix size large, 3-D grid matrix.",
+    "achieved": "Reached 4.6 GFLOP/s to 21.6 GFLOP/s across sizes (2\u20138% of the theoretical limit); best at matrix size large, 3-D grid matrix.",
     "why": [
      "Building a sparse result needs scattered memory accesses and bookkeeping, so it reaches only a small share of the memory limit on every machine."
     ]
@@ -200,12 +200,12 @@
     {
      "file": "B4_speed.png",
      "title": "Speed vs problem size (GFLOP/s)",
-     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are theoretical limits, the dotted line the measured memory limit."
     },
     {
      "file": "B4_share.png",
-     "title": "Share of the machine's measured limit (%)",
-     "caption": "100% (dashed) is the measured memory limit; sizes that fit in the cache are left out, and sizes only a few times larger than the cache can still pass 100%."
+     "title": "Share of the theoretical peak (%)",
+     "caption": "100% (dashed) is the theoretical memory speed; sizes that fit in the cache are left out."
     },
     {
      "file": "B4_energy.png",
@@ -227,12 +227,12 @@
    "key": "14.0 TFLOP/s",
    "header": {
     "peak": [
-     "Compute: NVIDIA datasheet at the 1530 MHz boost clock: 80 SMs x 64 FP32 lanes x 2 FLOP x 1.53 GHz = 15.7 TFLOP/s; FP64 = half"
+     "Compute: 80 SMs \u00d7 64 fp32 cores \u00d7 2 \u00d7 1.53 GHz boost = 15.7 TFLOP/s fp32; fp64 = half"
     ],
     "measured": [
-     "Measured compute limit: 14.1 TFLOP/s fp32 \u00b7 7.0 TFLOP/s fp64"
+     "Measured compute limit: 14.1 TFLOP/s fp32 (90% of theory) \u00b7 7.0 TFLOP/s fp64 (90% of theory)"
     ],
-    "achieved": "Reached 5.4 TFLOP/s to 14.0 TFLOP/s across sizes (77\u2013103% of the measured limit); best at matrix size n 8K, fp32.",
+    "achieved": "Reached 5.4 TFLOP/s to 14.0 TFLOP/s across sizes (69\u201393% of the theoretical limit); best at matrix size n 8K, fp32.",
     "why": [
      "Matrix multiply reuses each value many times, so large matrices run close to the compute limit; small matrices are held back by start-up overhead.",
      "The datasheet assumes a 1.53 GHz clock; under its power limit this GPU ran matrix multiply at about 1.39 GHz, which explains most of the gap to the datasheet."
@@ -252,12 +252,12 @@
     {
      "file": "C1_speed.png",
      "title": "Speed vs problem size (GFLOP/s)",
-     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are theoretical limits, the dotted line the measured memory limit."
     },
     {
      "file": "C1_share.png",
-     "title": "Share of the machine's measured limit (%)",
-     "caption": "100% (dashed) is the best speed measured when calibrating this machine; single runs can be slightly faster."
+     "title": "Share of the theoretical peak (%)",
+     "caption": "100% (dashed) is the theoretical compute peak of the machine."
     },
     {
      "file": "C1_precision.png",
@@ -296,7 +296,7 @@
     {
      "file": "C2_speed.png",
      "title": "Speed vs problem size (Gpaths/s)",
-     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are theoretical limits, the dotted line the measured memory limit."
     },
     {
      "file": "C2_energy.png",
@@ -318,12 +318,12 @@
    "key": "88,086 Mpixels/s",
    "header": {
     "peak": [
-     "Compute: NVIDIA datasheet at the 1530 MHz boost clock: 80 SMs x 64 FP32 lanes x 2 FLOP x 1.53 GHz = 15.7 TFLOP/s; FP64 = half"
+     "Compute: 80 SMs \u00d7 64 fp32 cores \u00d7 2 \u00d7 1.53 GHz boost = 15.7 TFLOP/s fp32; fp64 = half"
     ],
     "measured": [
-     "Measured compute limit: 14.1 TFLOP/s fp32 \u00b7 7.0 TFLOP/s fp64"
+     "Measured compute limit: 14.1 TFLOP/s fp32 (90% of theory) \u00b7 7.0 TFLOP/s fp64 (90% of theory)"
     ],
-    "achieved": "Reached 10,779 Mpixels/s to 88,086 Mpixels/s across sizes (9\u201327% of the measured limit); best at image size 8K, 1 channel, 3\u00d73 filter.",
+    "achieved": "Reached 10,779 Mpixels/s to 88,086 Mpixels/s across sizes (8\u201324% of the theoretical limit); best at image size 8K, 1 channel, 3\u00d73 filter.",
     "why": [
      "Small filters do little arithmetic per pixel, so only part of the compute limit is reachable; larger filters do more work per pixel and get closer.",
      "Our own hand-written kernel is the fastest at almost every size on every machine: general-purpose neural-network libraries are not built for one small filter over a large image."
@@ -343,12 +343,12 @@
     {
      "file": "C3_speed.png",
      "title": "Speed vs problem size (Mpixels/s)",
-     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are theoretical limits, the dotted line the measured memory limit."
     },
     {
      "file": "C3_share.png",
-     "title": "Share of the machine's measured limit (%)",
-     "caption": "100% (dashed) is the best speed measured when calibrating this machine; single runs can be slightly faster."
+     "title": "Share of the theoretical peak (%)",
+     "caption": "100% (dashed) is the theoretical compute peak of the machine."
     },
     {
      "file": "C3_software.png",
@@ -375,12 +375,12 @@
    "key": "1.7 TFLOP/s",
    "header": {
     "peak": [
-     "Compute: NVIDIA datasheet at the 1530 MHz boost clock: 80 SMs x 64 FP32 lanes x 2 FLOP x 1.53 GHz = 15.7 TFLOP/s; FP64 = half"
+     "Compute: 80 SMs \u00d7 64 fp32 cores \u00d7 2 \u00d7 1.53 GHz boost = 15.7 TFLOP/s fp32; fp64 = half"
     ],
     "measured": [
-     "Measured compute limit: 14.1 TFLOP/s fp32 \u00b7 7.0 TFLOP/s fp64"
+     "Measured compute limit: 14.1 TFLOP/s fp32 (90% of theory) \u00b7 7.0 TFLOP/s fp64 (90% of theory)"
     ],
-    "achieved": "Reached 0.704 GFLOP/s to 1.7 TFLOP/s across sizes (0\u201312% of the measured limit); best at FFT size 64M, 2-D.",
+    "achieved": "Reached 0.704 GFLOP/s to 1.7 TFLOP/s across sizes (0\u201311% of the theoretical limit); best at FFT size 64M, 2-D.",
     "why": [
      "An FFT passes over the whole array several times; sizes that fit in the cache run fastest."
     ]
@@ -389,12 +389,12 @@
     {
      "file": "C4_speed.png",
      "title": "Speed vs problem size (GFLOP/s)",
-     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are theoretical limits, the dotted line the measured memory limit."
     },
     {
      "file": "C4_share.png",
-     "title": "Share of the machine's measured limit (%)",
-     "caption": "100% (dashed) is the best speed measured when calibrating this machine; single runs can be slightly faster."
+     "title": "Share of the theoretical peak (%)",
+     "caption": "100% (dashed) is the theoretical compute peak of the machine."
     },
     {
      "file": "C4_energy.png",
@@ -433,7 +433,7 @@
     {
      "file": "C5_speed.png",
      "title": "Speed vs problem size (Mpixels/s)",
-     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are theoretical limits, the dotted line the measured memory limit."
     },
     {
      "file": "C5_software.png",
@@ -477,7 +477,7 @@
     {
      "file": "C6_speed.png",
      "title": "Speed vs problem size (Mpairs/s)",
-     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are theoretical limits, the dotted line the measured memory limit."
     },
     {
      "file": "C6_energy.png",
@@ -516,7 +516,7 @@
     {
      "file": "C7_speed.png",
      "title": "Speed vs problem size (Mqueries/s)",
-     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are theoretical limits, the dotted line the measured memory limit."
     },
     {
      "file": "C7_energy.png",
@@ -550,7 +550,7 @@
     {
      "file": "C8_speed.png",
      "title": "Speed vs problem size (GB/s)",
-     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are theoretical limits, the dotted line the measured memory limit."
     },
     {
      "file": "C8_energy.png",
@@ -590,7 +590,7 @@
     {
      "file": "C9_speed.png",
      "title": "Speed vs problem size (GB/s)",
-     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are theoretical limits, the dotted line the measured memory limit."
     },
     {
      "file": "C9_energy.png",
@@ -634,7 +634,7 @@
     {
      "file": "S1_speed.png",
      "title": "Speed vs problem size (Msamples/s)",
-     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are theoretical limits, the dotted line the measured memory limit."
     },
     {
      "file": "S1_software.png",
@@ -673,7 +673,7 @@
     {
      "file": "S2_speed.png",
      "title": "Speed vs problem size (iterations/s)",
-     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are theoretical limits, the dotted line the measured memory limit."
     },
     {
      "file": "S2_software.png",
@@ -701,13 +701,13 @@
    "header": {
     "peak": [
      "Memory: NVIDIA V100 SXM2 datasheet: 900 GB/s HBM2",
-     "Compute: NVIDIA datasheet at the 1530 MHz boost clock: 80 SMs x 64 FP32 lanes x 2 FLOP x 1.53 GHz = 15.7 TFLOP/s; FP64 = half"
+     "Compute: 80 SMs \u00d7 64 fp32 cores \u00d7 2 \u00d7 1.53 GHz boost = 15.7 TFLOP/s fp32; fp64 = half"
     ],
     "measured": [
-     "Measured memory limit: 845 GB/s",
-     "Measured compute limit: 14.1 TFLOP/s fp32 \u00b7 7.0 TFLOP/s fp64"
+     "Measured memory limit: 845 GB/s (94% of theory)",
+     "Measured compute limit: 14.1 TFLOP/s fp32 (90% of theory) \u00b7 7.0 TFLOP/s fp64 (90% of theory)"
     ],
-    "achieved": "Token generation: up to 679 tokens/s (71% of the measured memory limit at best); Prompt processing: up to 5,904 tokens/s (103% of the measured compute limit at best).",
+    "achieved": "Token generation: up to 679 tokens/s (66% of the theoretical memory limit at best); Prompt processing: up to 5,904 tokens/s (93% of the theoretical compute limit at best).",
     "why": [
      "Generating each token reads all model weights from memory, so it is limited by memory speed; processing a prompt reuses the weights and is limited by compute.",
      "Only the 1-billion-parameter model fits in this GPU's 16 GB; token generation is replayed as a single recorded GPU program to avoid launch overhead."
@@ -727,12 +727,12 @@
     {
      "file": "A1_speed.png",
      "title": "Speed vs problem size (tokens/s)",
-     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are theoretical limits, the dotted line the measured memory limit."
     },
     {
      "file": "A1_share.png",
-     "title": "Share of the machine's measured limit (%)",
-     "caption": "Token generation is compared with the memory limit, prompt processing with the compute limit; 100% (dashed) is the limit."
+     "title": "Share of the theoretical peak (%)",
+     "caption": "Token generation is compared with the theoretical memory speed, prompt processing with the theoretical compute peak."
     },
     {
      "file": "A1_software.png",

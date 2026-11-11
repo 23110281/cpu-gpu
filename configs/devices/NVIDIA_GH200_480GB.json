@@ -3,5 +3,23 @@
   "device_class": "gpu",
   "label": "NVIDIA H100 (GH200)",
   "gpu_index": 0,
-  "_note": "max_mem_gb omitted: detected at sweep time (CPU MemTotal/sockets*0.8, GPU nvidia-smi*0.9). Placements resolving to the same CPU set and scaling counts >= the socket's cores are dropped automatically."
+  "_note": "max_mem_gb omitted: detected at sweep time (CPU MemTotal/sockets*0.8, GPU nvidia-smi*0.9). Placements resolving to the same CPU set and scaling counts >= the socket's cores are dropped automatically.",
+  "display": {
+    "name": "NVIDIA H100 (in GH200)",
+    "spec": "Hopper · 132 SMs · 96 GB HBM3 · GH200 Grace Hopper superchip"
+  },
+  "llc_mb": 50,
+  "datasheet": {
+    "bandwidth_gbps": 4000,
+    "peak_gflops": {
+      "fp32": 67000,
+      "fp64": 34000,
+      "fp64t": 67000,
+      "bf16": 990000
+    },
+    "derivation": {
+      "bandwidth": "96 GB HBM3, up to 4000 GB/s (NVIDIA GH200 datasheet)",
+      "compute": "132 SMs × 128 fp32 cores × 2 × ~1.98 GHz = 67 TFLOP/s fp32; fp64 34, fp64 tensor 67, bf16 tensor 990 (NVIDIA GH200 datasheet, dense)"
+    }
+  }
 }

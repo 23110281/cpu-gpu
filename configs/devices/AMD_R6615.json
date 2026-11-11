@@ -1,7 +1,7 @@
 {
   "device_id": "AMD_R6615",
   "device_class": "cpu",
-  "label": "AMD EPYC 9354P (Zen 4, 32C/64T, 1 socket, NPS4) \u2014 CloudLab r6615 (Clemson)",
+  "label": "AMD EPYC 9354P (Zen 4, 32C/64T, 1 socket, NPS4) — CloudLab r6615 (Clemson)",
   "placements": [
     "socket0",
     "socket0-smt"
@@ -34,5 +34,10 @@
       "bandwidth": "12 channels x DDR5-4800 x 8 B = 460.8 GB/s (dmidecode on clnode330: 12x16 GB, configured 4800 MT/s)",
       "compute": "32 cores x 3.25 GHz base x 16 FP64 FLOP/cycle (Zen 4: 2x 256-bit FMA pipes; AVX-512 double-pumped) = 1664; fp32 = 2x. Boost clocks are NOT used for the datasheet figure."
     }
-  }
+  },
+  "display": {
+    "name": "AMD EPYC 9354P",
+    "spec": "Zen 4 · 32 cores · 12 × DDR5-4800 · CloudLab r6615"
+  },
+  "llc_mb": 256
 }

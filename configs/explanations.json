@@ -1,0 +1,69 @@
+{
+  "_about": "Short 'why' lines for the workload pages (analysis/dashboard_summary.py). 'workloads' applies everywhere; 'device_notes' adds one line for a device glob + workload. Plain English, 1-2 lines, no code names. Only write what the data or a verified check supports.",
+  "workloads": {
+    "B1": "Each element is read and written once with almost no arithmetic, so memory speed sets the limit; sizes that fit in the cache can run faster than memory allows.",
+    "B2": "Every grid cell reads and writes 19 values per step with little arithmetic, so memory speed sets the limit.",
+    "B3": "Mostly streams the matrix from memory; the irregular (power-law) matrix reads the vector at scattered places, which wastes part of the memory bandwidth.",
+    "B4": "Building a sparse result needs scattered memory accesses and bookkeeping, so it reaches only a small share of the memory limit on every machine.",
+    "C1": "Matrix multiply reuses each value many times, so large matrices run close to the compute limit; small matrices are held back by start-up overhead.",
+    "C2": "Mostly random-number generation and exponentials; there is no simple operation count, so speed is reported as simulated paths per second.",
+    "C3": "Small filters do little arithmetic per pixel, so only part of the compute limit is reachable; larger filters do more work per pixel and get closer.",
+    "C4": "An FFT passes over the whole array several times; sizes that fit in the cache run fastest.",
+    "C5": "Dominated by exponentials and reads of each pixel's neighbourhood; there is no simple operation count, so speed is reported as pixels per second.",
+    "C6": "Sorting is limited by moving data and comparing keys; inputs that no longer fit in the cache slow down.",
+    "C7": "Each lookup jumps through the sorted keys; once the keys no longer fit in the cache, every step waits on memory.",
+    "C8": "Processors use their built-in AES instructions; the GPU uses a table-based software kernel. 'Hardware crypto off' shows the processor without those instructions.",
+    "C9": "Processors use their built-in SHA instructions; the GPU computes the hash in software. Short messages spend more time on per-message overhead.",
+    "S1": "Many threads add to the same counters and must coordinate. Measured with PyTorch's built-in histogram functions (library-level, not hand-tuned code), so results reflect that library.",
+    "S2": "Each batch must finish before the next can start, so the cost of synchronizing all cores (or the whole GPU) dominates at small batches.",
+    "A1": "Generating each token reads all model weights from memory, so it is limited by memory speed; processing a prompt reuses the weights and is limited by compute.",
+    "GEMV": "Each matrix value is used exactly once, so memory speed sets the limit; small sizes fit in the cache."
+  },
+  "device_notes": [
+    {
+      "device": "AMD_C6525_100G",
+      "workload": "C4",
+      "text": "On this AMD processor, Intel's math library runs mid-size one-dimensional transforms on a single core (checked on the machine), which explains the dip."
+    },
+    {
+      "device": "INTEL_C6620",
+      "workload": "B*",
+      "text": "The memory limit here is the pure-read speed: this processor skips the usual extra read when it writes whole cache lines."
+    },
+    {
+      "device": "NVIDIA_V100",
+      "workload": "A1",
+      "text": "Only the 1-billion-parameter model fits in this GPU's 16 GB; token generation is replayed as a single recorded GPU program to avoid launch overhead."
+    },
+    {
+      "device": "*",
+      "workload": "C3",
+      "text": "Our own hand-written kernel is the fastest at almost every size on every machine: general-purpose neural-network libraries are not built for one small filter over a large image."
+    },
+    {
+      "device": "NVIDIA_V100",
+      "workload": "C1",
+      "text": "The datasheet assumes a 1.53 GHz clock; under its power limit this GPU ran matrix multiply at about 1.39 GHz, which explains most of the gap to the datasheet."
+    },
+    {
+      "device": "NVIDIA_V100",
+      "workload": "C9",
+      "text": "Our GPU kernel reads each message separately; a layout that interleaves messages might be faster (not yet tested)."
+    },
+    {
+      "device": "AMD_C6525_100G",
+      "workload": "B*",
+      "text": "The measured memory limit (125 GB/s) is 61% of the datasheet figure; the same value was measured in an earlier session, so it is stable, but the cause (for example how the memory is installed) is not yet known."
+    }
+  ],
+  "no_limit": {
+    "C2": "random-number generation and exponentials",
+    "C5": "exponentials and neighbourhood reads",
+    "C6": "data movement and comparisons",
+    "C7": "memory latency of each lookup",
+    "C8": "the encryption rounds",
+    "C9": "the hash rounds",
+    "S1": "coordination between threads",
+    "S2": "synchronization between batches"
+  }
+}

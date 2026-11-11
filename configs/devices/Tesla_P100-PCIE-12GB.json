@@ -1,0 +1,21 @@
+{
+  "device_id": "Tesla_P100-PCIE-12GB",
+  "device_class": "gpu",
+  "_note": "Earlier-script machine: only the datasheet is used (dashboard pages).",
+  "display": {
+    "name": "NVIDIA P100",
+    "spec": "Pascal · 56 SMs · 12 GB HBM2"
+  },
+  "llc_mb": 4,
+  "datasheet": {
+    "bandwidth_gbps": 549,
+    "peak_gflops": {
+      "fp32": 9300,
+      "fp64": 4700
+    },
+    "derivation": {
+      "bandwidth": "12 GB HBM2, 549 GB/s (NVIDIA Tesla P100 PCIe datasheet)",
+      "compute": "3584 cores × 2 × 1.30 GHz boost = 9.3 TFLOP/s fp32; fp64 4.7 (NVIDIA datasheet)"
+    }
+  }
+}

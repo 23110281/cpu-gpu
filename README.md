@@ -26,7 +26,7 @@ Each workload is labelled by what limits it: **B** = memory bandwidth, **C** = c
 | C7 | Index search | binary search of many queries in sorted keys | Mqueries/s (C) | PyTorch `searchsorted` | PyTorch `searchsorted` (CUDA) |
 | C8 | AES-128-CTR | encryption | GB/s (C) | OpenSSL (AES-NI), plus a hardware-off variant | native CUDA (T-table AES) |
 | C9 | SHA-256 | hashing many independent messages | GB/s (C) | OpenSSL (SHA-NI), plus a hardware-off variant | native CUDA |
-| S1 | Histogram | count values into bins | Msamples/s (S) | PyTorch `histc`, `bincount` (fastest kept) | PyTorch `histc`, `bincount` (atomics; fastest kept) |
+| S1 | Histogram | count values into bins | Msamples/s (S) | PyTorch `histc`, `bincount` (fastest kept; library-level, not hand-tuned) | PyTorch `histc`, `bincount` (atomics; fastest kept) |
 | S2 | Constraint solver | batched Gauss-Seidel with a barrier between batches | iterations/s (S) | native C++ (OpenMP barriers) | native CUDA: CUDA graph vs cooperative launch (fastest kept) |
 | A1 | Llama-3 inference | a full Llama-3 model forward pass (1B / 3B / 8B shapes), prompt + token generation | tokens/s (A) | PyTorch (oneMKL SGEMM), OpenBLAS, BLIS for the linear layers (fastest kept) | PyTorch → cuBLAS; generation also replayed as a CUDA graph |
 
@@ -132,17 +132,21 @@ bench/                    the benchmark harness (python3 -m bench ...)
   schema.py                 the result CSV format
   workloads/                one file per workload (b1_saxpy.py ... a1_llama.py) + shared helpers
 analysis/                 turns results into tables, figures and the dashboard
-  analyze.py                headline numbers, library comparison, bound checks, figures
+  analyze.py                headline numbers, library comparison, bound checks, CPU/GPU ratios
   library_report.py         which library wins where (also writes the README table)
-  dashboard_summary.py      per-machine summary pages
-  figures.py                figure style
+  dashboard_summary.py      machine and workload pages (limits, achieved, why, plots)
+  plots.py                  the dashboard's plot catalogue
+  legacy.py                 reads the correct earlier-script results (configs/legacy.json)
+  compare.py                data for the interactive CPU vs GPU page
+  figures.py                chart style (black and yellow)
   build_dashboard.py        builds results/site/index.html from dashboard.html
   dashboard.html            the dashboard page template
 configs/
   devices/<DEVICE>.json     one file per machine: placements, datasheet ceilings
   workloads.json            the workload list, implementation status and TODOs
   library_notes.json        curated "why this library wins" notes
-  dashboard_notes.json      curated findings shown on each machine's page
+  explanations.json         short 'why' lines on the dashboard's workload pages
+  legacy.json               which earlier-script results the dashboard may show
 scripts/
   setup_node.sh             node setup (CPU or GPU)
   install_cuda.sh           NVIDIA driver + CUDA toolkit (GPU nodes)
@@ -154,7 +158,7 @@ docs/
   methodology.md            the measurement protocol
   HANDOVER.md               current state of the project (for the next work session)
 results/
-  data/<cpu|gpu>/<DEVICE>/  campaign results: one CSV per workload, raw samples, environment records
+  data/<cpu|gpu>/<DEVICE>/  campaign results: one CSV per workload, samples.tar (raw timings), machine.json
   data/sessions/            machine test sessions (kept for the record; never analysed)
   calibration/              measured ceilings per machine
   crosscheck/               native cross-check results
@@ -168,6 +172,6 @@ Makefile  requirements.txt  requirements-node.txt
 
 ## Legacy code and the GH200 study
 
-- [`legacy/`](legacy/README.md) holds the project's first benchmark pipeline: native C/CUDA programs, sweep scripts, plots and their data from Sept–Oct 2026. It is frozen and is **not** used in the paper; its README explains why. Its data only fills "prelim" placeholder cells on the dashboard until our harness covers that machine.
+- [`legacy/`](legacy/README.md) holds the project's first benchmark pipeline: native C/CUDA programs, sweep scripts, plots and their data from Sept–Oct 2026. It is frozen and is **not** used in the paper; its README explains why. Where an earlier script was correct (GEMM, SAXPY, GEMV, SpMV, SpGEMM; see `configs/legacy.json`), the dashboard shows those results for machines our harness has not covered yet, clearly marked "earlier scripts".
 - [`studies/gh200_c2c/`](studies/gh200_c2c/README.md) is a separate system-level study of the GH200's shared CPU–GPU memory: where data should live, and which processor should run each kernel. It still has known defects, listed in its README, and its data is never mixed into the CPU-vs-GPU comparison.
 - [`crosscheck/`](crosscheck/) compares the harness against two independent native C benchmarks (`python3 crosscheck/crosscheck.py --device-id <DEVICE>`); they must agree within 3%.

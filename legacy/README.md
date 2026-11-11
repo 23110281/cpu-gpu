@@ -6,7 +6,7 @@ This is the project's first benchmark pipeline: native C/CUDA programs, shell sw
 
 - It is **frozen**: nothing here is maintained.
 - It is **never used in the paper**.
-- It is kept for three reasons: as a reference; because its data fills the dashboard's grey **"prelim"** cells until our current harness ([`bench/`](../bench/)) has measured that machine; and to show how the methodology changed.
+- It is kept for three reasons: as a reference; because its correct results (GEMM, SAXPY, GEMV, SpMV, SpGEMM; chosen in [`configs/legacy.json`](../configs/legacy.json)) are shown on the dashboard, marked "earlier scripts", for machines our current harness ([`bench/`](../bench/)) has not measured yet; and to show how the methodology changed.
 
 Everything is preserved as it was, except that paths were adjusted so it still runs from this folder. The git history has the original locations: before November 2026 these files lived under `src/`, `scripts/`, `results/plotting/` and `results/data/legacy/`.
 
@@ -110,7 +110,7 @@ All read `data/<cpu|gpu>/*/sweep_<bench>_*.csv` and write `plots/<device>/<bench
 
 ## The data (`data/`)
 
-All of it is shown on the dashboard only as "prelim" (or ⚠ where known to be invalid), and only until our harness measures that machine.
+On the dashboard, correct results appear as white ticks ("earlier scripts"), wrong ones as red TODOs, and only until our harness measures that machine.
 
 | Device | CloudLab node | Collected | Files (rows) |
 |---|---|---|---|

@@ -1,0 +1,21 @@
+{
+  "device_id": "INTEL_C6220",
+  "device_class": "cpu",
+  "_note": "Earlier-script machine: only the datasheet is used (dashboard pages).",
+  "display": {
+    "name": "2 × Intel Xeon E5-2650 v2",
+    "spec": "Ivy Bridge · 2 sockets × 8 cores · 8 × DDR3-1866 · CloudLab c6220"
+  },
+  "llc_mb": 40,
+  "datasheet": {
+    "bandwidth_gbps": 119.4,
+    "peak_gflops": {
+      "fp32": 665.6,
+      "fp64": 332.8
+    },
+    "derivation": {
+      "bandwidth": "2 sockets × 4 channels × 1866 MT/s × 8 B = 119.4 GB/s",
+      "compute": "16 cores × 2.6 GHz base × 8 fp64 FLOP/cycle (AVX, no FMA) = 333 GFLOP/s fp64; fp32 = 2×"
+    }
+  }
+}

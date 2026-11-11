@@ -28,7 +28,16 @@
     "bandwidth_gbps": 307.2,
     "derivation": {
       "bandwidth": "8 channels x DDR5-4800 x 8 B = 307.2 GB/s (dmidecode on er110: 8x16 GB DDR5 rated 5600, configured 4800 MT/s, DIMMs A1-A8, one per channel)",
-      "compute": "peak_gflops not filled in: the datasheet figure needs the number of AVX-512 FMA units per core, which could not be verified from an official Intel page (ark.intel.com unreachable on 2026-11-11). Base clock 2.1 GHz (sysfs base_frequency). Add it after checking Intel ARK; the measured GEMM peak (calibration) does not depend on it."
+      "compute": "28 cores × 2.1 GHz base × 32 fp64 FLOP/cycle (2 AVX-512 FMA units, Intel ARK) = 1882 GFLOP/s fp64; fp32 = 2×"
+    },
+    "peak_gflops": {
+      "fp32": 3763.2,
+      "fp64": 1881.6
     }
-  }
+  },
+  "display": {
+    "name": "Intel Xeon Gold 5512U",
+    "spec": "Emerald Rapids · 28 cores · 8 × DDR5-4800 · CloudLab c6620"
+  },
+  "llc_mb": 52.5
 }

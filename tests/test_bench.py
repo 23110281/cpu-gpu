@@ -486,3 +486,44 @@ def test_bandwidth_ceiling_write_allocate_rule():
     bw, note = cal.dram_traffic(emr, "cpu")
     assert bw == 213.6 and "not applied" in note
     assert cal.dram_traffic(emr, "gpu")[0] == 195.3
+
+
+def _analysis_modules():
+    try:
+        import pandas  # noqa: F401
+    except Exception as e:                                    # broken or missing pandas: skip, as CI has it
+        pytest.skip(f"pandas unavailable: {e}")
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "analysis"))
+    import legacy
+    import compare
+    return legacy, compare
+
+
+def test_legacy_filters_drop_invalid_rows():
+    legacy, _ = _analysis_modules()
+    d = legacy.load()
+    assert d[(d.device == "NVIDIA_GH200_480GB") & (d.bench == "saxpy")].empty          # cache-resident
+    assert d[(d.device == "Tesla_P100-PCIE-12GB") & (d.precision == "bf16")].empty     # emulated
+    assert d[(d.device == "NVIDIA_L40S") & (d.bench == "gemv") & (d["size"] <= 4096)].empty
+    assert not d[(d.device == "NVIDIA_A30") & (d.bench == "gemm")].empty
+    m = legacy.main_rows(d)
+    big = m[m.dram & m.bench.isin(["saxpy", "gemv", "spmv"])]
+    import json as _j
+    for dev, g in big.groupby("device"):                   # memory-sized results never beat the datasheet
+        ds = _j.loads((Path(__file__).resolve().parents[1] / "configs/devices" / f"{dev}.json").read_text())["datasheet"]
+        assert g.metric.max() <= 1.02 * ds["bandwidth_gbps"], dev
+
+
+def test_progress_categories_for_h100():
+    legacy, _ = _analysis_modules()
+    st = legacy.cell_states()["NVIDIA_GH200_480GB"]
+    assert st["C1"][0] == "earlier" and st["B3"][0] == "earlier" and st["B4"][0] == "earlier"
+    for wid in ("B1", "C2", "C8", "C3", "A1"):
+        assert st[wid][0] == "bad", wid
+    assert "S2" not in st and "B2" not in st                 # never run -> white TODO
+
+
+def test_compare_keys_match_legacy_and_final():
+    _, compare = _analysis_modules()
+    assert compare._key("C1", {"n": 4096, "precision": "fp32", "lib": "x", "variant": "base"}) == "n=4096|fp32"
+    assert compare._key("S1", {"n": 8, "bins": 4, "precision": "int32"}) == compare._key("S1", {"n": 8, "bins": 4, "precision": "fp32"})

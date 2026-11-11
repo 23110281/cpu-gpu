@@ -5,79 +5,85 @@
     "cpu": [
       {
         "id": "INTEL_C6620",
-        "label": "Intel Xeon Emerald Rapids (c6620)",
-        "short": "Xeon EMR",
+        "label": "Intel Xeon Gold 5512U (Emerald Rapids, c6620)",
+        "short": "Intel Emerald Rapids",
         "core": true
       },
       {
         "id": "AMD_C6525_100G",
-        "label": "AMD EPYC (c6525-100g)",
-        "short": "EPYC",
+        "label": "AMD EPYC 7402P (Zen 2, c6525-100g)",
+        "short": "AMD Zen 2",
         "core": true
+      },
+      {
+        "id": "AMD_R6615",
+        "label": "AMD EPYC 9354P (Zen 4, r6615)",
+        "short": "AMD Zen 4",
+        "core": true
+      },
+      {
+        "id": "INTEL_C220G5",
+        "label": "2 × Intel Xeon Silver 4114 (c220g5)",
+        "short": "Xeon Silver 4114",
+        "core": false
+      },
+      {
+        "id": "INTEL_C6220",
+        "label": "2 × Intel Xeon E5-2650 v2 (c6220)",
+        "short": "Xeon E5-2650 v2",
+        "core": false
+      },
+      {
+        "id": "INTEL_M510",
+        "label": "Intel Xeon D-1548 (m510)",
+        "short": "Xeon D-1548",
+        "core": false
       },
       {
         "id": "NVIDIA_GRACE",
         "label": "NVIDIA Grace (GH200)",
         "short": "Grace",
-        "core": true,
-        "note": "Grace data lives in results/data/gpu/NVIDIA_GH200_480GB/ (residency_mode=cpu_local rows)"
-      },
-      {
-        "id": "INTEL_M510",
-        "label": "Xeon D-1548 (m510)",
-        "short": "D-1548",
-        "core": false
-      },
-      {
-        "id": "INTEL_C6220",
-        "label": "Xeon E5-2650 (c6220)",
-        "short": "E5-2650",
-        "core": false
-      },
-      {
-        "id": "INTEL_C220G5",
-        "label": "Xeon Silver 4114 (c220g5)",
-        "short": "Silver 4114",
-        "core": false
+        "core": false,
+        "note": "Only the separate GH200 memory-placement study ran here; no dashboard page."
       }
     ],
     "gpu": [
       {
-        "id": "NVIDIA_A100",
-        "label": "A100",
-        "short": "A100",
-        "core": true
-      },
-      {
-        "id": "NVIDIA_L40S",
-        "label": "L40S",
-        "short": "L40S",
-        "core": true
-      },
-      {
-        "id": "NVIDIA_GH200_480GB",
-        "label": "H100 (GH200)",
-        "short": "H100",
-        "core": true
-      },
-      {
-        "id": "NVIDIA_A30",
-        "label": "A30",
-        "short": "A30",
-        "core": false
-      },
-      {
         "id": "NVIDIA_V100",
-        "label": "V100 (SXM2 16 GB, CloudLab c4130)",
+        "label": "NVIDIA V100 (SXM2 16 GB, c4130)",
         "short": "V100",
-        "core": false,
+        "core": true,
         "aliases": [
           "Tesla_V100-SXM2-16GB"
         ]
       },
       {
+        "id": "NVIDIA_A30",
+        "label": "NVIDIA A30",
+        "short": "A30",
+        "core": true
+      },
+      {
+        "id": "NVIDIA_A100",
+        "label": "NVIDIA A100",
+        "short": "A100",
+        "core": true
+      },
+      {
+        "id": "NVIDIA_GH200_480GB",
+        "label": "NVIDIA H100 (in GH200)",
+        "short": "H100 (GH200)",
+        "core": true
+      },
+      {
+        "id": "NVIDIA_L40S",
+        "label": "NVIDIA L40S",
+        "short": "L40S",
+        "core": false
+      },
+      {
         "id": "Tesla_P100-PCIE-12GB",
-        "label": "P100",
+        "label": "NVIDIA P100 (PCIe 12 GB)",
         "short": "P100",
         "core": false
       }
@@ -104,6 +110,8 @@
   "workloads": [
     {
       "id": "B1",
+      "plain": "SAXPY (vector update)",
+      "what": "Updates a long vector with y = a·x + y: almost pure memory traffic.",
       "name": "SAXPY",
       "bound": "B",
       "field": "Dense LA / BLAS-1",
@@ -151,6 +159,8 @@
     },
     {
       "id": "B2",
+      "plain": "Fluid simulation (LBM)",
+      "what": "One time step of a 3-D fluid simulation on a grid of cells.",
       "name": "LBM D3Q19",
       "bound": "B",
       "field": "CFD",
@@ -178,6 +188,8 @@
     },
     {
       "id": "B3",
+      "plain": "Sparse matrix × vector (SpMV)",
+      "what": "Multiplies a matrix that is mostly zeros by a vector, as used in scientific solvers.",
       "name": "SpMV (CSR)",
       "bound": "B",
       "field": "Sparse solvers",
@@ -257,6 +269,8 @@
     },
     {
       "id": "B4",
+      "plain": "Sparse matrix × matrix (SpGEMM)",
+      "what": "Multiplies two mostly-zero matrices, as used in graph analytics.",
       "name": "SpGEMM (CSR)",
       "bound": "B",
       "field": "Graph / sparse",
@@ -316,6 +330,8 @@
     },
     {
       "id": "C1",
+      "plain": "Matrix multiply (GEMM)",
+      "what": "Multiplies two dense square matrices: the core operation of scientific computing and AI.",
       "name": "GEMM",
       "bound": "C",
       "field": "Dense LA",
@@ -367,6 +383,8 @@
     },
     {
       "id": "C2",
+      "plain": "Monte Carlo option pricing",
+      "what": "Prices financial options by simulating many random price paths.",
       "name": "Monte Carlo option pricing (fp64)",
       "bound": "C",
       "field": "Finance",
@@ -427,6 +445,8 @@
     },
     {
       "id": "C3",
+      "plain": "Image convolution",
+      "what": "Slides a small filter over a large image, as in image processing.",
       "name": "2D Convolution",
       "bound": "C",
       "field": "Image",
@@ -479,6 +499,8 @@
     },
     {
       "id": "C4",
+      "plain": "Fourier transform (FFT)",
+      "what": "Converts a signal or image into its frequency components.",
       "name": "FFT 1D/2D",
       "bound": "C",
       "field": "Signal",
@@ -534,6 +556,8 @@
     },
     {
       "id": "C5",
+      "plain": "Bilateral image filter",
+      "what": "Smooths an image while keeping its edges sharp.",
       "name": "Bilateral filter",
       "bound": "C",
       "field": "Image",
@@ -561,6 +585,8 @@
     },
     {
       "id": "C6",
+      "plain": "Sorting",
+      "what": "Sorts key-value pairs, as databases do.",
       "name": "Sort (key-value)",
       "bound": "C",
       "field": "Database",
@@ -615,6 +641,8 @@
     },
     {
       "id": "C7",
+      "plain": "Search in sorted keys",
+      "what": "Looks up many values in a large sorted list, as database indexes do.",
       "name": "Index search",
       "bound": "C",
       "field": "Database",
@@ -668,6 +696,8 @@
     },
     {
       "id": "C8",
+      "plain": "AES encryption",
+      "what": "Encrypts data with AES-128 in counter mode.",
       "name": "AES-128-CTR",
       "bound": "C",
       "field": "Security",
@@ -726,6 +756,8 @@
     },
     {
       "id": "C9",
+      "plain": "SHA-256 hashing",
+      "what": "Computes SHA-256 fingerprints of many messages.",
       "name": "SHA-256 multi-buffer",
       "bound": "C",
       "field": "Security",
@@ -758,6 +790,8 @@
     },
     {
       "id": "S1",
+      "plain": "Histogram",
+      "what": "Counts how many values fall into each bin, as in image and data analysis.",
       "name": "Histogram",
       "bound": "S",
       "field": "Image / analytics",
@@ -812,6 +846,8 @@
     },
     {
       "id": "S2",
+      "plain": "Physics constraint solver",
+      "what": "Resolves contacts between simulated bodies in batches that must run one after another.",
       "name": "Constraint solver (batched PGS)",
       "bound": "S",
       "field": "Game physics",
@@ -838,6 +874,8 @@
     },
     {
       "id": "A1",
+      "plain": "Llama-3 inference",
+      "what": "Runs a Llama-3 language model: processing a prompt and generating new tokens.",
       "name": "Llama-3 inference",
       "bound": "A",
       "field": "LLM / AI",
@@ -907,6 +945,30 @@
         ]
       },
       "legacy_note": "legacy CPU: bench_llama32_layers.py (deleted) (cpu_local on Grace only); llama.cpp e2e todo | legacy GPU: bench_llama32_layers.py (deleted) (GH200 only); llama.cpp CUDA / vLLM e2e todo"
+    }
+  ],
+  "todo": [
+    {
+      "group": "Data collection",
+      "items": [
+        "Run the final benchmark scripts on the A30, A100 and H100 GPUs.",
+        "Repeat the FFT benchmark on AMD processors with a second FFT library."
+      ]
+    },
+    {
+      "group": "Method",
+      "items": [
+        "Add a hand-optimised histogram for the processors (the current one uses PyTorch's built-in function).",
+        "Review how the sparse matrix-matrix workload is classified (memory-bound or not)."
+      ]
+    },
+    {
+      "group": "Publication",
+      "items": [
+        "Freeze one version of the code and collect all final results with it.",
+        "Complete the licence review of the libraries used.",
+        "Decide whether the GH200 memory-placement study is part of the paper."
+      ]
     }
   ],
   "infra_todo": [

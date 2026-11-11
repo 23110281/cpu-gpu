@@ -3,5 +3,23 @@
   "device_class": "gpu",
   "label": "NVIDIA A100 (CloudLab)",
   "gpu_index": 0,
-  "_note": "max_mem_gb omitted: detected at sweep time (CPU MemTotal/sockets*0.8, GPU nvidia-smi*0.9). Placements resolving to the same CPU set and scaling counts >= the socket's cores are dropped automatically."
+  "_note": "max_mem_gb omitted: detected at sweep time (CPU MemTotal/sockets*0.8, GPU nvidia-smi*0.9). Placements resolving to the same CPU set and scaling counts >= the socket's cores are dropped automatically.",
+  "display": {
+    "name": "NVIDIA A100",
+    "spec": "Ampere · 108 SMs · 40 GB HBM2 (variant assumed) · CloudLab"
+  },
+  "llc_mb": 40,
+  "datasheet": {
+    "bandwidth_gbps": 1555,
+    "peak_gflops": {
+      "fp32": 19500,
+      "fp64": 9700,
+      "fp64t": 19500,
+      "bf16": 312000
+    },
+    "derivation": {
+      "bandwidth": "40 GB HBM2, 1555 GB/s (A100 PCIe 40GB product brief; the earlier scripts did not record the variant, and the best measured GEMV, 1477 GB/s, fits it)",
+      "compute": "108 SMs × 64 fp32 cores × 2 × 1.41 GHz boost = 19.5 TFLOP/s fp32; fp64 9.7, fp64 tensor 19.5, bf16 tensor 312 (NVIDIA Ampere whitepaper, dense)"
+    }
+  }
 }

@@ -3,5 +3,22 @@
   "device_class": "gpu",
   "label": "NVIDIA L40S",
   "gpu_index": 0,
-  "_note": "max_mem_gb omitted: detected at sweep time (CPU MemTotal/sockets*0.8, GPU nvidia-smi*0.9). Placements resolving to the same CPU set and scaling counts >= the socket's cores are dropped automatically."
+  "_note": "max_mem_gb omitted: detected at sweep time (CPU MemTotal/sockets*0.8, GPU nvidia-smi*0.9). Placements resolving to the same CPU set and scaling counts >= the socket's cores are dropped automatically.",
+  "display": {
+    "name": "NVIDIA L40S",
+    "spec": "Ada Lovelace · 142 SMs · 48 GB GDDR6"
+  },
+  "llc_mb": 96,
+  "datasheet": {
+    "bandwidth_gbps": 864,
+    "peak_gflops": {
+      "fp32": 91600,
+      "fp64": 1400,
+      "bf16": 362000
+    },
+    "derivation": {
+      "bandwidth": "48 GB GDDR6, 864 GB/s (NVIDIA L40S product page)",
+      "compute": "18,176 cores × 2 × 2.52 GHz boost = 91.6 TFLOP/s fp32; bf16 tensor 362 (dense); fp64 not listed by NVIDIA, ~1.4 at Ada's 1/64 rate (derived)"
+    }
+  }
 }

@@ -59,6 +59,7 @@ analysis:
 	SOURCE_DATE_EPOCH=0 $(PYTHON) analysis/analyze.py
 	$(PYTHON) analysis/library_report.py
 	SOURCE_DATE_EPOCH=0 $(PYTHON) analysis/dashboard_summary.py
+	$(PYTHON) analysis/compare.py
 
 site: analysis
 	$(PYTHON) analysis/build_dashboard.py

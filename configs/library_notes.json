@@ -8,6 +8,7 @@
       "status": "verified",
       "date": "2026-11-11",
       "note": "torch's fp32 linear layers (MKL GEMV) stream only ~25-35 GB/s at batch-1 decode on AMD EPYC, i.e. about one core's worth of bandwidth; OpenBLAS sgemv on the same tensors streams 218-285 GB/s. That the slowdown is inside MKL's AMD code path is a hypothesis (MKL_VERBOSE would show the dispatched kernel).",
+      "plain": "On AMD processors, PyTorch's default math library (Intel MKL) reads the model weights at roughly one core's speed when generating a single token; OpenBLAS uses the full memory speed.",
       "evidence": "c6525-100g campaign c_amd_c6525_100g_20261111T0036Z, llama3-8b fp32 batch-1 decode: torch/MKL 0.74 tok/s (23 GB/s), OpenBLAS 3.21 (98 GB/s, 78% of 125), BLIS 0.85 (26 GB/s). Intel c6620, same problem: torch/MKL 6.58 tok/s (201 GB/s), so MKL's GEMV is fast on Intel. r6615 test 2026-11-10: torch 0.89 vs OpenBLAS 9.31 tok/s."
     },
     {
@@ -17,6 +18,7 @@
       "status": "verified",
       "date": "2026-11-11",
       "note": "Batch-8 decode was 9-13% of bandwidth with all three libraries on r6615 before commit 72ab4db. The cause was the harness's attention step, not the BLAS: decode attention is now batched matmuls over an in-place KV cache. After the fix, BLIS's small-GEMM path is the fastest at batch 8 on both CPUs.",
+      "plain": "When several tokens are generated at once, BLIS handles the small matrix shapes best on both processors.",
       "evidence": "llama3-8b fp32 batch-8 decode, campaigns of 2026-11-11: c6525-100g BLIS 18.9 tok/s (81 GB/s, 65% of 125) vs OpenBLAS 10.4, torch 5.8; c6620 BLIS 32.9 (141 GB/s, 66% of 214) vs OpenBLAS 19.2, torch 18.3. Before the fix (r6615 test): 35-46 GB/s of 364."
     },
     {
@@ -44,6 +46,7 @@
       "status": "verified",
       "date": "2026-11-10",
       "note": "The native direct convolution (filter size a compile-time constant, all K*K taps unrolled, vectorised x loop) wins every size: neural-network convolution libraries are not built for one small filter over a large image.",
+      "plain": "Our own kernel wins: neural-network libraries are built for many small images and filters, not for one small filter over a large image.",
       "evidence": "r6615 ctest_r6615: native wins 18/18 problems at 15-45% of measured GEMM peak; next best OpenCV at 0.04-0.71x of native. V100 c_v100_20261110: native wins 18/18 vs cuDNN (median 0.42x)."
     },
     {
@@ -71,6 +74,7 @@
       "status": "verified",
       "date": "2026-11-11",
       "note": "OpenCV's bilateralFilter beats our native kernel on every CPU size once it runs on all cores (fixed in d51fa7e; rows before that ran on one core). The earlier claim 'native 7x faster than OpenCV' was an artefact of that bug.",
+      "plain": "OpenCV's filter beats our own kernel at almost every size once it uses all processor cores.",
       "evidence": "Campaigns of 2026-11-11: native kernel at 0.19x (c6620) and 0.22x (c6525-100g) of OpenCV, median over 9 sizes; OpenCV wins 9/9 and 8/9."
     }
   ]

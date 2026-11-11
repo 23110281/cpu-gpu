@@ -221,24 +221,6 @@ def workload_names() -> dict:
         return {}
 
 
-def plots(combos: pd.DataFrame, bounds: pd.DataFrame, dev: str):
-    """One figure per workload (results/site/devices/<DEV>/<ID>.png): every library at its best
-    placement, median with 95% CI, plus the measured ceiling of each problem where the bound
-    check has one. Style and colours: analysis/figures.py."""
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
-    import figures
-    d = PLOTS / dev
-    d.mkdir(parents=True, exist_ok=True)
-    names = workload_names()
-    b = bounds[bounds["bound"].isin(["B", "C"])] if len(bounds) else bounds
-    meas = calibration(dev).get("measured", {})
-    for wid, g in combos.groupby("workload_id"):
-        title = f"{wid} {names.get(wid, g['workload'].iloc[0])} — {dev.replace('_', ' ')}"
-        extra = a1_ceilings(g, meas) if wid == "A1" else None
-        figures.workload_figure(g, b[b["workload_id"] == wid] if len(b) else None, d / f"{wid}.png",
-                                title, g["metric_name"].iloc[0], extra)
-
-
 def a1_ceilings(g: pd.DataFrame, meas: dict) -> dict:
     """A1 has bound 'A' (no automatic bound check): decode is limited by streaming the weights
     + KV cache (measured bandwidth), prefill by the GEMM peak of its precision. Ceiling in
@@ -269,7 +251,6 @@ def main():
         combos.to_csv(OUT / f"{dev}_libraries.csv", index=False)
         bt = bounds_table(head, df, dev)
         bt.to_csv(OUT / f"{dev}_bounds.csv", index=False)
-        plots(combos, bt, dev)
         print(f"{dev}: {len(head)} problems, {len(combos)} (problem, library, placement) combinations")
     r = ratios(heads_by_dev)
     if len(r):

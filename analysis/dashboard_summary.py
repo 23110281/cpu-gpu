@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
-"""Per-device dashboard summary: headline statements with numbers, a per-workload table, the
-overview figure, and curated findings -- all computed from the analysis outputs, so the text
-cannot drift from the data.
+"""Per-machine dashboard pages: machine limits, an overview chart, and one page per workload
+(header box: theoretical peak, measured limit, achieved range, why; then the plots).
 
-Inputs : results/analysis/<DEV>_{headline,libraries,bounds}.csv, library_summary.csv  (analyze.py,
-         library_report.py), results/calibration/<DEV>.json, configs/devices/<DEV>.json,
-         results/data/<cpu|gpu>/<DEV>/*.csv (row counts), configs/dashboard_notes.json (curated)
-Outputs: results/site/devices/<DEV>/summary.json, results/site/devices/<DEV>/overview.png
-Run after analyze.py and library_report.py (make analysis / make site do).
+Final-script machines : results/analysis/<DEV>_libraries.csv (analyze.py), raw rows for thread scaling,
+                        results/calibration/<DEV>.json (measured limits), configs/devices/<DEV>.json (datasheet)
+Earlier-script machines: analysis/legacy.py (configs/legacy.json decides what is usable)
+Text                  : configs/workloads.json (plain names), configs/explanations.json (why lines)
+Outputs               : results/site/devices/<DEV>/summary.json + PNGs
 """
 from __future__ import annotations
 
 import fnmatch
-import glob
 import json
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -23,18 +22,19 @@ import pandas as pd
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
-import figures  # noqa: E402
+import figures as F  # noqa: E402
+import legacy  # noqa: E402
+import plots as P  # noqa: E402
 
-DATA = Path(os.environ.get("ANALYSIS_DATA", ROOT / "results" / "data"))
 CAL = Path(os.environ.get("ANALYSIS_CAL", ROOT / "results" / "calibration"))
 OUT = Path(os.environ.get("ANALYSIS_OUT", ROOT / "results" / "analysis"))
-PLOTS = Path(os.environ.get("ANALYSIS_PLOTS", ROOT / "results" / "site" / "devices"))
-NOTES = Path(os.environ.get("DASHBOARD_NOTES", ROOT / "configs" / "dashboard_notes.json"))
-CONFIGS = ROOT / "configs" / "devices"
-
-# overview: one bar per (workload, facet), at the largest working set of that facet
-FACETS = {"B1": "precision", "B2": "precision", "B3": "matrix", "B4": "matrix", "C1": "precision",
-          "C3": "k", "A1": "phase_batch"}
+SITE = Path(os.environ.get("ANALYSIS_PLOTS", ROOT / "results" / "site" / "devices"))
+DATA = Path(os.environ.get("ANALYSIS_DATA", ROOT / "results" / "data"))
+CONFIGS = ROOT / "configs"
+ORDER = ["B1", "B2", "B3", "B4", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "S1", "S2", "A1", "GEMV"]
+MEMORY_BOUND = {"B1", "B2", "B3", "B4", "GEMV"}
+CACHE_FILTER = {"B1", "B2", "B3", "GEMV"}          # sizes that fit in the cache are reported separately
+COMPUTE_WITH_FLOPS = {"C1", "C3", "C4"}
 
 
 def _json(path: Path) -> dict:
@@ -44,239 +44,353 @@ def _json(path: Path) -> dict:
         return {}
 
 
-def _read(name: str) -> pd.DataFrame:
-    try:
-        return pd.read_csv(OUT / name)
-    except (OSError, pd.errors.EmptyDataError):
-        return pd.DataFrame()
-
-
-def fmt_metric(v: float, unit: str) -> str:
+def fmt(v: float, unit: str) -> str:
+    if v != v:
+        return "—"
     if unit == "GFLOP/s" and v >= 1000:
-        return f"{v / 1000:.1f} TFLOP/s"
-    if v >= 10000:
-        return f"{v / 1000:,.1f}K {unit}"
+        return f"{v / 1000:,.1f} TFLOP/s"
+    if unit == "GB/s" and v >= 1000:
+        return f"{v / 1000:,.2f} TB/s"
     return f"{v:,.0f} {unit}" if v >= 100 else f"{v:.3g} {unit}"
 
 
-def problem_text(wid: str, prob: str) -> str:
-    p = json.loads(prob)
+def plain_names() -> dict:
+    w = _json(CONFIGS / "workloads.json").get("workloads", [])
+    names = {x["id"]: {"name": x.get("plain", x["name"]), "what": x.get("what", "")} for x in w}
+    names["GEMV"] = {"name": "Matrix × vector (GEMV)",
+                     "what": "Multiplies a dense matrix by a vector (an earlier benchmark, not one of the 16 final workloads)."}
+    return names
+
+
+def why_lines(dev: str, wid: str) -> list[str]:
+    ex = _json(CONFIGS / "explanations.json")
+    out = [ex.get("workloads", {}).get(wid, "")]
+    for n in ex.get("device_notes", []):
+        if fnmatch.fnmatch(dev, n["device"]) and fnmatch.fnmatch(wid, n["workload"]):
+            out.append(n["text"])
+    return [x for x in out if x]
+
+
+def _short(text: str) -> str:
+    return text.split(" (")[0].strip()
+
+
+def theory_lines(cfg: dict) -> dict:
+    ds = cfg.get("datasheet", {}) or {}
+    der = ds.get("derivation", {}) or {}
+    pk = ds.get("peak_gflops") or {}
+    mem = f"Memory: {_short(der['bandwidth'])}" if der.get("bandwidth") else (
+        f"Memory: {ds['bandwidth_gbps']:,.0f} GB/s (datasheet)" if ds.get("bandwidth_gbps") else "")
+    comp = ""
+    if der.get("compute"):
+        comp = f"Compute: {_short(der['compute'])}"
+    elif pk:
+        comp = "Compute: " + " · ".join(f"{fmt(v, 'GFLOP/s')} {k}" for k, v in pk.items()) + " (datasheet)"
+    if comp and not comp.rstrip().endswith(")") and "=" not in comp and pk:
+        comp += " = " + " · ".join(f"{fmt(v, 'GFLOP/s')} {k}" for k, v in pk.items())
+    return {"memory": mem, "compute": comp, "bw": ds.get("bandwidth_gbps"), "peak": pk}
+
+
+def size_text(row: dict, wid: str) -> str:
+    cfg = P.CFG.get(wid, {})
+    x = cfg.get("x")
+    parts = []
     if wid == "A1":
-        return (f"{p['model']} prefill S={p['seq']}" if p["phase"] == "prefill"
-                else f"{p['model']} decode batch {p['batch']}") + f", {p['precision']}"
-    keys = [k for k in sorted(p) if k not in figures.HIDDEN_KEYS]
-    return ", ".join([f"{k}={figures.fmt_num(p[k])}" for k in keys] + [p.get("precision", "")]).strip(", ")
+        return f"{row['model']}, " + (f"generating with batch {row['batch']}" if row.get("phase") == "decode"
+                                      else f"a {row['seq']}-token prompt")
+    for k in [x] + [k for k in cfg.get("series", []) if k != x]:
+        if k and k in row and row[k] is not None and row[k] == row[k]:
+            parts.append((P.XLABEL.get(wid, "size").split(" (")[0] + " " + P._pretty(k, row[k])) if k == x
+                         else P._pretty(k, row[k]))
+    return ", ".join(parts)
 
 
-def row_counts(dev: str) -> dict:
-    files = glob.glob(str(DATA / "cpu" / dev / "*.csv")) + glob.glob(str(DATA / "gpu" / dev / "*.csv"))
-    if not files:
-        return {}
-    d = pd.concat([pd.read_csv(f, usecols=lambda c: c in ("status", "flag", "git_sha", "trial", "run_id"))
-                   for f in files], ignore_index=True)
-    flag = d["flag"].fillna("")
-    ok = d[(d["status"] == "ok") & ~flag.str.contains("smoke")]
-    return {"ok": int(len(ok)), "unsupported": int((d["status"] == "unsupported").sum()),
-            "oom": int((d["status"] == "oom").sum()), "error": int((d["status"] == "error").sum()),
-            "validation_failed": int((d["status"] == "validation_failed").sum()),
-            "unstable": int(flag[d["status"] == "ok"].str.contains("unstable").sum()),
-            "trials": int(ok["trial"].nunique()) if len(ok) else 0,
-            "git_shas": sorted({str(s)[:7] for s in ok["git_sha"].dropna()}),
-            "unsupported_reasons": sorted({f for f in flag[d["status"] == "unsupported"] if f})[:4]}
-
-
-def ceiling_pct(r, bounds: pd.DataFrame, meas: dict):
-    """(% of measured ceiling, kind) for one headline row, or (nan, '')."""
-    if r["workload_id"] == "A1":
-        phase = json.loads(r["problem"]).get("phase")
-        if phase == "decode" and meas.get("bandwidth_gbps") and r["gbps"] > 0:
-            return 100 * r["gbps"] / meas["bandwidth_gbps"], "bandwidth"
-        peak = (meas.get("peak_gflops") or {}).get(r["precision"])
-        if phase == "prefill" and peak and r["gflops"] > 0:
-            return 100 * r["gflops"] / peak, "GEMM peak"
-        return float("nan"), ""
-    b = bounds[(bounds["workload_id"] == r["workload_id"]) & (bounds["problem"] == r["problem"])] if len(bounds) else bounds
-    if len(b):
-        bw = b["pct_of_measured_bw"].dropna() if "pct_of_measured_bw" in b else []
-        pk = b["pct_of_measured_peak"].dropna() if "pct_of_measured_peak" in b else []
-        if len(bw):
-            return float(bw.iloc[0]), "bandwidth"
-        if len(pk):
-            return float(pk.iloc[0]), "GEMM peak"
-    return float("nan"), ""
-
-
-def facet_of(wid: str, prob: str) -> str | None:
-    key = FACETS.get(wid)
-    if key is None:
-        return None
-    p = json.loads(prob)
-    if key == "phase_batch":
-        return f"prefill" if p["phase"] == "prefill" else f"decode B={p['batch']}"
-    return f"{key}={figures.fmt_num(p[key])}" if key not in ("precision", "matrix") else str(p[key])
-
-
-def build(dev: str, names: dict, order: list[str]) -> dict:
-    head = _read(f"{dev}_headline.csv")
-    if head.empty:
-        return {}
-    libs = _read(f"{dev}_libraries.csv")
-    bounds = _read(f"{dev}_bounds.csv")
-    lsum = _read("library_summary.csv")
-    lsum = lsum[lsum["device"] == dev] if len(lsum) else lsum
-    cal = _json(CAL / f"{dev}.json")
-    meas = cal.get("measured", {})
-    cfg = _json(CONFIGS / f"{dev}.json")
-    ds = cfg.get("datasheet", {}) or cal.get("datasheet", {})
-    counts = row_counts(dev)
-    head = head.assign(pct=float("nan"), kind="")
-    for i, r in head.iterrows():
-        head.loc[i, ["pct", "kind"]] = ceiling_pct(r, bounds, meas)
-
-    # ── ceilings tiles ────────────────────────────────────────────────────────
-    tiles = []
-    bw = meas.get("bandwidth_gbps")
-    if bw:
-        t = {"k": "Memory bandwidth (measured)", "v": f"{bw:,.0f} GB/s",
-             "s": meas.get("bandwidth_convention", "")}
-        if ds.get("bandwidth_gbps"):
-            t["s"] = f"{100 * bw / ds['bandwidth_gbps']:.0f}% of the {ds['bandwidth_gbps']:,.0f} GB/s datasheet"
-        tiles.append(t)
-    for prec in ("fp32", "fp64"):
-        v = (meas.get("peak_gflops") or {}).get(prec)
-        if v:
-            dv = (ds.get("peak_gflops") or {}).get(prec)
-            tiles.append({"k": f"GEMM peak {prec} (measured)", "v": fmt_metric(v, "GFLOP/s"),
-                          "s": f"{100 * v / dv:.0f}% of the {dv / 1000:.1f} TFLOP/s datasheet" if dv else ""})
-    if counts:
-        tiles.append({"k": "Validated results", "v": f"{counts['ok']}",
-                      "s": f"{head['problem'].nunique()} problems × {counts['trials']} trials · "
-                           f"{counts['error'] + counts['validation_failed']} errors · {counts['unstable']} unstable"})
-
-    # ── overview entries + statements ─────────────────────────────────────────
-    entries = []
-    for wid in order:
-        g = head[(head["workload_id"] == wid) & head["pct"].notna()]
-        if g.empty:
-            continue
-        g = g.assign(facet=g["problem"].map(lambda p: facet_of(wid, p)))
-        for facet, gg in g.groupby("facet", sort=False):
-            r = gg.sort_values(["ws_over_llc", "metric"]).iloc[-1]
-            entries.append({"wid": wid, "label": f"{wid} {names.get(wid, wid)} · {facet}", "pct": float(r["pct"]),
-                            "kind": r["kind"], "problem": problem_text(wid, r["problem"])})
-    entries.sort(key=lambda e: (order.index(e["wid"]), e["label"]))
-    statements = []
-    if tiles and bw:
-        s = f"Measured ceilings: memory bandwidth {bw:,.0f} GB/s"
-        if ds.get("bandwidth_gbps"):
-            s += f" ({100 * bw / ds['bandwidth_gbps']:.0f}% of the datasheet {ds['bandwidth_gbps']:,.0f} GB/s)"
-        pk = meas.get("peak_gflops") or {}
-        if pk:
-            s += "; GEMM " + ", ".join(f"{fmt_metric(v, 'GFLOP/s')} {p}" for p, v in sorted(pk.items(), reverse=True))
-        statements.append(s + ". Every percentage below is relative to these measured ceilings.")
-
-    def span(kind, wids):
+# ── final-script machines ──────────────────────────────────────────────────
+def final_device(dev: str, cls: str, raw: pd.DataFrame, names: dict, core: bool) -> dict:
+    libs = pd.read_csv(OUT / f"{dev}_libraries.csv")
+    cfg = _json(CONFIGS / "devices" / f"{dev}.json")
+    meas = _json(CAL / f"{dev}.json").get("measured", {})
+    th = theory_lines(cfg)
+    lim = {"bw": meas.get("bandwidth_gbps"), "peak": meas.get("peak_gflops") or {}}
+    out = SITE / dev
+    shutil.rmtree(out, ignore_errors=True)
+    out.mkdir(parents=True)
+    limits = [x for x in (th["memory"], th["compute"]) if x]
+    mline = []
+    if lim["bw"]:
+        pct = f" ({100 * lim['bw'] / th['bw']:.0f}% of theory)" if th["bw"] else ""
+        conv = _json(CAL / f"{dev}.json").get("measured", {}).get("bandwidth_convention", "")
+        how = ("pure-read memory test" if "Dot" in conv else
+               "memory copy test, counting the extra read before each write" if "write-allocate" in conv
+               else "memory streaming test")
+        mline.append(f"memory {fmt(lim['bw'], 'GB/s')}{pct}, {how}")
+    if lim["peak"]:
         parts = []
-        for wid in wids:
-            v = [e["pct"] for e in entries if e["wid"] == wid and e["kind"] == kind]
-            if v:
-                lo, hi = min(v), max(v)
-                parts.append(f"{wid} {names.get(wid, wid)} {hi:.0f}%" if round(lo) == round(hi)
-                             else f"{wid} {names.get(wid, wid)} {lo:.0f}–{hi:.0f}%")
-        return parts
-    b_parts = span("bandwidth", [w for w in order if w.startswith("B")])
-    if b_parts:
-        statements.append("Bandwidth-bound workloads at their largest size reach " + "; ".join(b_parts)
-                          + " of measured bandwidth.")
-    c_parts = span("GEMM peak", [w for w in order if w.startswith("C")])
-    if c_parts:
-        statements.append("Compute-bound workloads with a FLOP model reach " + "; ".join(c_parts)
-                          + " of the measured GEMM peak.")
-    a = [e for e in entries if e["wid"] == "A1"]
-    if a:
-        statements.append(f"{names.get('A1', 'A1')} ({a[0]['problem'].split(' ')[0]}): " + "; ".join(
-            f"{e['label'].split(' · ')[-1]} at {e['pct']:.0f}% of measured {e['kind']}" for e in a) + ".")
-    lib_parts = []
-    for (wid, prec), g in (lsum.groupby(["workload_id", "precision"]) if len(lsum) else []):
-        g = g.sort_values(["wins", "median_speed_vs_winner"], ascending=False)
-        w, rest = g.iloc[0], g.iloc[1:]
-        if w["wins"] == 0 or rest.empty:
+        for pr in ("fp32", "fp64"):
+            if pr in lim["peak"]:
+                t = th["peak"].get(pr)
+                parts.append(f"{fmt(lim['peak'][pr], 'GFLOP/s')} {pr}" + (f" ({100 * lim['peak'][pr] / t:.0f}% of theory)" if t else ""))
+        mline.append("compute " + " · ".join(parts) + ", best matrix multiply")
+    if mline:
+        limits.append("Measured: " + "; ".join(mline))
+    pages, entries = [], []
+    for wid in ORDER:
+        d = P.prepare(libs, wid)
+        if d.empty:
             continue
-        others = ", ".join(f"{figures.LIB_NAMES.get(r['library'], r['library'])} at {r['median_speed_vs_winner']:.2f}×"
-                           for _, r in rest.iterrows())
-        lib_parts.append(f"{wid}: {figures.LIB_NAMES.get(w['library'], w['library'])} fastest on "
-                         f"{w['wins']}/{w['problems']} sizes ({others} median)")
-    if lib_parts:
-        statements.append("Fastest implementation where several were timed — " + "; ".join(lib_parts) + ".")
-    c1 = head[head["workload_id"] == "C1"]
-    if len(c1) and c1["freq_mhz"].notna().any():
-        big = c1.sort_values("ws_over_llc").iloc[-1]
-        statements.append(f"Clocks were not locked: the median clock during the largest GEMM was "
-                          f"{big['freq_mhz']:,.0f} MHz (recorded in every row as freq_mhz).")
-    if counts:
-        skip = []
-        if counts["unsupported"]:
-            skip.append(f"{counts['unsupported']} unsupported"
-                        + (f" ({'; '.join(counts['unsupported_reasons'])})" if counts["unsupported_reasons"] else ""))
-        if counts["oom"]:
-            skip.append(f"{counts['oom']} skipped because the working set exceeds device memory")
-        statements.append(f"Data: {counts['ok']} validated rows from {counts['trials']} process-isolated trials "
-                          f"(commits {', '.join(counts['git_shas'])}); "
-                          + "; ".join(skip + [f"{counts['error'] + counts['validation_failed']} errors",
-                                              f"{counts['unstable']} rows flagged unstable (CV > 5%)"]) + ".")
+        sc = pd.DataFrame()
+        if cls == "cpu" and len(raw):
+            r = raw[(raw["device"] == dev) & (raw["workload_id"] == wid)]
+            sp = set(r.loc[r["scaling"], "problem"])
+            if sp:
+                sc = r[r["problem"].isin(sp) & (r["scaling"] | (r["placement"] == "socket0"))]
+        figs = P.workload_plots(dev, wid, d, sc, lim, out, cls)
+        fast = P.fastest(d)
+        main = fast[(fast["variant"] == "base") | (wid in ("C8", "C9"))] if wid != "C1" else fast
+        if wid == "A1":
+            main = main[main["precision"] == "fp32"]
+        unit = d["metric_name"].iloc[0]
+        rows = main.to_dict("records")
+        for r in rows:
+            r["pct"] = P.pct_of_limit(r, wid, lim)
+        header = header_box(wid, rows, unit, th, lim, "measured")
+        pages.append({"id": wid, **names.get(wid, {"name": wid, "what": ""}), "key": key_result(rows, wid, unit),
+                      "header": {**header, "why": why_lines(dev, wid)}, "figures": figs,
+                      "note": "Final scripts: every result checked against a reference; median of 3 separate runs."})
+        entries += overview_entries(wid, rows, unit, lim, names)
+    ov = P.overview(entries, out / "overview.png", "measured")
+    no_lim = [names[w]["name"] for w in [p["id"] for p in pages] if w not in {e["wid"] for e in entries}]
+    return {"device": dev, "cls": cls, "category": "final", "core": core, **display(cfg, dev),
+            "limits": limits, "overview": ov, "no_limit": no_lim, "workloads": pages}
 
-    # ── per-workload table ────────────────────────────────────────────────────
-    table = []
-    for wid in order:
-        g = head[head["workload_id"] == wid]
-        if g.empty:
+
+def header_box(wid: str, rows: list[dict], unit: str, th: dict, lim: dict, word: str) -> dict:
+    peak, measured = [], []
+    no_limit = _json(CONFIGS / "explanations.json").get("no_limit", {})
+    if wid in MEMORY_BOUND or wid == "A1":
+        if th["memory"]:
+            peak.append(th["memory"])
+        if lim.get("bw") and word == "measured":
+            measured.append(f"Measured memory limit: {fmt(lim['bw'], 'GB/s')}")
+    if wid in COMPUTE_WITH_FLOPS or wid == "A1":
+        if th["compute"]:
+            peak.append(th["compute"])
+        if lim.get("peak") and word == "measured":
+            measured.append("Measured compute limit: " + " · ".join(
+                f"{fmt(v, 'GFLOP/s')} {k}" for k, v in lim["peak"].items() if k in ("fp32", "fp64")))
+    if not peak:
+        peak.append(f"No single hardware limit applies: speed is set by {no_limit.get(wid, 'the algorithm')}, "
+                    f"so results are reported in {unit}.")
+    big = [r for r in rows if _is_dram(r)] if wid in CACHE_FILTER else rows
+    rows = big or rows
+    vals = [r["metric"] for r in rows]
+    pcts = [r["pct"] for r in rows if r.get("pct") == r.get("pct") and r.get("pct") is not None]
+    best = max(rows, key=lambda r: r["metric"])
+    if wid == "A1":
+        parts = []
+        for ph, what, lw in (("decode", "Token generation", "memory"), ("prefill", "Prompt processing", "compute")):
+            rr = [r for r in rows if r.get("phase") == ph]
+            if rr:
+                b = max(rr, key=lambda r: r["metric"])
+                pp = [r["pct"] for r in rr if r["pct"] == r["pct"]]
+                parts.append(f"{what}: up to {fmt(b['metric'], unit)}" +
+                             (f" ({max(pp):.0f}% of the {word} {lw} limit at best)" if pp else ""))
+        achieved = "; ".join(parts) + "."
+    else:
+        extra = ""
+        special = {"bf16": "16-bit (bf16)", "fp64 (tensor cores)": "fp64 on tensor cores"}
+        if wid == "C1" and any(r.get("precision") in special for r in rows):
+            for pr, nm in special.items():
+                xs = [r["metric"] for r in rows if r.get("precision") == pr]
+                if xs:
+                    extra += f" {nm}: up to {fmt(max(xs), unit)}."
+            rows = [r for r in rows if r.get("precision") not in special]
+            vals = [r["metric"] for r in rows]
+            pcts = [r["pct"] for r in rows if r.get("pct") == r.get("pct") and r.get("pct") is not None]
+            best = max(rows, key=lambda r: r["metric"])
+        achieved = (f"At sizes larger than the cache: {fmt(min(vals), unit)} to {fmt(max(vals), unit)}" if wid in CACHE_FILTER and big
+                    else f"Reached {fmt(min(vals), unit)} to {fmt(max(vals), unit)} across sizes")
+        if pcts:
+            rng = f"{min(pcts):.0f}%" if round(min(pcts)) == round(max(pcts)) else f"{min(pcts):.0f}–{max(pcts):.0f}%"
+            achieved += f" ({rng} of the {word} limit)"
+        achieved += f"; best at {size_text(best, wid)}." + (extra if wid == "C1" else "")
+    return {"peak": peak, "measured": measured, "achieved": achieved}
+
+
+def _is_dram(r: dict) -> bool:
+    return bool(r["dram"]) if "dram" in r else r.get("regime", "dram") == "dram"
+
+
+def key_result(rows: list[dict], wid: str, unit: str) -> str:
+    """Headline number for a workload card: the largest size (memory-limited: largest size beyond the cache)."""
+    rr = [r for r in rows if _is_dram(r)] if wid in CACHE_FILTER else rows
+    if wid == "C1":
+        rr = [r for r in rr if r.get("precision") == "fp32"] or rr
+    rr = rr or rows
+    if wid == "A1":
+        rr = [r for r in rows if r.get("phase") == "decode"] or rows
+        top = max(MODEL_ORDER_KEY(r) for r in rr)
+        return fmt(max(r["metric"] for r in rr if MODEL_ORDER_KEY(r) == top), unit) + " (largest model, generation)"
+    x = P.CFG.get(wid, {}).get("x") or "size"
+    top = max(_num(r.get(x)) for r in rr)
+    return fmt(max(r["metric"] for r in rr if _num(r.get(x)) == top), unit)
+
+
+def MODEL_ORDER_KEY(r):
+    return P.MODEL_ORDER.get(r.get("model"), -1)
+
+
+def overview_entries(wid: str, rows: list[dict], unit: str, lim: dict, names: dict) -> list[dict]:
+    """One bar per workload (per number format for B1/B2/C1, per phase for A1) at its largest size."""
+    out = []
+    rows = [r for r in rows if r.get("pct") == r.get("pct") and r.get("pct") is not None]
+    if not rows:
+        return out
+    x = P.CFG.get(wid, {}).get("x")
+    facet = {"B1": "precision", "B2": "precision", "C1": "precision", "A1": "phase", "B3": "matrix"}.get(wid)
+    groups = {}
+    for r in rows:
+        groups.setdefault(r.get(facet) if facet else "", []).append(r)
+    for f, rr in groups.items():
+        if wid == "A1":
+            r = max(rr, key=lambda r: r["pct"])
+        else:
+            r = max(rr, key=lambda r: (_num(r.get(x)), r["metric"]))
+        kind = "memory" if (wid in MEMORY_BOUND or (wid == "A1" and f == "decode")) else "compute"
+        label = names.get(wid, {}).get("name", wid) + (f" ({P._pretty(facet, f) if facet != 'phase' else ('generation' if f == 'decode' else 'prompt')})" if facet else "")
+        limit_val = lim.get("bw") if kind == "memory" else (lim.get("peak") or {}).get("fp32" if r.get("precision") in ("c64", None) else r.get("precision"))
+        got = r.get("gbps") if kind == "memory" else r.get("gflops")
+        u = "GB/s" if kind == "memory" else "GFLOP/s"
+        out.append({"wid": wid, "label": label, "pct": float(r["pct"]), "kind": kind,
+                    "text": f"{fmt(got, u)} of {fmt(limit_val, u)}" if limit_val and got else ""})
+    return out
+
+
+def _num(v):
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def display(cfg: dict, dev: str) -> dict:
+    d = cfg.get("display", {})
+    return {"name": d.get("name", dev.replace("_", " ")), "spec": d.get("spec", "")}
+
+
+# ── earlier-script machines ────────────────────────────────────────────────
+def legacy_device(dev: str, cls: str, names: dict, core: bool) -> dict | None:
+    rows = legacy.load()
+    rows = rows[rows["device"] == dev] if len(rows) else rows
+    if rows.empty:
+        return None
+    main = legacy.main_rows(rows)
+    cfg = _json(CONFIGS / "devices" / f"{dev}.json")
+    th = theory_lines(cfg)
+    lim = {"bw": th["bw"], "peak": th["peak"]}
+    caveats = legacy.config().get("caveats", {})
+    out = SITE / dev
+    shutil.rmtree(out, ignore_errors=True)
+    out.mkdir(parents=True)
+    limits = [x for x in (th["memory"], th["compute"]) if x]
+    # measured limits from the machine's own correct earlier data
+    mparts = []
+    mem_src = main[main["dram"] & main["bench"].isin(["saxpy"])]
+    if mem_src.empty:
+        mem_src = main[main["dram"] & main["bench"].isin(["gemv"])]
+    if not mem_src.empty:
+        b = mem_src["metric"].max()
+        bench = mem_src.loc[mem_src["metric"].idxmax(), "bench"].upper()
+        mparts.append(f"memory {fmt(b, 'GB/s')}" + (f" ({100 * b / th['bw']:.0f}% of theory)" if th["bw"] else "") +
+                      f", best {bench} larger than the cache")
+    g = main[main["bench"] == "gemm"]
+    cp = []
+    for pr in ("fp32", "fp64"):
+        gg = g[g["precision"] == pr]
+        if not gg.empty:
+            v = gg["metric"].max()
+            t = th["peak"].get(pr)
+            cp.append(f"{fmt(v, 'GFLOP/s')} {pr}" + (f" ({100 * v / t:.0f}% of theory)" if t else ""))
+    if cp:
+        mparts.append("compute " + " · ".join(cp) + ", best matrix multiply")
+    if mparts:
+        limits.append("Measured by the earlier scripts: " + "; ".join(mparts))
+    pages, entries = [], []
+    for bench in ("saxpy", "spmv", "spgemm", "gemm", "gemv"):
+        rb, mb = rows[rows["bench"] == bench], main[main["bench"] == bench]
+        if mb.empty:
             continue
-        r = g.sort_values(["ws_over_llc", "metric"]).iloc[-1]
-        n_libs = libs[libs["workload_id"] == wid]["lib"].nunique() if len(libs) else 1
-        table.append({"id": wid, "name": names.get(wid, wid), "bound": r["bound"],
-                      "result": fmt_metric(float(r["metric"]), r["metric_name"]),
-                      "problem": problem_text(wid, r["problem"]),
-                      "pct": None if r["pct"] != r["pct"] else round(float(r["pct"]), 1), "kind": r["kind"],
-                      "impl": figures.LIB_NAMES.get(r["lib"], r["lib"]),
-                      "n_impl": int(n_libs), "problems": int(g["problem"].nunique())})
-
-    # ── curated findings ──────────────────────────────────────────────────────
-    findings = [n for n in _json(NOTES).get("notes", []) if fnmatch.fnmatch(dev, n.get("device", "*"))]
-
-    d = PLOTS / dev
-    d.mkdir(parents=True, exist_ok=True)
-    figs = []
-    if entries:
-        figures.overview_figure(entries, d / "overview.png",
-                                f"% of measured ceiling — {dev.replace('_', ' ')}")
-        figs.append({"file": "overview.png", "title": "Overview: % of measured ceiling", "wide": True,
-                     "caption": "One bar per workload variant at its largest problem size."
-                                + (" Not shown (no simple hardware ceiling): "
-                                   + ", ".join(x["id"] for x in table if x["pct"] is None) + "."
-                                   if any(x["pct"] is None for x in table) else "")})
-    for t in table:
-        if (d / f"{t['id']}.png").exists():
-            cap = f"{t['problems']} problem sizes; largest: {t['result']} ({t['problem']})"
-            if t["pct"] is not None:
-                cap += f", {t['pct']:.0f}% of measured {t['kind']}"
-            figs.append({"file": f"{t['id']}.png", "title": f"{t['id']} {t['name']}", "caption": cap + ".",
-                         "wide": t["problems"] > 10})
-    return {"device": dev, "label": cfg.get("label", dev), "device_class": cfg.get("device_class", ""),
-            "tiles": tiles, "statements": statements, "table": table, "findings": findings, "figures": figs,
-            "counts": counts}
+        wid = legacy.WORKLOAD[bench]
+        figs = P.legacy_plots(dev, bench, rb, mb, lim, out, cls)
+        unit = mb["unit"].iloc[0]
+        recs = []
+        for r in mb.to_dict("records"):
+            if unit == "GB/s" and th["bw"] and r["dram"] and bench != "spgemm":
+                r["pct"] = 100 * r["metric"] / th["bw"]
+            elif unit == "GFLOP/s" and th["peak"]:
+                key = "fp64t" if r["precision"].startswith("fp64 (") else r["precision"]
+                r["pct"] = 100 * r["metric"] / th["peak"][key] if th["peak"].get(key) else float("nan")
+            else:
+                r["pct"] = float("nan")
+            recs.append(r)
+        header = header_box(wid if wid != "GEMV" else "GEMV", recs, unit, th, {}, "datasheet")
+        if bench == "spgemm":
+            header["peak"] = [f"No single hardware limit applies: building a sparse result needs scattered memory accesses, so results are reported in {unit}."]
+        rr = [r for r in recs if r["dram"]] if bench in ("saxpy", "gemv", "spmv") else recs
+        if bench == "gemm":
+            rr = [r for r in rr if r["precision"] in ("fp32", "fp64")] or rr
+        rr = rr or recs
+        best = max(rr, key=lambda r: r["metric"])
+        tail = header["achieved"].split("; best at")[1].split(".", 1)[1] if "; best at" in header["achieved"] else ""
+        header["achieved"] = header["achieved"].split("; best at")[0] + \
+            f"; best at size {best['size_label']}" + (f", {best['precision']}" if mb['precision'].nunique() > 1 else "") + "." + tail
+        if bench == "gemm":
+            rr = [r for r in rr if r["precision"] == "fp32"] or rr
+        top = max(r["size"] for r in rr)
+        pages.append({"id": wid, **names.get(wid, {"name": wid, "what": ""}),
+                      "key": fmt(max(r["metric"] for r in rr if r["size"] == top), unit),
+                      "header": {**header, "why": why_lines(dev, wid)}, "figures": figs, "note": caveats.get(bench, "")})
+        for r in recs:
+            r["phase"] = None
+        if bench in ("gemm", "saxpy", "gemv"):
+            for pr in ("fp32", "fp64"):
+                rr = [r for r in recs if r["precision"] == pr and r["pct"] == r["pct"]]
+                if rr:
+                    r = max(rr, key=lambda r: (r["size"], r["metric"]))
+                    kind = "compute" if bench == "gemm" else "memory"
+                    lv = th["bw"] if kind == "memory" else th["peak"].get(pr)
+                    entries.append({"wid": wid, "label": f"{names[wid]['name']} ({pr})", "pct": r["pct"], "kind": kind,
+                                    "text": f"{fmt(r['metric'], unit)} of {fmt(lv, unit)}"})
+    pages.sort(key=lambda p: ORDER.index(p["id"]))
+    ov = P.overview(entries, out / "overview.png", "datasheet")
+    no_lim = [p["name"] for p in pages if p["id"] not in {e["wid"] for e in entries}]
+    return {"device": dev, "cls": cls, "category": "earlier", "core": core, **display(cfg, dev),
+            "limits": limits, "overview": ov, "no_limit": no_lim, "workloads": pages}
 
 
 def main():
-    manifest = _json(ROOT / "configs" / "workloads.json")
-    names = {w["id"]: w["name"] for w in manifest.get("workloads", [])}
-    order = [w["id"] for w in manifest.get("workloads", [])]
-    devs = sorted(Path(f).name[: -len("_headline.csv")] for f in glob.glob(str(OUT / "*_headline.csv")))
-    for dev in devs:
-        s = build(dev, names, order)
+    import analyze
+    names = plain_names()
+    devs = _json(CONFIGS / "workloads.json").get("devices", {})
+    core = {d["id"] for side in devs.values() for d in side if d.get("core")}
+    raw = analyze.load()
+    done = set()
+    for cls in ("cpu", "gpu"):
+        for p in sorted((DATA / cls).glob("*")):
+            dev = p.name
+            if not p.is_dir() or dev in ("smoke",) or not (OUT / f"{dev}_libraries.csv").exists():
+                continue
+            s = final_device(dev, cls, raw, names, dev in core)
+            (SITE / dev / "summary.json").write_text(json.dumps(s, indent=1, default=float) + "\n")
+            done.add(dev)
+            print(f"{dev}: final scripts, {len(s['workloads'])} workloads, {sum(len(w['figures']) for w in s['workloads'])} plots")
+    for dev, d in legacy.config()["devices"].items():
+        if dev in done:
+            continue
+        s = legacy_device(dev, d["class"], names, dev in core)
         if s:
-            (PLOTS / dev / "summary.json").write_text(json.dumps(s, indent=1, ensure_ascii=False) + "\n")
-            print(f"{dev}: {len(s['statements'])} statements, {len(s['table'])} workloads, "
-                  f"{len(s['findings'])} curated findings -> {PLOTS / dev}/summary.json")
+            (SITE / dev / "summary.json").write_text(json.dumps(s, indent=1, default=float) + "\n")
+            print(f"{dev}: earlier scripts, {len(s['workloads'])} workloads, {sum(len(w['figures']) for w in s['workloads'])} plots")
 
 
 if __name__ == "__main__":

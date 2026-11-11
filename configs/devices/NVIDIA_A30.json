@@ -1,0 +1,23 @@
+{
+  "device_id": "NVIDIA_A30",
+  "device_class": "gpu",
+  "_note": "Earlier-script machine: only the datasheet is used (dashboard pages).",
+  "display": {
+    "name": "NVIDIA A30",
+    "spec": "Ampere · 56 SMs · 24 GB HBM2"
+  },
+  "llc_mb": 24,
+  "datasheet": {
+    "bandwidth_gbps": 933,
+    "peak_gflops": {
+      "fp32": 10300,
+      "fp64": 5200,
+      "fp64t": 10300,
+      "bf16": 165000
+    },
+    "derivation": {
+      "bandwidth": "24 GB HBM2, 933 GB/s (NVIDIA A30 product page)",
+      "compute": "56 SMs × 64 fp32 cores × 2 × 1.44 GHz boost = 10.3 TFLOP/s fp32; fp64 5.2, fp64 tensor 10.3, bf16 tensor 165 (NVIDIA datasheet, dense)"
+    }
+  }
+}

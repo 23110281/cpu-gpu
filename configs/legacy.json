@@ -1,0 +1,42 @@
+{
+  "_about": "Which earlier-script (legacy) results the dashboard uses (analysis/legacy.py). Benches map to workloads: gemm -> C1, saxpy -> B1, gemv (sparse rows) -> B3 SpMV, spgemm -> B4, gemv (dense rows) -> GEMV (extra page, not one of the 16). 'use' marks a bench as correct for a device (white tick); false = it ran but the method was wrong (red TODO). 'why' is shown to readers: keep it plain English. Devices that already have final-script data ignore their legacy data. Row filters applied to every bench: status == ok; GEMM 2:4 'sparse' rows dropped (the density setting was ignored and they use TF32 tensor cores).",
+  "caveats": {
+    "gemm": "Earlier script: average of 10-20 timed runs; only some sizes were checked against a reference.",
+    "saxpy": "Earlier script: average of 20 timed runs.",
+    "gemv": "Earlier script: average of 15 timed runs.",
+    "spmv": "Earlier script: average of 15 timed runs; results were never checked against a reference.",
+    "spgemm": "Earlier script: average of 10 timed runs; results were never checked against a reference; failed sizes are left out."
+  },
+  "devices": {
+    "NVIDIA_A30": {"class": "gpu", "use": {"gemm": true, "saxpy": true, "gemv": true, "spmv": true, "spgemm": true}},
+    "NVIDIA_A100": {"class": "gpu", "use": {"gemm": true, "gemv": true, "spmv": true}},
+    "NVIDIA_GH200_480GB": {
+      "class": "gpu",
+      "use": {"gemm": true, "gemv": true, "spmv": true, "spgemm": true, "saxpy": false},
+      "why_not": {"saxpy": "Every size fitted in the on-chip cache, so it never measured memory speed (up to 235% of the memory limit)."},
+      "study_invalid": {
+        "C2": "The study computed the closed-form option-price formula instead of simulating random paths.",
+        "C8": "The study's GPU encryption kernel was a placeholder, not real AES.",
+        "C3": "Ran only inside the separate GH200 memory-placement study: no reference check and a different timing method.",
+        "C4": "Ran only inside the separate GH200 memory-placement study: no reference check and a different timing method.",
+        "C6": "Ran only inside the separate GH200 memory-placement study: no reference check and a different timing method.",
+        "C7": "Ran only inside the separate GH200 memory-placement study: no reference check and a different timing method.",
+        "S1": "Ran only inside the separate GH200 memory-placement study: no reference check and a different timing method.",
+        "A1": "Ran only inside the separate GH200 memory-placement study: no reference check and a different timing method."
+      }
+    },
+    "NVIDIA_L40S": {"class": "gpu", "use": {"gemm": true, "saxpy": true, "gemv": true, "spmv": true, "spgemm": true},
+                    "drop": {"gemv_dense_max_size": 4096, "fp64t": true}},
+    "Tesla_P100-PCIE-12GB": {"class": "gpu", "use": {"gemm": true, "saxpy": true, "gemv": true, "spmv": true, "spgemm": true},
+                             "drop": {"bf16": true, "fp64t": true}},
+    "INTEL_M510": {"class": "cpu", "use": {"gemm": true, "saxpy": true, "gemv": true, "spmv": true, "spgemm": true}, "drop": {"power": true}},
+    "INTEL_C6220": {"class": "cpu", "use": {"gemm": true, "saxpy": true, "gemv": true, "spmv": true, "spgemm": true}, "drop": {"power": true}},
+    "INTEL_C220G5": {"class": "cpu", "use": {"gemm": true, "saxpy": true, "gemv": true, "spmv": true, "spgemm": true}, "drop": {"power": true}}
+  },
+  "drop_reasons": {
+    "bf16": "This GPU has no bf16 hardware, so those results were emulated.",
+    "fp64t": "This GPU has no fp64 tensor cores; those rows were ordinary fp64.",
+    "gemv_dense_max_size": "Small sizes fitted in the on-chip cache (above the memory limit).",
+    "power": "The earlier CPU power readings were wrong, so power and energy are not shown."
+  }
+}

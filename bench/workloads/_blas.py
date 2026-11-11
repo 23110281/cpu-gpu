@@ -104,7 +104,14 @@ def version(name: str) -> str:
         if name == "blis":
             f = lib.bli_info_get_version_str
             f.restype = ctypes.c_char_p
-            return "BLIS " + f().decode()
+            s = "BLIS " + f().decode()
+            try:   # which kernel set BLIS picked for this CPU ('generic' = no tuned kernels, e.g. 0.8.1 on Zen 4)
+                a, q = lib.bli_arch_string, lib.bli_arch_query_id
+                a.restype, q.restype = ctypes.c_char_p, ctypes.c_int
+                s += f" arch={a(q()).decode()}"
+            except AttributeError:
+                pass
+            return s
     except AttributeError:
         pass
     return os.path.basename(path)

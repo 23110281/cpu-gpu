@@ -1,0 +1,240 @@
+{
+ "device": "NVIDIA_GH200_480GB",
+ "cls": "gpu",
+ "category": "earlier",
+ "core": true,
+ "name": "NVIDIA H100 (in GH200)",
+ "spec": "Hopper \u00b7 132 SMs \u00b7 96 GB HBM3 \u00b7 GH200 Grace Hopper superchip",
+ "limits": [
+  "Memory: 96 GB HBM3, up to 4000 GB/s",
+  "Compute: 132 SMs \u00d7 128 fp32 cores \u00d7 2 \u00d7 ~1.98 GHz = 67 TFLOP/s fp32; fp64 34, fp64 tensor 67, bf16 tensor 990",
+  "Measured by the earlier scripts: memory 3.86 TB/s (96% of theory), best GEMV larger than the cache; compute 54.2 TFLOP/s fp32 (81% of theory) \u00b7 11.7 TFLOP/s fp64 (34% of theory), best matrix multiply"
+ ],
+ "overview": {
+  "file": "overview.png",
+  "title": "How close each workload gets to the datasheet limit",
+  "caption": "Each bar is one workload at its largest size; 100% (dashed) is the hardware limit."
+ },
+ "no_limit": [
+  "Sparse matrix \u00d7 vector (SpMV)",
+  "Sparse matrix \u00d7 matrix (SpGEMM)"
+ ],
+ "workloads": [
+  {
+   "id": "B3",
+   "name": "Sparse matrix \u00d7 vector (SpMV)",
+   "what": "Multiplies a matrix that is mostly zeros by a vector, as used in scientific solvers.",
+   "key": "3.65 TB/s",
+   "header": {
+    "peak": [
+     "Memory: 96 GB HBM3, up to 4000 GB/s"
+    ],
+    "measured": [],
+    "achieved": "At sizes larger than the cache: 2.81 TB/s to 3.65 TB/s (70\u201391% of the datasheet limit); best at size 16384, density 0.25, fp64.",
+    "why": [
+     "Mostly streams the matrix from memory; the irregular (power-law) matrix reads the vector at scattered places, which wastes part of the memory bandwidth."
+    ]
+   },
+   "figures": [
+    {
+     "file": "B3_heat1.png",
+     "title": "GB/s by number format and size",
+     "caption": "Brighter cells are faster; each cell shows the measured value."
+    },
+    {
+     "file": "B3_speed.png",
+     "title": "Speed vs problem size (GB/s)",
+     "caption": "Each line is one number format (mean of the earlier script's runs); dashed lines are datasheet limits. Small sizes can exceed the memory limit because they fit in the on-chip cache."
+    },
+    {
+     "file": "B3_precision.png",
+     "title": "Number format comparison (GB/s)",
+     "caption": "Each bar group is one size; bars compare number formats."
+    },
+    {
+     "file": "B3_sparsity.png",
+     "title": "Speed vs sparsity (GB/s, fp32)",
+     "caption": "Each line is one matrix size; further right = denser matrix."
+    },
+    {
+     "file": "B3_time.png",
+     "title": "Where the time goes (fp32, % of total)",
+     "caption": "Our speed numbers count only the compute part; this shows how much time copying data would add."
+    },
+    {
+     "file": "B3_energy.png",
+     "title": "Energy efficiency (GB per joule)",
+     "caption": "Work done per joule of energy (higher is better)."
+    },
+    {
+     "file": "B3_power.png",
+     "title": "Average power while running (watts)",
+     "caption": "Average GPU board power during the measurement."
+    }
+   ],
+   "note": "Earlier script: average of 15 timed runs; results were never checked against a reference."
+  },
+  {
+   "id": "B4",
+   "name": "Sparse matrix \u00d7 matrix (SpGEMM)",
+   "what": "Multiplies two mostly-zero matrices, as used in graph analytics.",
+   "key": "52.8 GB/s",
+   "header": {
+    "peak": [
+     "No single hardware limit applies: building a sparse result needs scattered memory accesses, so results are reported in GB/s."
+    ],
+    "measured": [],
+    "achieved": "Reached 1.02 GB/s to 90.4 GB/s across sizes; best at size 4096, density 0.01, fp64.",
+    "why": [
+     "Building a sparse result needs scattered memory accesses and bookkeeping, so it reaches only a small share of the memory limit on every machine."
+    ]
+   },
+   "figures": [
+    {
+     "file": "B4_heat1.png",
+     "title": "GB/s by number format and size",
+     "caption": "Brighter cells are faster; each cell shows the measured value."
+    },
+    {
+     "file": "B4_speed.png",
+     "title": "Speed vs problem size (GB/s)",
+     "caption": "Each line is one number format (mean of the earlier script's runs); dashed lines are datasheet limits. Small sizes can exceed the memory limit because they fit in the on-chip cache."
+    },
+    {
+     "file": "B4_precision.png",
+     "title": "Number format comparison (GB/s)",
+     "caption": "Each bar group is one size; bars compare number formats."
+    },
+    {
+     "file": "B4_sparsity.png",
+     "title": "Speed vs sparsity (GB/s, fp32)",
+     "caption": "Each line is one matrix size; further right = denser matrix."
+    },
+    {
+     "file": "B4_time.png",
+     "title": "Where the time goes (fp32, % of total)",
+     "caption": "Our speed numbers count only the compute part; this shows how much time copying data would add."
+    },
+    {
+     "file": "B4_energy.png",
+     "title": "Energy efficiency (GB per joule)",
+     "caption": "Work done per joule of energy (higher is better)."
+    },
+    {
+     "file": "B4_power.png",
+     "title": "Average power while running (watts)",
+     "caption": "Average GPU board power during the measurement."
+    }
+   ],
+   "note": "Earlier script: average of 10 timed runs; results were never checked against a reference; failed sizes are left out."
+  },
+  {
+   "id": "C1",
+   "name": "Matrix multiply (GEMM)",
+   "what": "Multiplies two dense square matrices: the core operation of scientific computing and AI.",
+   "key": "53.8 TFLOP/s",
+   "header": {
+    "peak": [
+     "Compute: 132 SMs \u00d7 128 fp32 cores \u00d7 2 \u00d7 ~1.98 GHz = 67 TFLOP/s fp32; fp64 34, fp64 tensor 67, bf16 tensor 990"
+    ],
+    "measured": [],
+    "achieved": "Reached 5.6 TFLOP/s to 54.2 TFLOP/s across sizes (16\u201381% of the datasheet limit); best at size 32768, fp32. 16-bit (bf16): up to 846.1 TFLOP/s. fp64 on tensor cores: up to 63.1 TFLOP/s.",
+    "why": [
+     "Matrix multiply reuses each value many times, so large matrices run close to the compute limit; small matrices are held back by start-up overhead."
+    ]
+   },
+   "figures": [
+    {
+     "file": "C1_heat1.png",
+     "title": "GFLOP/s by number format and size",
+     "caption": "Brighter cells are faster; each cell shows the measured value."
+    },
+    {
+     "file": "C1_speed.png",
+     "title": "Speed vs problem size (GFLOP/s)",
+     "caption": "Each line is one number format (mean of the earlier script's runs); dashed lines are datasheet limits."
+    },
+    {
+     "file": "C1_share.png",
+     "title": "Share of the datasheet limit (%)",
+     "caption": "100% (dashed) is the vendor's datasheet limit; memory-limited sizes that fit in cache are left out."
+    },
+    {
+     "file": "C1_precision.png",
+     "title": "Number format comparison (GFLOP/s)",
+     "caption": "Each bar group is one size; bars compare number formats."
+    },
+    {
+     "file": "C1_time.png",
+     "title": "Where the time goes (fp32, % of total)",
+     "caption": "Our speed numbers count only the compute part; this shows how much time copying data would add."
+    },
+    {
+     "file": "C1_energy.png",
+     "title": "Energy efficiency (GFLOP per joule)",
+     "caption": "Work done per joule of energy (higher is better)."
+    },
+    {
+     "file": "C1_power.png",
+     "title": "Average power while running (watts)",
+     "caption": "Average GPU board power during the measurement."
+    }
+   ],
+   "note": "Earlier script: average of 10-20 timed runs; only some sizes were checked against a reference."
+  },
+  {
+   "id": "GEMV",
+   "name": "Matrix \u00d7 vector (GEMV)",
+   "what": "Multiplies a dense matrix by a vector (an earlier benchmark, not one of the 16 final workloads).",
+   "key": "3.58 TB/s",
+   "header": {
+    "peak": [
+     "Memory: 96 GB HBM3, up to 4000 GB/s"
+    ],
+    "measured": [],
+    "achieved": "At sizes larger than the cache: 792 GB/s to 3.86 TB/s (20\u201396% of the datasheet limit); best at size 32768, fp64.",
+    "why": [
+     "Each matrix value is used exactly once, so memory speed sets the limit; small sizes fit in the cache."
+    ]
+   },
+   "figures": [
+    {
+     "file": "GEMV_heat1.png",
+     "title": "GB/s by number format and size",
+     "caption": "Brighter cells are faster; each cell shows the measured value."
+    },
+    {
+     "file": "GEMV_speed.png",
+     "title": "Speed vs problem size (GB/s)",
+     "caption": "Each line is one number format (mean of the earlier script's runs); dashed lines are datasheet limits. Small sizes can exceed the memory limit because they fit in the on-chip cache."
+    },
+    {
+     "file": "GEMV_share.png",
+     "title": "Share of the datasheet limit (%)",
+     "caption": "100% (dashed) is the vendor's datasheet limit; memory-limited sizes that fit in cache are left out."
+    },
+    {
+     "file": "GEMV_precision.png",
+     "title": "Number format comparison (GB/s)",
+     "caption": "Each bar group is one size; bars compare number formats."
+    },
+    {
+     "file": "GEMV_time.png",
+     "title": "Where the time goes (fp32, % of total)",
+     "caption": "Our speed numbers count only the compute part; this shows how much time copying data would add."
+    },
+    {
+     "file": "GEMV_energy.png",
+     "title": "Energy efficiency (GB per joule)",
+     "caption": "Work done per joule of energy (higher is better)."
+    },
+    {
+     "file": "GEMV_power.png",
+     "title": "Average power while running (watts)",
+     "caption": "Average GPU board power during the measurement."
+    }
+   ],
+   "note": "Earlier script: average of 15 timed runs."
+  }
+ ]
+}

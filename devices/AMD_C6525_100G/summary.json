@@ -1,0 +1,863 @@
+{
+ "device": "AMD_C6525_100G",
+ "cls": "cpu",
+ "category": "final",
+ "core": true,
+ "name": "AMD EPYC 7402P",
+ "spec": "Zen 2 \u00b7 24 cores \u00b7 8 \u00d7 DDR4-3200 \u00b7 CloudLab c6525-100g",
+ "limits": [
+  "Memory: 8 channels x DDR4-3200 x 8 B = 204.8 GB/s",
+  "Compute: 24 cores x 2.8 GHz base x 16 FP64 FLOP/cycle = 1.1 TFLOP/s fp64 \u00b7 2.2 TFLOP/s fp32",
+  "Measured: memory 125 GB/s (61% of theory), memory copy test, counting the extra read before each write; compute 2.0 TFLOP/s fp32 (94% of theory) \u00b7 969 GFLOP/s fp64 (90% of theory), best matrix multiply"
+ ],
+ "overview": {
+  "file": "overview.png",
+  "title": "How close each workload gets to the measured limit",
+  "caption": "Each bar is one workload at its largest size; 100% (dashed) is the hardware limit."
+ },
+ "no_limit": [
+  "Monte Carlo option pricing",
+  "Bilateral image filter",
+  "Sorting",
+  "Search in sorted keys",
+  "AES encryption",
+  "SHA-256 hashing",
+  "Histogram",
+  "Physics constraint solver"
+ ],
+ "workloads": [
+  {
+   "id": "B1",
+   "name": "SAXPY (vector update)",
+   "what": "Updates a long vector with y = a\u00b7x + y: almost pure memory traffic.",
+   "key": "121 GB/s",
+   "header": {
+    "peak": [
+     "Memory: 8 channels x DDR4-3200 x 8 B = 204.8 GB/s"
+    ],
+    "measured": [
+     "Measured memory limit: 125 GB/s"
+    ],
+    "achieved": "At sizes larger than the cache: 110 GB/s to 121 GB/s (88\u201397% of the measured limit); best at vector length 1G, fp64.",
+    "why": [
+     "Each element is read and written once with almost no arithmetic, so memory speed sets the limit; sizes that fit in the cache can run faster than memory allows.",
+     "The measured memory limit (125 GB/s) is 61% of the datasheet figure; the same value was measured in an earlier session, so it is stable, but the cause (for example how the memory is installed) is not yet known."
+    ]
+   },
+   "figures": [
+    {
+     "file": "B1_heat1.png",
+     "title": "GB/s by number format and size",
+     "caption": "Brighter cells are faster; each cell shows the measured value."
+    },
+    {
+     "file": "B1_speed.png",
+     "title": "Speed vs problem size (GB/s)",
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+    },
+    {
+     "file": "B1_share.png",
+     "title": "Share of the machine's measured limit (%)",
+     "caption": "100% (dashed) is the measured memory limit; sizes that fit in the cache are left out, and sizes only a few times larger than the cache can still pass 100%."
+    },
+    {
+     "file": "B1_threads.png",
+     "title": "Thread scaling",
+     "caption": "Solid lines are measured; dotted lines show perfect scaling from one thread. 'Efficient' = measured speed-up \u00f7 thread count at the largest count."
+    },
+    {
+     "file": "B1_precision.png",
+     "title": "Number format comparison (GB/s)",
+     "caption": "Each bar group is one size; bars compare number formats (fp64 = 64-bit, fp32 = 32-bit, bf16 = 16-bit)."
+    },
+    {
+     "file": "B1_energy.png",
+     "title": "Energy efficiency (GB per joule)",
+     "caption": "Work done per joule of energy (higher is better), from the chip's own power reading."
+    },
+    {
+     "file": "B1_power.png",
+     "title": "Average power while running (watts)",
+     "caption": "Average power drawn by the processor package during the measurement."
+    },
+    {
+     "file": "B1_smt.png",
+     "title": "Hyper-threading effect",
+     "caption": "Above 1: using both hardware threads of every core was faster; below 1: one thread per core was faster."
+    }
+   ],
+   "note": "Final scripts: every result checked against a reference; median of 3 separate runs."
+  },
+  {
+   "id": "B2",
+   "name": "Fluid simulation (LBM)",
+   "what": "One time step of a 3-D fluid simulation on a grid of cells.",
+   "key": "805 MLUPS",
+   "header": {
+    "peak": [
+     "Memory: 8 channels x DDR4-3200 x 8 B = 204.8 GB/s"
+    ],
+    "measured": [
+     "Measured memory limit: 125 GB/s"
+    ],
+    "achieved": "At sizes larger than the cache: 286 MLUPS to 805 MLUPS (69\u201398% of the measured limit); best at grid size 512, fp32.",
+    "why": [
+     "Every grid cell reads and writes 19 values per step with little arithmetic, so memory speed sets the limit.",
+     "The measured memory limit (125 GB/s) is 61% of the datasheet figure; the same value was measured in an earlier session, so it is stable, but the cause (for example how the memory is installed) is not yet known."
+    ]
+   },
+   "figures": [
+    {
+     "file": "B2_heat1.png",
+     "title": "MLUPS by number format and size",
+     "caption": "Brighter cells are faster; each cell shows the measured value."
+    },
+    {
+     "file": "B2_speed.png",
+     "title": "Speed vs problem size (MLUPS)",
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+    },
+    {
+     "file": "B2_share.png",
+     "title": "Share of the machine's measured limit (%)",
+     "caption": "100% (dashed) is the measured memory limit; sizes that fit in the cache are left out, and sizes only a few times larger than the cache can still pass 100%."
+    },
+    {
+     "file": "B2_precision.png",
+     "title": "Number format comparison (MLUPS)",
+     "caption": "Each bar group is one size; bars compare number formats (fp64 = 64-bit, fp32 = 32-bit, bf16 = 16-bit)."
+    },
+    {
+     "file": "B2_energy.png",
+     "title": "Energy efficiency (MLUPS per joule)",
+     "caption": "Work done per joule of energy (higher is better), from the chip's own power reading."
+    },
+    {
+     "file": "B2_power.png",
+     "title": "Average power while running (watts)",
+     "caption": "Average power drawn by the processor package during the measurement."
+    },
+    {
+     "file": "B2_smt.png",
+     "title": "Hyper-threading effect",
+     "caption": "Above 1: using both hardware threads of every core was faster; below 1: one thread per core was faster."
+    }
+   ],
+   "note": "Final scripts: every result checked against a reference; median of 3 separate runs."
+  },
+  {
+   "id": "B3",
+   "name": "Sparse matrix \u00d7 vector (SpMV)",
+   "what": "Multiplies a matrix that is mostly zeros by a vector, as used in scientific solvers.",
+   "key": "80.8 GB/s",
+   "header": {
+    "peak": [
+     "Memory: 8 channels x DDR4-3200 x 8 B = 204.8 GB/s"
+    ],
+    "measured": [
+     "Measured memory limit: 125 GB/s"
+    ],
+    "achieved": "At sizes larger than the cache: 14.4 GB/s to 80.8 GB/s (11\u201365% of the measured limit); best at matrix size large, 3-D grid matrix.",
+    "why": [
+     "Mostly streams the matrix from memory; the irregular (power-law) matrix reads the vector at scattered places, which wastes part of the memory bandwidth.",
+     "The measured memory limit (125 GB/s) is 61% of the datasheet figure; the same value was measured in an earlier session, so it is stable, but the cause (for example how the memory is installed) is not yet known."
+    ]
+   },
+   "figures": [
+    {
+     "file": "B3_heat1.png",
+     "title": "GB/s by matrix type and size",
+     "caption": "Brighter cells are faster; each cell shows the measured value."
+    },
+    {
+     "file": "B3_speed.png",
+     "title": "Speed vs problem size (GB/s)",
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+    },
+    {
+     "file": "B3_share.png",
+     "title": "Share of the machine's measured limit (%)",
+     "caption": "100% (dashed) is the measured memory limit; sizes that fit in the cache are left out, and sizes only a few times larger than the cache can still pass 100%."
+    },
+    {
+     "file": "B3_energy.png",
+     "title": "Energy efficiency (GB per joule)",
+     "caption": "Work done per joule of energy (higher is better), from the chip's own power reading."
+    },
+    {
+     "file": "B3_power.png",
+     "title": "Average power while running (watts)",
+     "caption": "Average power drawn by the processor package during the measurement."
+    },
+    {
+     "file": "B3_smt.png",
+     "title": "Hyper-threading effect",
+     "caption": "Above 1: using both hardware threads of every core was faster; below 1: one thread per core was faster."
+    }
+   ],
+   "note": "Final scripts: every result checked against a reference; median of 3 separate runs."
+  },
+  {
+   "id": "B4",
+   "name": "Sparse matrix \u00d7 matrix (SpGEMM)",
+   "what": "Multiplies two mostly-zero matrices, as used in graph analytics.",
+   "key": "0.462 GFLOP/s",
+   "header": {
+    "peak": [
+     "Memory: 8 channels x DDR4-3200 x 8 B = 204.8 GB/s"
+    ],
+    "measured": [
+     "Measured memory limit: 125 GB/s"
+    ],
+    "achieved": "Reached 0.299 GFLOP/s to 1.43 GFLOP/s across sizes (1% of the measured limit); best at matrix size small, 3-D grid matrix.",
+    "why": [
+     "Building a sparse result needs scattered memory accesses and bookkeeping, so it reaches only a small share of the memory limit on every machine.",
+     "The measured memory limit (125 GB/s) is 61% of the datasheet figure; the same value was measured in an earlier session, so it is stable, but the cause (for example how the memory is installed) is not yet known."
+    ]
+   },
+   "figures": [
+    {
+     "file": "B4_heat1.png",
+     "title": "GFLOP/s by matrix type and size",
+     "caption": "Brighter cells are faster; each cell shows the measured value."
+    },
+    {
+     "file": "B4_speed.png",
+     "title": "Speed vs problem size (GFLOP/s)",
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+    },
+    {
+     "file": "B4_share.png",
+     "title": "Share of the machine's measured limit (%)",
+     "caption": "100% (dashed) is the measured memory limit; sizes that fit in the cache are left out, and sizes only a few times larger than the cache can still pass 100%."
+    },
+    {
+     "file": "B4_energy.png",
+     "title": "Energy efficiency (GFLOP per joule)",
+     "caption": "Work done per joule of energy (higher is better), from the chip's own power reading."
+    },
+    {
+     "file": "B4_power.png",
+     "title": "Average power while running (watts)",
+     "caption": "Average power drawn by the processor package during the measurement."
+    },
+    {
+     "file": "B4_smt.png",
+     "title": "Hyper-threading effect",
+     "caption": "Above 1: using both hardware threads of every core was faster; below 1: one thread per core was faster."
+    }
+   ],
+   "note": "Final scripts: every result checked against a reference; median of 3 separate runs."
+  },
+  {
+   "id": "C1",
+   "name": "Matrix multiply (GEMM)",
+   "what": "Multiplies two dense square matrices: the core operation of scientific computing and AI.",
+   "key": "2.0 TFLOP/s",
+   "header": {
+    "peak": [
+     "Compute: 24 cores x 2.8 GHz base x 16 FP64 FLOP/cycle = 1.1 TFLOP/s fp64 \u00b7 2.2 TFLOP/s fp32"
+    ],
+    "measured": [
+     "Measured compute limit: 2.0 TFLOP/s fp32 \u00b7 969 GFLOP/s fp64"
+    ],
+    "achieved": "Reached 771 GFLOP/s to 2.1 TFLOP/s across sizes (80\u2013102% of the measured limit); best at matrix size n 4K, fp32.",
+    "why": [
+     "Matrix multiply reuses each value many times, so large matrices run close to the compute limit; small matrices are held back by start-up overhead."
+    ]
+   },
+   "figures": [
+    {
+     "file": "C1_heat1.png",
+     "title": "GFLOP/s by software and size (fp32)",
+     "caption": "Brighter cells are faster; each cell shows the measured value."
+    },
+    {
+     "file": "C1_heat2.png",
+     "title": "GFLOP/s by software and size (fp64)",
+     "caption": "Brighter cells are faster; each cell shows the measured value."
+    },
+    {
+     "file": "C1_speed.png",
+     "title": "Speed vs problem size (GFLOP/s)",
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+    },
+    {
+     "file": "C1_share.png",
+     "title": "Share of the machine's measured limit (%)",
+     "caption": "100% (dashed) is the best speed measured when calibrating this machine; single runs can be slightly faster."
+    },
+    {
+     "file": "C1_software.png",
+     "title": "Software comparison (speed relative to the fastest)",
+     "caption": "Each colour is one software library; 1.0 means it was the fastest at that size."
+    },
+    {
+     "file": "C1_threads.png",
+     "title": "Thread scaling",
+     "caption": "Solid lines are measured; dotted lines show perfect scaling from one thread. 'Efficient' = measured speed-up \u00f7 thread count at the largest count."
+    },
+    {
+     "file": "C1_precision.png",
+     "title": "Number format comparison (GFLOP/s)",
+     "caption": "Each bar group is one size; bars compare number formats (fp64 = 64-bit, fp32 = 32-bit, bf16 = 16-bit)."
+    },
+    {
+     "file": "C1_energy.png",
+     "title": "Energy efficiency (GFLOP per joule)",
+     "caption": "Work done per joule of energy (higher is better), from the chip's own power reading."
+    },
+    {
+     "file": "C1_power.png",
+     "title": "Average power while running (watts)",
+     "caption": "Average power drawn by the processor package during the measurement."
+    },
+    {
+     "file": "C1_smt.png",
+     "title": "Hyper-threading effect",
+     "caption": "Above 1: using both hardware threads of every core was faster; below 1: one thread per core was faster."
+    }
+   ],
+   "note": "Final scripts: every result checked against a reference; median of 3 separate runs."
+  },
+  {
+   "id": "C2",
+   "name": "Monte Carlo option pricing",
+   "what": "Prices financial options by simulating many random price paths.",
+   "key": "3.27 Gpaths/s",
+   "header": {
+    "peak": [
+     "No single hardware limit applies: speed is set by random-number generation and exponentials, so results are reported in Gpaths/s."
+    ],
+    "measured": [],
+    "achieved": "Reached 2.77 Gpaths/s to 3.27 Gpaths/s across sizes; best at number of simulated paths 1G.",
+    "why": [
+     "Mostly random-number generation and exponentials; there is no simple operation count, so speed is reported as simulated paths per second."
+    ]
+   },
+   "figures": [
+    {
+     "file": "C2_speed.png",
+     "title": "Speed vs problem size (Gpaths/s)",
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+    },
+    {
+     "file": "C2_energy.png",
+     "title": "Energy efficiency (Gpaths per joule)",
+     "caption": "Work done per joule of energy (higher is better), from the chip's own power reading."
+    },
+    {
+     "file": "C2_power.png",
+     "title": "Average power while running (watts)",
+     "caption": "Average power drawn by the processor package during the measurement."
+    },
+    {
+     "file": "C2_smt.png",
+     "title": "Hyper-threading effect",
+     "caption": "Above 1: using both hardware threads of every core was faster; below 1: one thread per core was faster."
+    }
+   ],
+   "note": "Final scripts: every result checked against a reference; median of 3 separate runs."
+  },
+  {
+   "id": "C3",
+   "name": "Image convolution",
+   "what": "Slides a small filter over a large image, as in image processing.",
+   "key": "9,313 Mpixels/s",
+   "header": {
+    "peak": [
+     "Compute: 24 cores x 2.8 GHz base x 16 FP64 FLOP/cycle = 1.1 TFLOP/s fp64 \u00b7 2.2 TFLOP/s fp32"
+    ],
+    "measured": [
+     "Measured compute limit: 2.0 TFLOP/s fp32 \u00b7 969 GFLOP/s fp64"
+    ],
+    "achieved": "Reached 1,542 Mpixels/s to 37,282 Mpixels/s across sizes (8\u201340% of the measured limit); best at image size 1K, 1 channel, 3\u00d73 filter.",
+    "why": [
+     "Small filters do little arithmetic per pixel, so only part of the compute limit is reachable; larger filters do more work per pixel and get closer.",
+     "Our own hand-written kernel is the fastest at almost every size on every machine: general-purpose neural-network libraries are not built for one small filter over a large image."
+    ]
+   },
+   "figures": [
+    {
+     "file": "C3_heat1.png",
+     "title": "Mpixels/s by filter size and image size (1 channel)",
+     "caption": "Brighter cells are faster; each cell shows the measured value."
+    },
+    {
+     "file": "C3_heat2.png",
+     "title": "Mpixels/s by filter size and image size (3 channels)",
+     "caption": "Brighter cells are faster; each cell shows the measured value."
+    },
+    {
+     "file": "C3_speed.png",
+     "title": "Speed vs problem size (Mpixels/s)",
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+    },
+    {
+     "file": "C3_share.png",
+     "title": "Share of the machine's measured limit (%)",
+     "caption": "100% (dashed) is the best speed measured when calibrating this machine; single runs can be slightly faster."
+    },
+    {
+     "file": "C3_software.png",
+     "title": "Software comparison (speed relative to the fastest)",
+     "caption": "Each colour is one software library; 1.0 means it was the fastest at that size."
+    },
+    {
+     "file": "C3_energy.png",
+     "title": "Energy efficiency (Mpixels per joule)",
+     "caption": "Work done per joule of energy (higher is better), from the chip's own power reading."
+    },
+    {
+     "file": "C3_power.png",
+     "title": "Average power while running (watts)",
+     "caption": "Average power drawn by the processor package during the measurement."
+    },
+    {
+     "file": "C3_smt.png",
+     "title": "Hyper-threading effect",
+     "caption": "Above 1: using both hardware threads of every core was faster; below 1: one thread per core was faster."
+    }
+   ],
+   "note": "Final scripts: every result checked against a reference; median of 3 separate runs."
+  },
+  {
+   "id": "C4",
+   "name": "Fourier transform (FFT)",
+   "what": "Converts a signal or image into its frequency components.",
+   "key": "76.4 GFLOP/s",
+   "header": {
+    "peak": [
+     "Compute: 24 cores x 2.8 GHz base x 16 FP64 FLOP/cycle = 1.1 TFLOP/s fp64 \u00b7 2.2 TFLOP/s fp32"
+    ],
+    "measured": [
+     "Measured compute limit: 2.0 TFLOP/s fp32 \u00b7 969 GFLOP/s fp64"
+    ],
+    "achieved": "Reached 5 GFLOP/s to 183 GFLOP/s across sizes (0\u20139% of the measured limit); best at FFT size 1M, 2-D.",
+    "why": [
+     "An FFT passes over the whole array several times; sizes that fit in the cache run fastest.",
+     "On this AMD processor, Intel's math library runs mid-size one-dimensional transforms on a single core (checked on the machine), which explains the dip."
+    ]
+   },
+   "figures": [
+    {
+     "file": "C4_speed.png",
+     "title": "Speed vs problem size (GFLOP/s)",
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+    },
+    {
+     "file": "C4_share.png",
+     "title": "Share of the machine's measured limit (%)",
+     "caption": "100% (dashed) is the best speed measured when calibrating this machine; single runs can be slightly faster."
+    },
+    {
+     "file": "C4_energy.png",
+     "title": "Energy efficiency (GFLOP per joule)",
+     "caption": "Work done per joule of energy (higher is better), from the chip's own power reading."
+    },
+    {
+     "file": "C4_power.png",
+     "title": "Average power while running (watts)",
+     "caption": "Average power drawn by the processor package during the measurement."
+    },
+    {
+     "file": "C4_smt.png",
+     "title": "Hyper-threading effect",
+     "caption": "Above 1: using both hardware threads of every core was faster; below 1: one thread per core was faster."
+    }
+   ],
+   "note": "Final scripts: every result checked against a reference; median of 3 separate runs."
+  },
+  {
+   "id": "C5",
+   "name": "Bilateral image filter",
+   "what": "Smooths an image while keeping its edges sharp.",
+   "key": "2,793 Mpixels/s",
+   "header": {
+    "peak": [
+     "No single hardware limit applies: speed is set by exponentials and neighbourhood reads, so results are reported in Mpixels/s."
+    ],
+    "measured": [],
+    "achieved": "Reached 41.5 Mpixels/s to 2,812 Mpixels/s across sizes; best at image size 4K, radius 2.",
+    "why": [
+     "Dominated by exponentials and reads of each pixel's neighbourhood; there is no simple operation count, so speed is reported as pixels per second."
+    ]
+   },
+   "figures": [
+    {
+     "file": "C5_heat1.png",
+     "title": "Mpixels/s by filter radius and image size",
+     "caption": "Brighter cells are faster; each cell shows the measured value."
+    },
+    {
+     "file": "C5_speed.png",
+     "title": "Speed vs problem size (Mpixels/s)",
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+    },
+    {
+     "file": "C5_software.png",
+     "title": "Software comparison (speed relative to the fastest)",
+     "caption": "Each colour is one software library; 1.0 means it was the fastest at that size."
+    },
+    {
+     "file": "C5_energy.png",
+     "title": "Energy efficiency (Mpixels per joule)",
+     "caption": "Work done per joule of energy (higher is better), from the chip's own power reading."
+    },
+    {
+     "file": "C5_power.png",
+     "title": "Average power while running (watts)",
+     "caption": "Average power drawn by the processor package during the measurement."
+    },
+    {
+     "file": "C5_smt.png",
+     "title": "Hyper-threading effect",
+     "caption": "Above 1: using both hardware threads of every core was faster; below 1: one thread per core was faster."
+    }
+   ],
+   "note": "Final scripts: every result checked against a reference; median of 3 separate runs."
+  },
+  {
+   "id": "C6",
+   "name": "Sorting",
+   "what": "Sorts key-value pairs, as databases do.",
+   "key": "368 Mpairs/s",
+   "header": {
+    "peak": [
+     "No single hardware limit applies: speed is set by data movement and comparisons, so results are reported in Mpairs/s."
+    ],
+    "measured": [],
+    "achieved": "Reached 297 Mpairs/s to 422 Mpairs/s across sizes; best at number of key-value pairs 1M, skewed data.",
+    "why": [
+     "Sorting is limited by moving data and comparing keys; inputs that no longer fit in the cache slow down."
+    ]
+   },
+   "figures": [
+    {
+     "file": "C6_heat1.png",
+     "title": "Mpairs/s by data distribution and size",
+     "caption": "Brighter cells are faster; each cell shows the measured value."
+    },
+    {
+     "file": "C6_speed.png",
+     "title": "Speed vs problem size (Mpairs/s)",
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+    },
+    {
+     "file": "C6_software.png",
+     "title": "Software comparison (speed relative to the fastest)",
+     "caption": "Each colour is one software library; 1.0 means it was the fastest at that size."
+    },
+    {
+     "file": "C6_energy.png",
+     "title": "Energy efficiency (Mpairs per joule)",
+     "caption": "Work done per joule of energy (higher is better), from the chip's own power reading."
+    },
+    {
+     "file": "C6_power.png",
+     "title": "Average power while running (watts)",
+     "caption": "Average power drawn by the processor package during the measurement."
+    },
+    {
+     "file": "C6_smt.png",
+     "title": "Hyper-threading effect",
+     "caption": "Above 1: using both hardware threads of every core was faster; below 1: one thread per core was faster."
+    }
+   ],
+   "note": "Final scripts: every result checked against a reference; median of 3 separate runs."
+  },
+  {
+   "id": "C7",
+   "name": "Search in sorted keys",
+   "what": "Looks up many values in a large sorted list, as database indexes do.",
+   "key": "265 Mqueries/s",
+   "header": {
+    "peak": [
+     "No single hardware limit applies: speed is set by memory latency of each lookup, so results are reported in Mqueries/s."
+    ],
+    "measured": [],
+    "achieved": "Reached 18.8 Mqueries/s to 1,228 Mqueries/s across sizes; best at number of sorted keys 16K, sorted queries.",
+    "why": [
+     "Each lookup jumps through the sorted keys; once the keys no longer fit in the cache, every step waits on memory."
+    ]
+   },
+   "figures": [
+    {
+     "file": "C7_heat1.png",
+     "title": "Mqueries/s by query order and number of keys",
+     "caption": "Brighter cells are faster; each cell shows the measured value."
+    },
+    {
+     "file": "C7_speed.png",
+     "title": "Speed vs problem size (Mqueries/s)",
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+    },
+    {
+     "file": "C7_energy.png",
+     "title": "Energy efficiency (Mqueries per joule)",
+     "caption": "Work done per joule of energy (higher is better), from the chip's own power reading."
+    },
+    {
+     "file": "C7_power.png",
+     "title": "Average power while running (watts)",
+     "caption": "Average power drawn by the processor package during the measurement."
+    },
+    {
+     "file": "C7_smt.png",
+     "title": "Hyper-threading effect",
+     "caption": "Above 1: using both hardware threads of every core was faster; below 1: one thread per core was faster."
+    }
+   ],
+   "note": "Final scripts: every result checked against a reference; median of 3 separate runs."
+  },
+  {
+   "id": "C8",
+   "name": "AES encryption",
+   "what": "Encrypts data with AES-128 in counter mode.",
+   "key": "39.9 GB/s",
+   "header": {
+    "peak": [
+     "No single hardware limit applies: speed is set by the encryption rounds, so results are reported in GB/s."
+    ],
+    "measured": [],
+    "achieved": "Reached 16.4 GB/s to 105 GB/s across sizes; best at data size 64M, hardware crypto on.",
+    "why": [
+     "Processors use their built-in AES instructions; the GPU uses a table-based software kernel. 'Hardware crypto off' shows the processor without those instructions."
+    ]
+   },
+   "figures": [
+    {
+     "file": "C8_speed.png",
+     "title": "Speed vs problem size (GB/s)",
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+    },
+    {
+     "file": "C8_energy.png",
+     "title": "Energy efficiency (GB per joule)",
+     "caption": "Work done per joule of energy (higher is better), from the chip's own power reading."
+    },
+    {
+     "file": "C8_power.png",
+     "title": "Average power while running (watts)",
+     "caption": "Average power drawn by the processor package during the measurement."
+    },
+    {
+     "file": "C8_smt.png",
+     "title": "Hyper-threading effect",
+     "caption": "Above 1: using both hardware threads of every core was faster; below 1: one thread per core was faster."
+    }
+   ],
+   "note": "Final scripts: every result checked against a reference; median of 3 separate runs."
+  },
+  {
+   "id": "C9",
+   "name": "SHA-256 hashing",
+   "what": "Computes SHA-256 fingerprints of many messages.",
+   "key": "61.5 GB/s",
+   "header": {
+    "peak": [
+     "No single hardware limit applies: speed is set by the hash rounds, so results are reported in GB/s."
+    ],
+    "measured": [],
+    "achieved": "Reached 5.08 GB/s to 61.5 GB/s across sizes; best at message length 64K, hardware crypto on.",
+    "why": [
+     "Processors use their built-in SHA instructions; the GPU computes the hash in software. Short messages spend more time on per-message overhead."
+    ]
+   },
+   "figures": [
+    {
+     "file": "C9_heat1.png",
+     "title": "GB/s by hardware crypto and message length",
+     "caption": "Brighter cells are faster; each cell shows the measured value."
+    },
+    {
+     "file": "C9_speed.png",
+     "title": "Speed vs problem size (GB/s)",
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+    },
+    {
+     "file": "C9_energy.png",
+     "title": "Energy efficiency (GB per joule)",
+     "caption": "Work done per joule of energy (higher is better), from the chip's own power reading."
+    },
+    {
+     "file": "C9_power.png",
+     "title": "Average power while running (watts)",
+     "caption": "Average power drawn by the processor package during the measurement."
+    },
+    {
+     "file": "C9_smt.png",
+     "title": "Hyper-threading effect",
+     "caption": "Above 1: using both hardware threads of every core was faster; below 1: one thread per core was faster."
+    }
+   ],
+   "note": "Final scripts: every result checked against a reference; median of 3 separate runs."
+  },
+  {
+   "id": "S1",
+   "name": "Histogram",
+   "what": "Counts how many values fall into each bin, as in image and data analysis.",
+   "key": "3,159 Msamples/s",
+   "header": {
+    "peak": [
+     "No single hardware limit applies: speed is set by coordination between threads, so results are reported in Msamples/s."
+    ],
+    "measured": [],
+    "achieved": "Reached 2,585 Msamples/s to 3,225 Msamples/s across sizes; best at number of samples 16M, skewed data, 256 bins.",
+    "why": [
+     "Many threads add to the same counters and must coordinate. Measured with PyTorch's built-in histogram functions (library-level, not hand-tuned code), so results reflect that library."
+    ]
+   },
+   "figures": [
+    {
+     "file": "S1_heat1.png",
+     "title": "Msamples/s by number of bins and size (uniform data)",
+     "caption": "Brighter cells are faster; each cell shows the measured value."
+    },
+    {
+     "file": "S1_heat2.png",
+     "title": "Msamples/s by number of bins and size (skewed data)",
+     "caption": "Brighter cells are faster; each cell shows the measured value."
+    },
+    {
+     "file": "S1_speed.png",
+     "title": "Speed vs problem size (Msamples/s)",
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+    },
+    {
+     "file": "S1_software.png",
+     "title": "Software comparison (speed relative to the fastest)",
+     "caption": "Each colour is one software library; 1.0 means it was the fastest at that size."
+    },
+    {
+     "file": "S1_threads.png",
+     "title": "Thread scaling",
+     "caption": "Solid lines are measured; dotted lines show perfect scaling from one thread. 'Efficient' = measured speed-up \u00f7 thread count at the largest count."
+    },
+    {
+     "file": "S1_energy.png",
+     "title": "Energy efficiency (Msamples per joule)",
+     "caption": "Work done per joule of energy (higher is better), from the chip's own power reading."
+    },
+    {
+     "file": "S1_power.png",
+     "title": "Average power while running (watts)",
+     "caption": "Average power drawn by the processor package during the measurement."
+    },
+    {
+     "file": "S1_smt.png",
+     "title": "Hyper-threading effect",
+     "caption": "Above 1: using both hardware threads of every core was faster; below 1: one thread per core was faster."
+    }
+   ],
+   "note": "Final scripts: every result checked against a reference; median of 3 separate runs."
+  },
+  {
+   "id": "S2",
+   "name": "Physics constraint solver",
+   "what": "Resolves contacts between simulated bodies in batches that must run one after another.",
+   "key": "925 iterations/s",
+   "header": {
+    "peak": [
+     "No single hardware limit applies: speed is set by synchronization between batches, so results are reported in iterations/s."
+    ],
+    "measured": [],
+    "achieved": "Reached 172 iterations/s to 925 iterations/s across sizes; best at constraints per batch batch 65536.",
+    "why": [
+     "Each batch must finish before the next can start, so the cost of synchronizing all cores (or the whole GPU) dominates at small batches."
+    ]
+   },
+   "figures": [
+    {
+     "file": "S2_speed.png",
+     "title": "Speed vs problem size (iterations/s)",
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+    },
+    {
+     "file": "S2_threads.png",
+     "title": "Thread scaling",
+     "caption": "Solid lines are measured; dotted lines show perfect scaling from one thread. 'Efficient' = measured speed-up \u00f7 thread count at the largest count."
+    },
+    {
+     "file": "S2_energy.png",
+     "title": "Energy efficiency (iterations per joule)",
+     "caption": "Work done per joule of energy (higher is better), from the chip's own power reading."
+    },
+    {
+     "file": "S2_power.png",
+     "title": "Average power while running (watts)",
+     "caption": "Average power drawn by the processor package during the measurement."
+    },
+    {
+     "file": "S2_smt.png",
+     "title": "Hyper-threading effect",
+     "caption": "Above 1: using both hardware threads of every core was faster; below 1: one thread per core was faster."
+    }
+   ],
+   "note": "Final scripts: every result checked against a reference; median of 3 separate runs."
+  },
+  {
+   "id": "A1",
+   "name": "Llama-3 inference",
+   "what": "Runs a Llama-3 language model: processing a prompt and generating new tokens.",
+   "key": "18.9 tokens/s (largest model, generation)",
+   "header": {
+    "peak": [
+     "Memory: 8 channels x DDR4-3200 x 8 B = 204.8 GB/s",
+     "Compute: 24 cores x 2.8 GHz base x 16 FP64 FLOP/cycle = 1.1 TFLOP/s fp64 \u00b7 2.2 TFLOP/s fp32"
+    ],
+    "measured": [
+     "Measured memory limit: 125 GB/s",
+     "Measured compute limit: 2.0 TFLOP/s fp32 \u00b7 969 GFLOP/s fp64"
+    ],
+    "achieved": "Token generation: up to 173 tokens/s (78% of the measured memory limit at best); Prompt processing: up to 684 tokens/s (84% of the measured compute limit at best).",
+    "why": [
+     "Generating each token reads all model weights from memory, so it is limited by memory speed; processing a prompt reuses the weights and is limited by compute."
+    ]
+   },
+   "figures": [
+    {
+     "file": "A1_heat1.png",
+     "title": "tokens/s by model and batch size (token generation)",
+     "caption": "Brighter cells are faster; each cell shows the measured value."
+    },
+    {
+     "file": "A1_heat2.png",
+     "title": "tokens/s by model and prompt length (prompt processing)",
+     "caption": "Brighter cells are faster; each cell shows the measured value."
+    },
+    {
+     "file": "A1_speed.png",
+     "title": "Speed vs problem size (tokens/s)",
+     "caption": "Each line is one setting; points are the median of three runs with their 95% range; dashed lines are the machine's measured limits."
+    },
+    {
+     "file": "A1_share.png",
+     "title": "Share of the machine's measured limit (%)",
+     "caption": "Token generation is compared with the memory limit, prompt processing with the compute limit; 100% (dashed) is the limit."
+    },
+    {
+     "file": "A1_software.png",
+     "title": "Software comparison (speed relative to the fastest)",
+     "caption": "Each colour is one software library; 1.0 means it was the fastest at that size."
+    },
+    {
+     "file": "A1_energy.png",
+     "title": "Energy efficiency (tokens per joule)",
+     "caption": "Work done per joule of energy (higher is better), from the chip's own power reading."
+    },
+    {
+     "file": "A1_power.png",
+     "title": "Average power while running (watts)",
+     "caption": "Average power drawn by the processor package during the measurement."
+    },
+    {
+     "file": "A1_smt.png",
+     "title": "Hyper-threading effect",
+     "caption": "Above 1: using both hardware threads of every core was faster; below 1: one thread per core was faster."
+    }
+   ],
+   "note": "Final scripts: every result checked against a reference; median of 3 separate runs."
+  }
+ ]
+}

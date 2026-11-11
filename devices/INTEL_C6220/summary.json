@@ -1,0 +1,244 @@
+{
+ "device": "INTEL_C6220",
+ "cls": "cpu",
+ "category": "earlier",
+ "core": false,
+ "name": "2 \u00d7 Intel Xeon E5-2650 v2",
+ "spec": "Ivy Bridge \u00b7 2 sockets \u00d7 8 cores \u00b7 8 \u00d7 DDR3-1866 \u00b7 CloudLab c6220",
+ "limits": [
+  "Memory: 2 sockets \u00d7 4 channels \u00d7 1866 MT/s \u00d7 8 B = 119.4 GB/s",
+  "Compute: 16 cores \u00d7 2.6 GHz base \u00d7 8 fp64 FLOP/cycle = 666 GFLOP/s fp32 \u00b7 333 GFLOP/s fp64",
+  "Measured by the earlier scripts: memory 54.9 GB/s (46% of theory), best SAXPY larger than the cache; compute 350 GFLOP/s fp32 (53% of theory) \u00b7 170 GFLOP/s fp64 (51% of theory), best matrix multiply"
+ ],
+ "overview": {
+  "file": "overview.png",
+  "title": "How close each workload gets to the datasheet limit",
+  "caption": "Each bar is one workload at its largest size; 100% (dashed) is the hardware limit."
+ },
+ "no_limit": [
+  "Sparse matrix \u00d7 vector (SpMV)",
+  "Sparse matrix \u00d7 matrix (SpGEMM)"
+ ],
+ "workloads": [
+  {
+   "id": "B1",
+   "name": "SAXPY (vector update)",
+   "what": "Updates a long vector with y = a\u00b7x + y: almost pure memory traffic.",
+   "key": "54.5 GB/s",
+   "header": {
+    "peak": [
+     "Memory: 2 sockets \u00d7 4 channels \u00d7 1866 MT/s \u00d7 8 B = 119.4 GB/s"
+    ],
+    "measured": [],
+    "achieved": "At sizes larger than the cache: 35.4 GB/s to 54.9 GB/s (30\u201346% of the datasheet limit); best at size 2^26, fp64.",
+    "why": [
+     "Each element is read and written once with almost no arithmetic, so memory speed sets the limit; sizes that fit in the cache can run faster than memory allows."
+    ]
+   },
+   "figures": [
+    {
+     "file": "B1_heat1.png",
+     "title": "GB/s by number of CPU threads and size (fp32)",
+     "caption": "Brighter cells are faster; rows are the number of CPU threads used together."
+    },
+    {
+     "file": "B1_speed.png",
+     "title": "Speed vs problem size (GB/s)",
+     "caption": "Each line is one number format (mean of the earlier script's runs); dashed lines are datasheet limits. Small sizes can exceed the memory limit because they fit in the on-chip cache."
+    },
+    {
+     "file": "B1_share.png",
+     "title": "Share of the datasheet limit (%)",
+     "caption": "100% (dashed) is the vendor's datasheet limit; memory-limited sizes that fit in cache are left out."
+    },
+    {
+     "file": "B1_threads.png",
+     "title": "Thread scaling",
+     "caption": "Solid lines are measured; dotted lines show perfect scaling from one thread. 'Efficient' = measured speed-up \u00f7 thread count at the largest count."
+    },
+    {
+     "file": "B1_precision.png",
+     "title": "Number format comparison (GB/s)",
+     "caption": "Each bar group is one size; bars compare number formats."
+    }
+   ],
+   "note": "Earlier script: average of 20 timed runs."
+  },
+  {
+   "id": "B3",
+   "name": "Sparse matrix \u00d7 vector (SpMV)",
+   "what": "Multiplies a matrix that is mostly zeros by a vector, as used in scientific solvers.",
+   "key": "185 GB/s",
+   "header": {
+    "peak": [
+     "Memory: 2 sockets \u00d7 4 channels \u00d7 1866 MT/s \u00d7 8 B = 119.4 GB/s"
+    ],
+    "measured": [],
+    "achieved": "Reached 4.91 GB/s to 232 GB/s across sizes; best at size 4096, density 0.1, fp32.",
+    "why": [
+     "Mostly streams the matrix from memory; the irregular (power-law) matrix reads the vector at scattered places, which wastes part of the memory bandwidth."
+    ]
+   },
+   "figures": [
+    {
+     "file": "B3_heat1.png",
+     "title": "GB/s by number of CPU threads and size (fp32)",
+     "caption": "Brighter cells are faster; rows are the number of CPU threads used together."
+    },
+    {
+     "file": "B3_speed.png",
+     "title": "Speed vs problem size (GB/s)",
+     "caption": "Each line is one number format (mean of the earlier script's runs); dashed lines are datasheet limits. Small sizes can exceed the memory limit because they fit in the on-chip cache."
+    },
+    {
+     "file": "B3_threads.png",
+     "title": "Thread scaling",
+     "caption": "Solid lines are measured; dotted lines show perfect scaling from one thread. 'Efficient' = measured speed-up \u00f7 thread count at the largest count."
+    },
+    {
+     "file": "B3_precision.png",
+     "title": "Number format comparison (GB/s)",
+     "caption": "Each bar group is one size; bars compare number formats."
+    },
+    {
+     "file": "B3_sparsity.png",
+     "title": "Speed vs sparsity (GB/s, fp32)",
+     "caption": "Each line is one matrix size; further right = denser matrix."
+    }
+   ],
+   "note": "Earlier script: average of 15 timed runs; results were never checked against a reference."
+  },
+  {
+   "id": "B4",
+   "name": "Sparse matrix \u00d7 matrix (SpGEMM)",
+   "what": "Multiplies two mostly-zero matrices, as used in graph analytics.",
+   "key": "6.84 GB/s",
+   "header": {
+    "peak": [
+     "No single hardware limit applies: building a sparse result needs scattered memory accesses, so results are reported in GB/s."
+    ],
+    "measured": [],
+    "achieved": "Reached 0.43 GB/s to 19.7 GB/s across sizes; best at size 2048, density 0.01, fp32.",
+    "why": [
+     "Building a sparse result needs scattered memory accesses and bookkeeping, so it reaches only a small share of the memory limit on every machine."
+    ]
+   },
+   "figures": [
+    {
+     "file": "B4_heat1.png",
+     "title": "GB/s by number of CPU threads and size (fp32)",
+     "caption": "Brighter cells are faster; rows are the number of CPU threads used together."
+    },
+    {
+     "file": "B4_speed.png",
+     "title": "Speed vs problem size (GB/s)",
+     "caption": "Each line is one number format (mean of the earlier script's runs); dashed lines are datasheet limits. Small sizes can exceed the memory limit because they fit in the on-chip cache."
+    },
+    {
+     "file": "B4_threads.png",
+     "title": "Thread scaling",
+     "caption": "Solid lines are measured; dotted lines show perfect scaling from one thread. 'Efficient' = measured speed-up \u00f7 thread count at the largest count."
+    },
+    {
+     "file": "B4_precision.png",
+     "title": "Number format comparison (GB/s)",
+     "caption": "Each bar group is one size; bars compare number formats."
+    },
+    {
+     "file": "B4_sparsity.png",
+     "title": "Speed vs sparsity (GB/s, fp32)",
+     "caption": "Each line is one matrix size; further right = denser matrix."
+    }
+   ],
+   "note": "Earlier script: average of 10 timed runs; results were never checked against a reference; failed sizes are left out."
+  },
+  {
+   "id": "C1",
+   "name": "Matrix multiply (GEMM)",
+   "what": "Multiplies two dense square matrices: the core operation of scientific computing and AI.",
+   "key": "350 GFLOP/s",
+   "header": {
+    "peak": [
+     "Compute: 16 cores \u00d7 2.6 GHz base \u00d7 8 fp64 FLOP/cycle = 666 GFLOP/s fp32 \u00b7 333 GFLOP/s fp64"
+    ],
+    "measured": [],
+    "achieved": "Reached 100 GFLOP/s to 350 GFLOP/s across sizes (30\u201353% of the datasheet limit); best at size 2048, fp32.",
+    "why": [
+     "Matrix multiply reuses each value many times, so large matrices run close to the compute limit; small matrices are held back by start-up overhead."
+    ]
+   },
+   "figures": [
+    {
+     "file": "C1_heat1.png",
+     "title": "GFLOP/s by number of CPU threads and size (fp32)",
+     "caption": "Brighter cells are faster; rows are the number of CPU threads used together."
+    },
+    {
+     "file": "C1_speed.png",
+     "title": "Speed vs problem size (GFLOP/s)",
+     "caption": "Each line is one number format (mean of the earlier script's runs); dashed lines are datasheet limits."
+    },
+    {
+     "file": "C1_share.png",
+     "title": "Share of the datasheet limit (%)",
+     "caption": "100% (dashed) is the vendor's datasheet limit; memory-limited sizes that fit in cache are left out."
+    },
+    {
+     "file": "C1_threads.png",
+     "title": "Thread scaling",
+     "caption": "Solid lines are measured; dotted lines show perfect scaling from one thread. 'Efficient' = measured speed-up \u00f7 thread count at the largest count."
+    },
+    {
+     "file": "C1_precision.png",
+     "title": "Number format comparison (GFLOP/s)",
+     "caption": "Each bar group is one size; bars compare number formats."
+    }
+   ],
+   "note": "Earlier script: average of 10-20 timed runs; only some sizes were checked against a reference."
+  },
+  {
+   "id": "GEMV",
+   "name": "Matrix \u00d7 vector (GEMV)",
+   "what": "Multiplies a dense matrix by a vector (an earlier benchmark, not one of the 16 final workloads).",
+   "key": "41 GB/s",
+   "header": {
+    "peak": [
+     "Memory: 2 sockets \u00d7 4 channels \u00d7 1866 MT/s \u00d7 8 B = 119.4 GB/s"
+    ],
+    "measured": [],
+    "achieved": "At sizes larger than the cache: 29.5 GB/s to 41 GB/s (25\u201334% of the datasheet limit); best at size 16384, fp64.",
+    "why": [
+     "Each matrix value is used exactly once, so memory speed sets the limit; small sizes fit in the cache."
+    ]
+   },
+   "figures": [
+    {
+     "file": "GEMV_heat1.png",
+     "title": "GB/s by number of CPU threads and size (fp32)",
+     "caption": "Brighter cells are faster; rows are the number of CPU threads used together."
+    },
+    {
+     "file": "GEMV_speed.png",
+     "title": "Speed vs problem size (GB/s)",
+     "caption": "Each line is one number format (mean of the earlier script's runs); dashed lines are datasheet limits. Small sizes can exceed the memory limit because they fit in the on-chip cache."
+    },
+    {
+     "file": "GEMV_share.png",
+     "title": "Share of the datasheet limit (%)",
+     "caption": "100% (dashed) is the vendor's datasheet limit; memory-limited sizes that fit in cache are left out."
+    },
+    {
+     "file": "GEMV_threads.png",
+     "title": "Thread scaling",
+     "caption": "Solid lines are measured; dotted lines show perfect scaling from one thread. 'Efficient' = measured speed-up \u00f7 thread count at the largest count."
+    },
+    {
+     "file": "GEMV_precision.png",
+     "title": "Number format comparison (GB/s)",
+     "caption": "Each bar group is one size; bars compare number formats."
+    }
+   ],
+   "note": "Earlier script: average of 15 timed runs."
+  }
+ ]
+}

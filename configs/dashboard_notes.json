@@ -52,10 +52,10 @@
     },
     {
       "device": "INTEL_C6620",
-      "title": "Workloads whose CPU code is not yet tuned",
-      "status": "hypothesis",
+      "title": "Histogram: PyTorch's CPU histc is the bottleneck, not the CPU",
+      "status": "verified",
       "date": "2026-11-11",
-      "text": "Hardware gap to the V100: ~4x bandwidth, ~3.7x GEMM peak. The V100 is 3.6x faster on GEMM, 4.4x on LBM, 4.4x on Llama decode and 2.6x on convolution, matching the hardware. But it is a median 11x faster on histogram, 24x on search, 14x on sort, 9.7x on FFT and 10x on the bilateral filter. These CPU paths are library calls that are not tuned: torch.histc reaches ~4-6 Gsamples/s, ~10% of bandwidth, where a per-thread-private histogram should run near memory speed. These ratios measure library quality, not hardware. To confirm: add tuned native CPU kernels (as C3 already has) and re-run S1, C7, C6, C4 and C5."
+      "text": "torch.histc reaches 4.0 Gsamples/s (1G values, 256 bins), about 7% of this CPU's bandwidth. A plain OpenMP histogram with per-thread private bins, written as a feasibility probe and run on this node on 2026-11-11, reaches 25.3 Gsamples/s (101 GB/s) on the same problem, 6.3x faster. So the S1 CPU-vs-GPU ratios (median 11x for the V100) measure PyTorch's CPU histogram, not the hardware. Fix: add a native CPU histogram as a second S1 library (as C3 has) and re-run S1. Not affected: search (torch.searchsorted is 6.5x faster than a naive OpenMP binary search on the same node), sort (best of 3 libraries: PyTorch, GNU parallel, oneTBB), FFT (MKL, Intel's own tuned library) and the bilateral filter (OpenCV). Their larger GPU ratios are plausible hardware effects (latency hiding, HBM, special-function units) and remain to be explained, not corrected."
     },
     {
       "device": "AMD_C6525_100G",
@@ -66,10 +66,10 @@
     },
     {
       "device": "AMD_C6525_100G",
-      "title": "Workloads whose CPU code is not yet tuned",
+      "title": "Histogram: PyTorch's CPU histc is the bottleneck, not the CPU",
       "status": "hypothesis",
       "date": "2026-11-11",
-      "text": "Hardware gap to the V100: ~6.8x bandwidth, ~7x GEMM peak. The V100 is 7.1x faster on GEMM, 7.2x on LBM and 8.5x on Llama decode, matching the hardware. It is a median 16x faster on histogram, 26x on search, 16x on sort and 22x on FFT. As on the Intel machine, these are untuned library paths (torch.histc, searchsorted, sort, MKL FFT on AMD), not a hardware limit. To confirm: tuned native CPU kernels for S1, C7, C6 and FFTW for C4."
+      "text": "As on the Intel c6620, where a simple per-thread-private OpenMP histogram ran 6.3x faster than torch.histc, the S1 ratios here (median 16x for the V100) most likely measure PyTorch's CPU histogram. Confirm when native S1 is added and re-run. The other large ratios have known causes: FFT (MKL single-threaded at mid sizes on this EPYC, separate finding), while search/sort/bilateral use the best of several tuned libraries."
     },
     {
       "device": "AMD_C6525_100G",

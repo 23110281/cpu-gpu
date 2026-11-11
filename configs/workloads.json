@@ -911,7 +911,7 @@
   ],
   "infra_todo": [
         "C4 FFT: add FFTW (threads) as a second CPU library; MKL runs 2^22-point 1-D FFTs single-threaded on EPYC 7402P (6.2 vs 138 GFLOP/s on c6620)",
-        "Tuned CPU baselines where the GPU/CPU ratio far exceeds the hardware gap (c6620: hist 11x, search 24x, sort 14x, FFT 9.7x, bilateral 10x vs ~4x bandwidth): native per-thread-private histogram (S1), native search (C7), native sort (C6), re-check C5",
+        "S1 histogram: add a native CPU histogram (per-thread private bins) as a second CPU library and re-run S1 on all CPUs; probe on c6620: 25.3 vs torch.histc 4.0 Gsamples/s",
         "M1 GPU half: run cross-check + smoke on a GPU node (CPU half done on EPYC: SAXPY +0.4/+1.4%, GEMM 2 of 4 within 3%; see results/crosscheck/AMD_C6525_100G.json)",
         "M2: calibration done on V100, c6620, c6525-100g (r6615 running); A100/L40S/H100/Grace when booked. CPU bandwidth ceiling now checks the write-allocate correction against pure-read Dot (c6620: 213.6 GB/s)",
         "M2: telemetry verified vs turbostat on EPYC (200.6 vs 200-203 W; 3295 vs 3280-3302 MHz); repeat on Intel, Grace, GPUs",

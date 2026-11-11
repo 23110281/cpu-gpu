@@ -1,0 +1,8 @@
+BabelStream (reported, GB/s): Copy 181.2, Mul 182.3, Add 195.3, Triad 195.3, Dot 213.6
+-> bandwidth ceiling 273.5 GB/s (actual DRAM traffic incl. write-allocate (CPU))
+GEMM fp32: {'torch': 3796.637937336427, 'openblas': 3478.5922390048977, 'blis': 2206.2681570068844} -> peak 3797 GFLOP/s
+GEMM fp64: {'torch': 1852.0176888541398, 'openblas': 1572.6025285989817, 'blis': 1021.8578270810751} -> peak 1852 GFLOP/s
+-> /users/Kushal17/cpu-gpu/results/calibration/INTEL_C6620.json
+{
+  "bandwidth": 0.8901507128906252
+}

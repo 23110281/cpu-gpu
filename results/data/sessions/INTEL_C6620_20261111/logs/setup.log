@@ -1,0 +1,30 @@
+[1;34m[setup][0m node type: cpu (INTEL(R) XEON(R) GOLD 5512U)
+[1;34m[setup][0m apt packages (build, NUMA, fastest-library candidates, crypto, extension headers)
+debconf: unable to initialize frontend: Dialog
+debconf: (Dialog frontend will not work on a dumb terminal, an emacs shell buffer, or without a controlling terminal.)
+debconf: falling back to frontend: Readline
+debconf: unable to initialize frontend: Readline
+debconf: (This frontend requires a controlling tty.)
+debconf: falling back to frontend: Teletype
+dpkg-preconfigure: unable to re-open stdin: 
+[1;34m[setup][0m OpenBLAS alternative -> /usr/lib/x86_64-linux-gnu/openblas-openmp/libopenblasp-r0.3.20.so
+[1;34m[setup][0m python packages
+  WARNING: The script isympy is installed in '/users/Kushal17/.local/bin' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+  WARNING: The scripts torchfrtrace and torchrun are installed in '/users/Kushal17/.local/bin' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+  WARNING: The script pygmentize is installed in '/users/Kushal17/.local/bin' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+  WARNING: The scripts f2py and numpy-config are installed in '/users/Kushal17/.local/bin' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+  WARNING: The scripts py.test and pytest are installed in '/users/Kushal17/.local/bin' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+  WARNING: The scripts fonttools, pyftmerge, pyftsubset and ttx are installed in '/users/Kushal17/.local/bin' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+[1;34m[setup][0m telemetry permissions (RAPL energy + APERF/MPERF MSRs)
+[1;34m[setup][0m CAP_SYS_RAWIO -> /usr/bin/python3.10
+[1;34m[setup][0m CPU governor: performance (cpupower)
+[1;34m[setup][0m verification
+  torch 2.14.1+cpu  cuda_available=False
+  RAPL energy readable: yes
+[1;34m[setup][0m done -- next: bash scripts/run_campaign.sh start <DEVICE>   (or step by step: make test && make smoke)

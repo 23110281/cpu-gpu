@@ -1,0 +1,102 @@
+{
+  "device_id": "AMD_C6525_100G",
+  "utc": "2026-11-11T00:22:27.374306+00:00",
+  "placement": "socket0",
+  "datasheet": {
+    "bandwidth_gbps": 204.8,
+    "peak_gflops": {
+      "fp64": 1075.2,
+      "fp32": 2150.4
+    },
+    "derivation": {
+      "bandwidth": "8 channels x DDR4-3200 x 8 B = 204.8 GB/s (dmidecode: 8x16 GB DDR4-3200, DIMMs A1-A8, one per channel)",
+      "compute": "24 cores x 2.8 GHz base x 16 FP64 FLOP/cycle (2x 256-bit FMA pipes, Zen 2) = 1075.2; fp32 = 2x. All-core boost observed 3.3 GHz (APERF/MPERF) is NOT used for the datasheet figure."
+    }
+  },
+  "measured": {
+    "bandwidth_gbps": 125.029689,
+    "bandwidth_convention": "actual DRAM traffic incl. write-allocate (CPU)",
+    "peak_gflops": {
+      "fp32": 2029.631932155551,
+      "fp64": 968.6233391872008
+    }
+  },
+  "provenance": {
+    "babelstream": {
+      "url": "https://github.com/UoB-HPC/BabelStream.git",
+      "tag": "v5.0",
+      "model": "omp",
+      "array_elems": 268435456,
+      "array_bytes_total": 6442450944,
+      "ws_over_llc": 48.0,
+      "reported_gbps_median": {
+        "Copy": 83.353126,
+        "Mul": 81.98065600000001,
+        "Add": 90.95003,
+        "Triad": 91.245712,
+        "Dot": 123.829929
+      },
+      "reported_gbps_runs": [
+        {
+          "Copy": 83.353126,
+          "Mul": 81.98065600000001,
+          "Add": 91.021816,
+          "Triad": 91.265291,
+          "Dot": 123.849822
+        },
+        {
+          "Copy": 83.314718,
+          "Mul": 81.97176900000001,
+          "Add": 90.867185,
+          "Triad": 91.137934,
+          "Dot": 123.168286
+        },
+        {
+          "Copy": 83.376406,
+          "Mul": 82.098518,
+          "Add": 90.960374,
+          "Triad": 91.245712,
+          "Dot": 123.829929
+        },
+        {
+          "Copy": 83.319462,
+          "Mul": 81.952541,
+          "Add": 90.843256,
+          "Triad": 91.07620600000001,
+          "Dot": 123.397992
+        },
+        {
+          "Copy": 83.364456,
+          "Mul": 82.019696,
+          "Add": 90.95003,
+          "Triad": 91.270318,
+          "Dot": 123.895348
+        }
+      ],
+      "write_allocate_factors": {
+        "Copy": 1.5,
+        "Mul": 1.5,
+        "Add": 1.3333333333333333,
+        "Triad": 1.3333333333333333,
+        "Dot": 1.0
+      },
+      "command": "numactl --physcpubind=0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23 --membind=0 /users/Kushal17/cpu-gpu/third_party/BabelStream/build-omp/omp-stream -s 268435456 -n 100",
+      "raw_output_last": "BabelStream\nVersion: 5.0\nImplementation: OpenMP\nRunning kernels 100 times\nPrecision: double\nArray size: 2147.5 MB (=2.1 GB)\nTotal size: 6442.5 MB (=6.4 GB)\nInit: 0.159217 s (=40463.438268 MBytes/sec)\nRead: 0.284167 s (=22671.330454 MBytes/sec)\nFunction    MBytes/sec  Min (sec)   Max         Average     \nCopy        83364.456   0.05152     0.05161     0.05156     \nMul         82019.696   0.05237     0.05249     0.05243     \nAdd         90950.030   0.07084     0.07125     0.07089     \nTriad       91270.318   0.07059     0.07090     0.07067     \nDot         123895.348  0.03467     0.03481     0.03474     \n"
+    },
+    "gemm_fp32": {
+      "torch": 1674.0353479049363,
+      "openblas": 1873.7549661976182,
+      "blis": 2029.631932155551
+    },
+    "gemm_fp64": {
+      "torch": 867.4314258409403,
+      "openblas": 892.0941020854636,
+      "blis": 968.6233391872008
+    }
+  },
+  "measured_over_datasheet": {
+    "bandwidth": 0.6104965283203125,
+    "gemm_fp32": 0.9438392541645978,
+    "gemm_fp64": 0.9008773615952388
+  }
+}

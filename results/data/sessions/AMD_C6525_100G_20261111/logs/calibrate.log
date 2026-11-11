@@ -1,0 +1,10 @@
+BabelStream (reported, GB/s): Copy 83.4, Mul 82.0, Add 91.0, Triad 91.2, Dot 123.8
+-> bandwidth ceiling 125.0 GB/s (actual DRAM traffic incl. write-allocate (CPU))
+GEMM fp32: {'torch': 1674.0353479049363, 'openblas': 1873.7549661976182, 'blis': 2029.631932155551} -> peak 2030 GFLOP/s
+GEMM fp64: {'torch': 867.4314258409403, 'openblas': 892.0941020854636, 'blis': 968.6233391872008} -> peak 969 GFLOP/s
+-> /users/Kushal17/cpu-gpu/results/calibration/AMD_C6525_100G.json
+{
+  "bandwidth": 0.6104965283203125,
+  "gemm_fp32": 0.9438392541645978,
+  "gemm_fp64": 0.9008773615952388
+}

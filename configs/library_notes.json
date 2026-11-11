@@ -6,9 +6,9 @@
       "workload": "A1",
       "library": "torch",
       "status": "verified",
-      "date": "2026-11-10",
+      "date": "2026-11-11",
       "note": "torch's fp32 linear layers (MKL GEMV) stream only ~25-35 GB/s at batch-1 decode on AMD EPYC, i.e. about one core's worth of bandwidth; OpenBLAS sgemv on the same tensors streams 218-285 GB/s. That the slowdown is inside MKL's AMD code path is a hypothesis (MKL_VERBOSE would show the dispatched kernel).",
-      "evidence": "r6615 ctest_r6615: llama3-8b B=1 torch 0.89 tok/s (27 GB/s) vs openblas 9.31 tok/s (284 GB/s); c6525-100g 2026-11-05: every decode row 13-22 GB/s; Intel laptop: torch GEMV at full read rate. BLIS sgemv is as slow as MKL here (llama3-8b B=1: 1.04 tok/s, 32 GB/s), so OpenBLAS is the CPU winner at batch 1."
+      "evidence": "c6525-100g campaign c_amd_c6525_100g_20261111T0036Z, llama3-8b fp32 batch-1 decode: torch/MKL 0.74 tok/s (23 GB/s), OpenBLAS 3.21 (98 GB/s, 78% of 125), BLIS 0.85 (26 GB/s). Intel c6620, same problem: torch/MKL 6.58 tok/s (201 GB/s), so MKL's GEMV is fast on Intel. r6615 test 2026-11-10: torch 0.89 vs OpenBLAS 9.31 tok/s."
     },
     {
       "device": "AMD_*",
@@ -16,8 +16,8 @@
       "library": "*",
       "status": "verified",
       "date": "2026-11-11",
-      "note": "Batch-8 decode reached only ~9-13% of bandwidth with ALL three libraries on r6615. The cause was the harness's attention step, not the BLAS: on the V100 the same code spent 47% (B=1) / 64% (B=8) of decode time in scaled_dot_product_attention plus ~8% in the KV-cache torch.cat. Fixed in commit 72ab4db (decode attention as batched matmuls over an in-place KV cache); the r6615 rows predate the fix. Re-measure on the next CPU node.",
-      "evidence": "r6615 ctest_r6615: llama3-8b B=8 blis 10.8 / openblas 9.9 / torch 8.1 tok/s (35-46 GB/s of 364); llama3.2-1b B=8 blis 45.8 / openblas 43.6 / torch 36.2. V100 torch profiler 2026-11-11 (llama3.2-1b fp32): fmha_cutlassF sm70 47% / 64% of GPU time at B=1 / B=8."
+      "note": "Batch-8 decode was 9-13% of bandwidth with all three libraries on r6615 before commit 72ab4db. The cause was the harness's attention step, not the BLAS: decode attention is now batched matmuls over an in-place KV cache. After the fix, BLIS's small-GEMM path is the fastest at batch 8 on both CPUs.",
+      "evidence": "llama3-8b fp32 batch-8 decode, campaigns of 2026-11-11: c6525-100g BLIS 18.9 tok/s (81 GB/s, 65% of 125) vs OpenBLAS 10.4, torch 5.8; c6620 BLIS 32.9 (141 GB/s, 66% of 214) vs OpenBLAS 19.2, torch 18.3. Before the fix (r6615 test): 35-46 GB/s of 364."
     },
     {
       "device": "AMD_R6615",
@@ -69,9 +69,9 @@
       "workload": "C5",
       "library": "opencv",
       "status": "verified",
-      "date": "2026-11-10",
-      "note": "Same as C3: OpenCV bilateralFilter rows before commit d51fa7e ran on one core, so the earlier 'native is 7x faster than OpenCV' (EPYC 7402P) is not a fair comparison and must be re-measured.",
-      "evidence": "Same mechanism as C3 (shared fix in _common.widened_affinity)."
+      "date": "2026-11-11",
+      "note": "OpenCV's bilateralFilter beats our native kernel on every CPU size once it runs on all cores (fixed in d51fa7e; rows before that ran on one core). The earlier claim 'native 7x faster than OpenCV' was an artefact of that bug.",
+      "evidence": "Campaigns of 2026-11-11: native kernel at 0.19x (c6620) and 0.22x (c6525-100g) of OpenCV, median over 9 sizes; OpenCV wins 9/9 and 8/9."
     }
   ]
 }

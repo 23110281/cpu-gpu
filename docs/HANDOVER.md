@@ -1,4 +1,4 @@
-# Handover: CPU vs GPU benchmark project (state as of 2026-11-11 06:45 UTC: 3 CPU campaigns running)
+# Handover: CPU vs GPU benchmark project (state as of 2026-11-11 ~15:00 UTC: c6620 + c6525-100g analysed and on the dashboard; r6615 running)
 
 This is for an AI coding session picking up the work. **Verify every claim here against the code, git log and data before acting on it.** If something here disagrees with the repo, the repo wins; note the discrepancy. Keep this file current: update it at every milestone and delete what is no longer true (the user's standing request).
 
@@ -101,29 +101,30 @@ Make targets: `setup test smoke calibrate sweep sweep_dry campaign analysis site
   - BabelStream was built for sm_80: it now builds for the GPU's own arch.
   - Build errors were truncated: `build_error_summary` now shows the compiler's error lines.
 
-### CPU campaigns started 2026-11-11 00:36 UTC (both Utah, reserved ~3 days; user will copy data back later)
+### c6620 + c6525-100g full campaigns: DONE, copied back, analysed, on the dashboard (2026-11-11)
 | | c6620 `Kushal17@er110.utah.cloudlab.us` | c6525-100g `Kushal17@amd248.utah.cloudlab.us` |
 |---|---|---|
 | CPU | Xeon Gold 5512U (Emerald Rapids), 28C/56T, 1 socket, 1 NUMA node, AMX + AVX-512 bf16 | EPYC 7402P (Zen 2), 24C/48T, 1 socket, 1 NUMA node |
-| Memory | 8× DDR5 rated 5600, configured 4800 → datasheet 307.2 GB/s | 8× DDR4-3200 → 204.8 GB/s |
-| Setup notes | governor performance (intel_pstate), RAPL readable | **no cpufreq driver at all** (firmware-controlled frequency): governor cannot be set; per-row frequency comes from APERF/MPERF |
-| Tests / smoke | 51 passed (2 GPU skips); smoke 35/35 ok incl. bf16 (AMX) | 51 passed; smoke 33 ok + 2 bf16 unsupported |
-| Calibration | 273.5 GB/s (89% of datasheet); GEMM fp32 3797 (MKL) / fp64 1852 (MKL); OpenBLAS 3479/1573, BLIS 2206/1022 | 125.0 GB/s (61%; same as the lost 11-05 campaign); GEMM fp32 2030 / fp64 969 (BLIS); MKL 1674/867, OpenBLAS 1874/892 |
-| Campaign | `c_intel_c6620_20261111T0036Z`, 3 trials × 630 jobs, ETA ~10 h | `c_amd_c6525_100g_20261111T0036Z`, 3 trials × 630 jobs, ETA ~9 h |
-| Code | `2d52043` (fresh clone from a bundle in `~/cpu-gpu`) | same |
+| Memory | 8× DDR5 configured 4800 → datasheet 307.2 GB/s | 8× DDR4-3200 → 204.8 GB/s |
+| Setup notes | governor performance, RAPL readable | **no cpufreq driver** (firmware-controlled); frequency per row from APERF/MPERF |
+| Campaign | `c_intel_c6620_20261111T0036Z`, 1872 ok, 18 oom (8B fp32 batch 32), 0 errors, done 10:25 UTC | `c_amd_c6525_100g_20261111T0036Z`, 1743 ok, 129 unsupported (bf16), 18 oom, 0 errors, done 13:09 UTC |
+| Ceilings | **213.6 GB/s** (Dot; was 273.5, see below); GEMM 3797 / 1852 (MKL) | 125.0 GB/s; GEMM 2030 / 969 (BLIS) |
+| Code | `2d52043` | same |
 
-**Progress 05:45 UTC:** Intel 990/1890 jobs (ETA ~10:30 UTC), AMD 783/1890 (ETA ~13:00 UTC; slower than estimated). 0 errors, 0 validation failures. OOM only for A1 llama3-8b fp32 decode batch 32 (preflight: the working set × 2.5 exceeds 125 GB), which is expected. Unstable ≈ 20% of rows, mostly sub-ms calls; review during analysis.
+Nodes are still reserved (~3 days from 2026-11-11), so C4/S1/C7/C6 re-runs are possible.
 
-**After copy-back:** `make analysis site readme`. Both CPUs then appear on the Library analysis page automatically (C1 torch/MKL vs OpenBLAS vs BLIS, A1 libs, C3/C5/C6 etc.). The page/report now also lists every library's absolute result (best value + unit, GFLOP/s, GB/s, % of measured peak, version string, and per-size values); see `library_summary.csv` `best_*` columns and `library_report.md`.
+**Results (V100 / CPU, geomean over problems):** V100 = 5.1× c6620, 8.4× c6525-100g; c6620 = 1.62× c6525-100g. Well-tuned workloads track the hardware gap (V100/c6620: GEMM 3.6×, LBM 4.4×, Llama decode 4.4×, conv 2.6×; hardware ~4× BW, 3.7× FLOP). **Untuned CPU paths** inflate the gap: S1 histogram 11× (torch.histc ~4-6 Gsamples/s ≈ 10% of BW), C7 search 24×, C6 sort 14×, C4 FFT 9.7×, C5 bilateral 10×. On AMD, MKL runs 2^22-point 1-D FFTs single-threaded (74.6 ms with 24 threads vs 72.7 ms with 1; 6.2 vs 138 GFLOP/s on Intel). These are curated "hypothesis"/"verified" findings in `configs/dashboard_notes.json`, plus infra TODOs. Headline CIs are tight: only 2 per device have CI width > 5%.
+- Bandwidth: Intel SAXPY 92%, LBM 84%, Llama-8B B=1 decode 94% of 213.6; AMD 96-98% of 125. A1 batch 8: BLIS wins on both (AMD 65%, Intel 66% of BW). C1: MKL (torch) wins on Intel, BLIS on Zen 2. C5: OpenCV beats native (native 0.19-0.22×). C3: native wins, torch/oneDNN at 0.01-0.02×.
 
-Check / resume: `ssh ... 'cd ~/cpu-gpu && bash scripts/run_campaign.sh status <DEVICE>'` (resume with `resume`). Copy back per docs/RUNNING.md step 9.
+**Bandwidth ceiling fix (scripts/calibrate.py):** a write-allocate-corrected BabelStream rate is used only if ≤ 1.05 × pure-read Dot. On the c6620 Copy 181 ×1.5 = 272 > Dot 214, so the CPU does not read written lines (SpecI2M) and the ceiling is Dot. Recompute stored files with `python3 scripts/calibrate.py --recompute-bandwidth results/calibration/<DEV>.json` (only the c6620 changed). The CSV column `pct_measured_peak` keeps the run-time value; the analysis recomputes from calibration.
+
+**Data packing (`make pack`, scripts/pack_results.py):** after copy-back, per-job `samples/*.csv.gz` → `samples.tar` (lossless, analysis reads it) and per-job `env/*.json` → one `machine.json` (constant fields, per-placement thread settings, campaigns, git SHAs, dirty-job count; real mid-campaign changes are listed under `changed_during_campaign`). Per device: 16 CSVs + 2 files, ~4 MB. The user wants the repo minimal: never commit per-job files. Campaign logs are kept gzipped in `results/data/sessions/<DEV>_<date>/logs/`.
 
 **Found and fixed during the CPU drill:**
 - **OpenBLAS 0.3.20 misdetects Emerald Rapids as "Prescott"** (generic kernel): sgemm 848 vs 3381 GFLOP/s. `_blas.load` now probes the core and forces `OPENBLAS_CORETYPE=SkylakeX` only for a generic fallback; rows record `core=SkylakeX (forced; auto-detected Prescott)`. AMD detects Zen correctly (not forced). `_blas.version()` was also broken (returned the file name), so earlier OpenBLAS rows never recorded the config.
 - **Verified torch CPU backends** (both CPUs): C3 conv2d = oneDNN `jit_dw` (avx512_core / avx2) + 3 full-image reorders per call; A1 linears = oneMKL SGEMM, batch-1 decode as N=1 SGEMM (MKL on AMD reports the generic "Intel Architecture processors" path). Tags/README updated (`dbac0ac`).
 - c6620 config: label (Emerald Rapids, not Sapphire Rapids) and datasheet bandwidth; datasheet FLOP peak left out (Intel ARK unreachable to verify AVX-512 FMA units; measured 3797 fp32 ≈ 28 × 2.1 GHz × 64 suggests 2 units).
 - A1 decode on AMD after the attention fix (llama3.2-1b fp32, 1 process): B=1 OpenBLAS 17.7 tok/s = 90 GB/s (72%); B=8 BLIS 87.9 tok/s = 66 GB/s (53%; r6615 was 9–13% before the fix); torch/MKL 4.2 / 26.4 tok/s.
-- Early sweep rows: median CV 1.4%; `unstable` rows (CV > 5%) are mostly sub-3 ms calls and `socket0-smt` placements (OS jitter); one to watch: Intel C1 fp64 n=4096 CV 12% at 70 ms.
 
 ## 6. Results review (2026-11-11)
 
@@ -177,18 +178,18 @@ V100 llama3.2-1b fp32, tokens/s:
 - Status matrix keeps "prelim" cells from `legacy/data/` and the GH200 study's cleaned data; V100 column maps the legacy `Tesla_V100-SXM2-16GB` dir via `aliases`.
 
 ## 7. Open items
-1. **Push** (user's decision): local commits (§8), now also tested on two CPU nodes (c6620, c6525-100g). Pushing publishes the V100 page and the new layout. The user's rule: push after testing on one CPU and one GPU node; the GPU side is tested, the restructure was tested on the V100 (launcher, builds), a CPU node test of the new layout is still pending.
-2. CPU campaigns running (§5): when done, copy back (RUNNING.md step 9), `make site`, review bounds, libraries and unstable rows; check the OpenBLAS `core=` provenance on Intel rows. Add the Intel datasheet FLOP peak after checking Intel ARK (AVX-512 FMA units).
-3. Lock clocks or not (user decision). The V100 GEMM shows a 9% clock-driven difference between sessions.
-4. C9 GPU SHA-256 efficiency check (Nsight Compute).
-5. Freeze a release: tag one commit and collect all paper campaigns from it.
-6. Library provenance in rows (BLIS arch, OpenBLAS core, MKL/oneDNN ISA); BLIS 0.8.1 slowness on Zen 4 is a hypothesis.
-7. **Publication rules:** BabelStream results must follow its run rules; the CPU ceiling is "derived from BabelStream" (methodology §10). The GCC runtime-exception text (libgomp/libstdc++) could not be fetched (rate limit); everything else in the README's library index was checked against official licence pages on 2026-11-11.
-8. Sweep preflight margin: 2.5× working set skips problems that likely fit (V100: 8–9 GB problems). Relax once a real OOM is reliably recorded as `oom`.
-9. GH200 study: keep or drop (user's call); if kept, fix the 15 defects in `studies/gh200_c2c/README.md` on a GH200.
-10. GEMM cross-check outliers; native benches per-iteration samples; SuiteSparse for B3/B4; pyFFTW for C4; llama.cpp rows; `torch.compile` for decode on both sides.
-11. Cross-device ratio pages on the dashboard: wait for the first CPU campaign in `results/data/cpu/`.
-12. Next hardware: c6620 (Intel AMX: first Intel run of the harness; the launcher does the test/smoke/calibration drill automatically), c6525-100g, r6615 for a full campaign, then A100/A30/H100 (first run of the GPU bf16 paths and of sizes that were OOM on 16 GB). Follow docs/RUNNING.md.
+1. **Push** (user's decision): the rule (tested on one CPU + one GPU node) is met; nothing pushed yet (§8).
+2. **r6615 campaign** running (§5): copy back (RUNNING.md step 9), `make pack`, recompute its calibration bandwidth (`--recompute-bandwidth`; expected unchanged, Dot is max), analyse, cross-check against the 2026-11-10 test session, then `git rm` the test session and repoint `library_notes.json` evidence citing it.
+3. **Tuned CPU baselines** (biggest research item): native per-thread-private histogram (S1), native search (C7), native sort (C6), FFTW as a 2nd CPU FFT library (C4); then re-run those workloads on all CPUs. Until then, S1/C7/C6/C4 CPU-vs-GPU ratios reflect library quality.
+4. Lock clocks or not (user decision). The V100 GEMM shows a 9% clock-driven difference between sessions.
+5. Intel datasheet FLOP peak after checking Intel ARK (AVX-512 FMA units). AMD c6525-100g bandwidth 61% of datasheet: check DIMM population/NPS with dmidecode.
+6. C9 GPU SHA-256 efficiency check (Nsight Compute). B4 SpGEMM is labelled bandwidth-bound but reaches ~1% of BW on CPUs: revisit its bound class/byte model.
+7. Freeze a release: tag one commit and collect all paper campaigns from it.
+8. **Publication rules:** BabelStream results must follow its run rules; the CPU ceiling is "derived from BabelStream" (methodology §10). The GCC runtime-exception text (libgomp/libstdc++) could not be fetched (rate limit).
+9. Sweep preflight margin: 2.5× working set skips problems that likely fit (V100: 8–9 GB problems).
+10. GH200 study: keep or drop (user's call); if kept, fix the 15 defects in `studies/gh200_c2c/README.md` on a GH200.
+11. GEMM cross-check outliers; native benches per-iteration samples; SuiteSparse for B3/B4; llama.cpp rows; `torch.compile` for decode on both sides.
+12. "CPU/GPU ratio ready" tile counts only core GPUs (A100/L40S/H100), so it stays 0 with V100 data; V100 ratios are in `results/analysis/ratios.csv`. Next hardware: A100/A30/H100 (first run of GPU bf16 paths).
 
 ## 8. Git state
 - `origin/main` = `9798ed8` (pushed 2026-11-10 after the r6615 session).
@@ -197,7 +198,8 @@ V100 llama3.2-1b fp32, tokens/s:
   - Llama decode: `72ab4db` attention, `09d3e54` CUDA graph.
   - `4aa688b` dashboard device pages; `abe1ec3` V100 data; `d3af208` handover.
   - Cleanup (2026-11-11): `3125e64` library facts, `974261c` layout restructure, `360a2f7` setup_node.sh, `90b271f` library analysis, `e234efb` run_campaign.sh + bench describe + RUNNING.md, `e90b0c8` README, `2d98edd` legacy/study READMEs, `8e3f4aa` handover.
-  - CPU drill (2026-11-11): `019e74a` c6620 config, `dbac0ac` verified C3/A1 backends, `2d52043` OpenBLAS core fix, plus this handover update.
+  - CPU drill (2026-11-11): `019e74a` c6620 config, `dbac0ac` verified C3/A1 backends, `2d52043` OpenBLAS core fix, `801230e` handover.
+  - Later 2026-11-11: `9ea86e1` per-library absolute numbers in the library report, `3e93943`/`1b1bff8` BLIS arch + BLIS 2.1 build on Zen 4, `aeac393` docs, `6d901da` packing, `9a186cf` c6620 + c6525-100g data, then the analysis commit (ceiling rule, findings, notes).
 - Test unpushed code on a node with a git bundle (docs/RUNNING.md step 3).
 
 ## 9. Known pitfalls (do not rediscover them)

@@ -42,6 +42,41 @@
       "status": "hypothesis",
       "date": "2026-11-11",
       "text": "The custom CUDA SHA-256 reaches 52–105 GB/s. Each thread reads its own message, so loads are not coalesced; a layout that interleaves messages may be much faster. To confirm: profile with Nsight Compute (memory throughput vs instruction throughput) before using C9 in a CPU-GPU ratio."
+    },
+    {
+      "device": "INTEL_C6620",
+      "title": "Bandwidth ceiling is the pure-read rate on this Xeon",
+      "status": "verified",
+      "date": "2026-11-11",
+      "text": "BabelStream Copy reports 181 GB/s. The usual CPU correction (a store first reads the line, so Copy really moves 3 arrays) would give 272 GB/s, more than the 214 GB/s of pure-read Dot. A read+write stream cannot beat a pure read, so this CPU skips that extra read for whole-line writes (SpecI2M on Sapphire/Emerald Rapids). The ceiling is therefore Dot, 213.6 GB/s (70% of the 307 GB/s datasheet). With it, SAXPY reaches 92%, LBM 84% and Llama-3 8B batch-1 decode 94%."
+    },
+    {
+      "device": "INTEL_C6620",
+      "title": "Workloads whose CPU code is not yet tuned",
+      "status": "hypothesis",
+      "date": "2026-11-11",
+      "text": "Hardware gap to the V100: ~4x bandwidth, ~3.7x GEMM peak. The V100 is 3.6x faster on GEMM, 4.4x on LBM, 4.4x on Llama decode and 2.6x on convolution, matching the hardware. But it is a median 11x faster on histogram, 24x on search, 14x on sort, 9.7x on FFT and 10x on the bilateral filter. These CPU paths are library calls that are not tuned: torch.histc reaches ~4-6 Gsamples/s, ~10% of bandwidth, where a per-thread-private histogram should run near memory speed. These ratios measure library quality, not hardware. To confirm: add tuned native CPU kernels (as C3 already has) and re-run S1, C7, C6, C4 and C5."
+    },
+    {
+      "device": "AMD_C6525_100G",
+      "title": "MKL runs mid-size 1-D FFTs single-threaded on this EPYC",
+      "status": "verified",
+      "date": "2026-11-11",
+      "text": "PyTorch's CPU FFT is Intel MKL. On this EPYC 7402P a 1-D complex FFT of 2^22 points takes 74.6 ms with 24 threads, the same as with 1 thread (72.7 ms, measured on the node), so MKL does not parallelise it: 6.2 GFLOP/s vs 138 on the Intel c6620. At 2^26 points it does use all cores (35 GFLOP/s). SciPy's pocketfft is slower still. The C4 ratios on this machine (up to 22x Intel/AMD and 218x V100/AMD) reflect MKL's threading on AMD. Planned fix: FFTW (AMD ships a tuned build) as a second CPU FFT library."
+    },
+    {
+      "device": "AMD_C6525_100G",
+      "title": "Workloads whose CPU code is not yet tuned",
+      "status": "hypothesis",
+      "date": "2026-11-11",
+      "text": "Hardware gap to the V100: ~6.8x bandwidth, ~7x GEMM peak. The V100 is 7.1x faster on GEMM, 7.2x on LBM and 8.5x on Llama decode, matching the hardware. It is a median 16x faster on histogram, 26x on search, 16x on sort and 22x on FFT. As on the Intel machine, these are untuned library paths (torch.histc, searchsorted, sort, MKL FFT on AMD), not a hardware limit. To confirm: tuned native CPU kernels for S1, C7, C6 and FFTW for C4."
+    },
+    {
+      "device": "AMD_C6525_100G",
+      "title": "Measured bandwidth is 61% of the datasheet",
+      "status": "hypothesis",
+      "date": "2026-11-11",
+      "text": "BabelStream gives 125 GB/s against 204.8 GB/s for 8 channels of DDR4-3200. This repeats the lost 2026-11-05 campaign exactly, so it is stable. Bandwidth-bound workloads reach 96-98% of the measured 125 GB/s. The gap to the datasheet may come from the memory configuration (DIMM population, NPS setting); dmidecode on the node can check this."
     }
   ]
 }

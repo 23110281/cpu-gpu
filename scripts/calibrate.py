@@ -8,6 +8,9 @@
                             CPUs a normal store first reads the line (write-allocate), so Triad
                             moves 4 arrays and Copy 3: CPU ceiling = max(Dot, Triad*4/3, Copy*3/2)
                             -- e.g. EPYC 7402P: Triad 91.2 -> 121.6, Copy 83.4 -> 125.0, Dot 123.8.
+                            A corrected value > 1.05 x Dot is rejected: that CPU did not read the
+                            written lines (Xeon 5512U: Copy 181 -> 272 vs Dot 214; ceiling = Dot).
+                            Re-derive stored files: calibrate.py --recompute-bandwidth <file.json>...
                             GPU ceiling = reported Triad (no write-allocate for full-line stores).
                             Raw per-kernel rates are stored in provenance.
   measured.peak_gflops[p]   best C1 GEMM median throughput at N=8192 over every BLAS library
@@ -86,10 +89,50 @@ def run_babelstream(exe: Path, n_elems: int, env: dict, prefix: list[str]) -> tu
 WRITE_ALLOCATE = {"Copy": 3 / 2, "Mul": 3 / 2, "Add": 4 / 3, "Triad": 4 / 3, "Dot": 1.0}
 
 
-def dram_traffic_gbps(rates: dict, device_class: str) -> float:
+# A read+write stream cannot move more DRAM traffic than a pure-read stream (Dot) on the same memory
+# system. A write-allocate-corrected rate more than this far above Dot means the CPU did not read the
+# written lines (e.g. Intel SpecI2M on Sapphire/Emerald Rapids), so that correction is not applied.
+WA_MAX_OVER_DOT = 1.05
+
+
+def dram_traffic(rates: dict, device_class: str) -> tuple[float, str]:
+    """(ceiling GB/s, how it was derived)."""
     if device_class == "gpu":
-        return rates["Triad"]
-    return max(rates[k] * WRITE_ALLOCATE[k] for k in rates)
+        return rates["Triad"], "BabelStream Triad as reported (GPU)"
+    cands = {f"{k} (reported)": v for k, v in rates.items()}
+    dot = rates.get("Dot")
+    for k, v in rates.items():
+        if WRITE_ALLOCATE[k] != 1.0:
+            c = v * WRITE_ALLOCATE[k]
+            if dot is None or c <= WA_MAX_OVER_DOT * dot:
+                cands[f"{k} x{WRITE_ALLOCATE[k]:.3g} write-allocate"] = c
+    best = max(cands, key=cands.get)
+    rejected = [k for k, v in rates.items() if WRITE_ALLOCATE[k] != 1.0 and dot and v * WRITE_ALLOCATE[k] > WA_MAX_OVER_DOT * dot]
+    note = f"actual DRAM traffic (CPU): {best}"
+    if rejected:
+        note += (f"; write-allocate correction not applied ({', '.join(rejected)} corrected would exceed "
+                 f"pure-read Dot by >{100 * (WA_MAX_OVER_DOT - 1):.0f}%: this CPU does not read written lines)")
+    return cands[best], note
+
+
+def dram_traffic_gbps(rates: dict, device_class: str) -> float:
+    return dram_traffic(rates, device_class)[0]
+
+
+def recompute_bandwidth(path: Path) -> None:
+    """Re-derive the bandwidth ceiling from the BabelStream rates already stored in a calibration file."""
+    rec = json.loads(path.read_text())
+    med = rec["provenance"]["babelstream"]["reported_gbps_median"]
+    cls = "gpu" if "Triad as reported" in rec["measured"].get("bandwidth_convention", "") else "cpu"
+    old = rec["measured"]["bandwidth_gbps"]
+    bw, note = dram_traffic(med, cls)
+    rec["measured"]["bandwidth_gbps"], rec["measured"]["bandwidth_convention"] = bw, note
+    if abs(bw - old) > 1e-9:
+        rec.setdefault("recomputed", []).append(
+            {"utc": dt.datetime.now(dt.timezone.utc).isoformat(), "bandwidth_gbps_before": old,
+             "reason": "write-allocate correction checked against pure-read Dot (WA_MAX_OVER_DOT)"})
+    path.write_text(json.dumps(rec, indent=2) + "\n")
+    print(f"{path.name}: {old:.1f} -> {bw:.1f} GB/s  [{note}]")
 
 
 def run_gemm(dev: dict, n: int, precision: str, placement: str, lib: str = "torch") -> float:
@@ -114,6 +157,10 @@ def run_gemm(dev: dict, n: int, precision: str, placement: str, lib: str = "torc
 
 
 def main():
+    if sys.argv[1:2] == ["--recompute-bandwidth"]:       # offline: re-derive from stored BabelStream rates
+        for f in sys.argv[2:]:
+            recompute_bandwidth(Path(f))
+        return
     ap = argparse.ArgumentParser()
     ap.add_argument("--device-config", required=True)
     ap.add_argument("--placement", default="socket0")
@@ -147,10 +194,9 @@ def main():
         runs.append(rates)
         raw.append(out)
     med = {k: statistics.median(r[k] for r in runs) for k in runs[0]}
-    bw = dram_traffic_gbps(med, cls)
+    bw, note = dram_traffic(med, cls)
     rec["measured"]["bandwidth_gbps"] = bw
-    rec["measured"]["bandwidth_convention"] = ("actual DRAM traffic incl. write-allocate (CPU)" if cls == "cpu"
-                                              else "BabelStream Triad as reported (GPU)")
+    rec["measured"]["bandwidth_convention"] = note
     rec["provenance"]["babelstream"] = {
         "url": BABEL_URL, "tag": BABEL_TAG, "model": model, "array_elems": n,
         "array_bytes_total": 3 * 8 * n, "ws_over_llc": 3 * 8 * n / llc,

@@ -473,3 +473,16 @@ def test_pack_results_roundtrip(tmp_path):
         assert gzip.decompress(t.extractfile("r3_h_t1.csv.gz").read()) == b"3.5\n"
     m = json.loads((d / "machine.json").read_text())
     assert m["jobs"] == 3 and "changed_during_campaign" in m and m["changed_during_campaign"]["x"] == [[1], [2], [3]]
+
+
+def test_bandwidth_ceiling_write_allocate_rule():
+    """Write-allocate correction applies only when it stays consistent with pure-read Dot."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("cal", Path(__file__).resolve().parents[1] / "scripts/calibrate.py")
+    cal = importlib.util.module_from_spec(spec); spec.loader.exec_module(cal)
+    zen2 = {"Copy": 83.4, "Mul": 82.0, "Add": 91.0, "Triad": 91.2, "Dot": 123.8}      # c6525-100g: RFO happens
+    emr = {"Copy": 181.2, "Mul": 182.3, "Add": 195.3, "Triad": 195.3, "Dot": 213.6}  # c6620: no RFO (SpecI2M)
+    assert abs(cal.dram_traffic(zen2, "cpu")[0] - 83.4 * 1.5) < 1e-9
+    bw, note = cal.dram_traffic(emr, "cpu")
+    assert bw == 213.6 and "not applied" in note
+    assert cal.dram_traffic(emr, "gpu")[0] == 195.3

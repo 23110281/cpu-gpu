@@ -10,8 +10,8 @@
     }
   },
   "measured": {
-    "bandwidth_gbps": 273.45429900000005,
-    "bandwidth_convention": "actual DRAM traffic incl. write-allocate (CPU)",
+    "bandwidth_gbps": 213.574623,
+    "bandwidth_convention": "actual DRAM traffic (CPU): Dot (reported); write-allocate correction not applied (Copy, Mul, Add, Triad corrected would exceed pure-read Dot by >5%: this CPU does not read written lines)",
     "peak_gflops": {
       "fp32": 3796.637937336427,
       "fp64": 1852.0176888541398
@@ -92,5 +92,12 @@
   },
   "measured_over_datasheet": {
     "bandwidth": 0.8901507128906252
-  }
+  },
+  "recomputed": [
+    {
+      "utc": "2026-11-11T12:25:05.082149+00:00",
+      "bandwidth_gbps_before": 273.45429900000005,
+      "reason": "write-allocate correction checked against pure-read Dot (WA_MAX_OVER_DOT)"
+    }
+  ]
 }

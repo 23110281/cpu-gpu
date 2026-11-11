@@ -15,7 +15,7 @@
   },
   "measured": {
     "bandwidth_gbps": 125.029689,
-    "bandwidth_convention": "actual DRAM traffic incl. write-allocate (CPU)",
+    "bandwidth_convention": "actual DRAM traffic (CPU): Copy x1.5 write-allocate",
     "peak_gflops": {
       "fp32": 2029.631932155551,
       "fp64": 968.6233391872008

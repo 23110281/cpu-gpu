@@ -1,4 +1,4 @@
-# Handover: CPU vs GPU benchmark project (state as of 2026-11-11 ~15:00 UTC: c6620 + c6525-100g analysed and on the dashboard; r6615 running)
+# Handover: CPU vs GPU benchmark project (state as of 2026-11-11 evening: dashboard refactored for the poster; c6620 + c6525-100g + V100 on it; r6615 finishing)
 
 This is for an AI coding session picking up the work. **Verify every claim here against the code, git log and data before acting on it.** If something here disagrees with the repo, the repo wins; note the discrepancy. Keep this file current: update it at every milestone and delete what is no longer true (the user's standing request).
 
@@ -27,8 +27,8 @@ The primary code is just "the harness"; never call it "v2" again (user's request
 |---|---|
 | `bench/` | the harness. Run from the repo root: `PYTHONPATH=. python3 -m bench {run,sweep,smoke,list,describe}` |
 | `bench/workloads/` | one module per workload (CPU + GPU in one file) + helpers `_common` (`widened_affinity`, `cuda_declarations`, `build_error_summary`, `cpu_backend`), `_blas`, `_cpusort`, `_sparse`, `_mc_ext`, `_crypto_ext` |
-| `analysis/` | `analyze.py` → `library_report.py` → `dashboard_summary.py` → `build_dashboard.py` (+ `figures.py`, `dashboard.html` template) |
-| `configs/` | `devices/<ID>.json` (placements, scaling, datasheet), `workloads.json` (suite, status, TODOs, legacy data globs relative to the repo root, device `aliases`), `library_notes.json`, `dashboard_notes.json` |
+| `analysis/` | `analyze.py` → `library_report.py` → `dashboard_summary.py` (+ `plots.py`, `legacy.py`) → `compare.py` → `build_dashboard.py` (+ `figures.py` style, `dashboard.html` template) |
+| `configs/` | `devices/<ID>.json` (placements, scaling, datasheet), `workloads.json` (suite, status, TODOs, legacy data globs relative to the repo root, device `aliases`), `library_notes.json`, `explanations.json` (dashboard why-lines), `legacy.json` (usable earlier-script data) |
 | `scripts/` | `setup_node.sh` (any node, auto CPU/GPU), `install_cuda.sh` (driver 580 for Volta/Pascal), `run_campaign.sh` (start/status/resume/stop), `calibrate.py` |
 | `tests/test_bench.py` | `make test` (laptop: 31 pass / 18 skip; V100 node: 49/49 pass) |
 | `results/data/<cpu\|gpu>/<ID>/` | campaign data (the only thing the analysis reads) |
@@ -37,7 +37,7 @@ The primary code is just "the harness"; never call it "v2" again (user's request
 | `results/analysis/` (gitignored, `sessions/` committed), `results/site/` (gitignored) | generated tables; generated dashboard |
 | `crosscheck/` | native C GEMM/SAXPY cross-check + its Makefile (OpenBLAS default; builds on demand) |
 | `studies/gh200_c2c/` | GH200 C2C residency study: NOT fixed; README lists 15 defects with file:line |
-| `legacy/` | frozen first-generation pipeline + data (dashboard "prelim" cells only); README explains why not research grade |
+| `legacy/` | frozen first-generation pipeline + data (correct results shown as "earlier scripts"); README explains why not research grade |
 | `docs/RUNNING.md` | the standard new-machine guide; `docs/methodology.md` the protocol |
 
 Make targets: `setup test smoke calibrate sweep sweep_dry campaign analysis site readme list venv clean`. `make site PYTHON=<py>=3.11 venv>` builds the dashboard; `make readme` regenerates the README's library-winner block (between `<!-- library-table:start/end -->`).
@@ -113,7 +113,7 @@ Make targets: `setup test smoke calibrate sweep sweep_dry campaign analysis site
 
 Nodes are still reserved (~3 days from 2026-11-11), so C4/S1/C7/C6 re-runs are possible.
 
-**Results (V100 / CPU, geomean over problems):** V100 = 5.1× c6620, 8.4× c6525-100g; c6620 = 1.62× c6525-100g. Well-tuned workloads track the hardware gap (V100/c6620: GEMM 3.6×, LBM 4.4×, Llama decode 4.4×, conv 2.6×; hardware ~4× BW, 3.7× FLOP). Larger ratios: S1 histogram 11× (**verified untuned**: torch.histc 4.0 vs 25.3 Gsamples/s for a simple OpenMP histogram), C7 search 24×, C6 sort 14×, C4 FFT 9.7×, C5 bilateral 10× (these use tuned libraries; plausible hardware effects, to be explained). On AMD, MKL runs 2^22-point 1-D FFTs single-threaded (74.6 ms with 24 threads vs 72.7 ms with 1; 6.2 vs 138 GFLOP/s on Intel). These are curated "hypothesis"/"verified" findings in `configs/dashboard_notes.json`, plus infra TODOs. Headline CIs are tight: only 2 per device have CI width > 5%.
+**Results (V100 / CPU, geomean over problems):** V100 = 5.1× c6620, 8.4× c6525-100g; c6620 = 1.62× c6525-100g. Well-tuned workloads track the hardware gap (V100/c6620: GEMM 3.6×, LBM 4.4×, Llama decode 4.4×, conv 2.6×; hardware ~4× BW, 3.7× FLOP). Larger ratios: S1 histogram 11× (**verified untuned**: torch.histc 4.0 vs 25.3 Gsamples/s for a simple OpenMP histogram), C7 search 24×, C6 sort 14×, C4 FFT 9.7×, C5 bilateral 10× (these use tuned libraries; plausible hardware effects, to be explained). On AMD, MKL runs 2^22-point 1-D FFTs single-threaded (74.6 ms with 24 threads vs 72.7 ms with 1; 6.2 vs 138 GFLOP/s on Intel). Short why-lines are in `configs/explanations.json`. **S1 decision (user, 2026-11-11): keep PyTorch histc/bincount, labelled library-level (README, methodology deviations); native histogram is a Todo.** Headline CIs are tight: only 2 per device have CI width > 5%.
 - Bandwidth: Intel SAXPY 92%, LBM 84%, Llama-8B B=1 decode 94% of 213.6; AMD 96-98% of 125. A1 batch 8: BLIS wins on both (AMD 65%, Intel 66% of BW). C1: MKL (torch) wins on Intel, BLIS on Zen 2. C5: OpenCV beats native (native 0.19-0.22×). C3: native wins, torch/oneDNN at 0.01-0.02×.
 
 **Bandwidth ceiling fix (scripts/calibrate.py):** a write-allocate-corrected BabelStream rate is used only if ≤ 1.05 × pure-read Dot. On the c6620 Copy 181 ×1.5 = 272 > Dot 214, so the CPU does not read written lines (SpecI2M) and the ceiling is Dot. Recompute stored files with `python3 scripts/calibrate.py --recompute-bandwidth results/calibration/<DEV>.json` (only the c6620 changed). The CSV column `pct_measured_peak` keeps the run-time value; the analysis recomputes from calibration.
@@ -172,24 +172,29 @@ V100 llama3.2-1b fp32, tokens/s:
 - A1: 1.6× (B=1) and 5.5× (B=8; skewed by the attention issue).
 - These are about the paper's ~2.5×, not 100×.
 
-**Dashboard (built by `make site`):**
-- Device pages (only machines with campaign data; V100 now): measured vs datasheet tiles, generated statements, findings (`configs/dashboard_notes.json`), per-workload table, overview + 16 figures.
-- **Library analysis** page (`#library`): machine × workload matrix of the fastest implementation, per-size detail on click, variant effects, curated notes (shown only for libraries compared on that machine). V100: C3 native 18/18 (cuDNN 0.42×), S1 histc 15/18 (bincount 0.66×), S2 CUDA graph 4/4 (coop 0.90×), A1 decode CUDA graph 2/2 (eager 0.44×); C5 `__expf` variant 1.18–1.50×.
-- Status matrix keeps "prelim" cells from `legacy/data/` and the GH200 study's cleaned data; V100 column maps the legacy `Tesla_V100-SXM2-16GB` dir via `aliases`.
+**Dashboard (built by `make site`; refactored 2026-11-11 for the poster, commit `8e3641d`):** sharp black UI, one yellow accent, plain English. Serve locally: `cd results/site && python3 -m http.server 8765`.
+- **Pages (hash routes):** `#progress` (landing), `#compare/<CPU>/<GPU>/<ID|all>`, `#library`, `#todo`, `#m/<DEV>` (machine overview), `#m/<DEV>/<ID>` (workload page).
+- **Project progress:** cards (16 workloads, CPU 16/16, GPU 14/16 "2 awaiting bf16 checks", machines benchmarked) + matrix of 16 workloads × core machines (CPUs c6620, c6525-100g, r6615; GPUs V100, A30, A100, H100 = GH200). Cells: green ✓ final scripts; white ✓ correct earlier-script data; red TODO ran but method wrong; white TODO never run. Rules: `analysis/build_dashboard.py:progress` + `analysis/legacy.py:cell_states` + `configs/legacy.json`. Non-core machines (L40S, P100, m510, c6220, c220g5) appear only in the sidebar and the comparison page.
+- **Earlier-script data used (user decision):** GEMM, SAXPY, dense GEMV (extra page), SpMV, SpGEMM; invalid: GH200 SAXPY (cache), Monte Carlo/AES (study), bf16 on V100/P100, AMD legacy SpGEMM; GH200 study-only workloads (conv, FFT, sort, search, histogram, Llama) are red. Memory results count only at sizes ≥ 4× last-level cache (`llc_mb` in device configs).
+- **Machine page:** limits box (theoretical derivations from `configs/devices/*.json` datasheet; measured = calibration, or for earlier-script machines their own best GEMM / large SAXPY or GEMV), overview "% of limit" chart, workload cards (largest-size result).
+- **Workload page:** header box (theoretical peak, measured limit, achieved range, why = `configs/explanations.json`), then ≤10 plots, heatmaps (≤2) first: `analysis/plots.py` (P1 speed vs size, P2 share of limit, P3 heatmaps, P4 software, P5 thread scaling, P6 power, P7 energy, P8 precision, P9 hyper-threading; earlier-script extras: time breakdown, sparsity).
+- **CPU vs GPU:** `analysis/compare.py` → `results/analysis/compare.json`; matching key n|precision for C1/B1/B2 (so earlier-script GEMM/SAXPY match ours), else the problem; no common size → "best vs best" marked *. Final-vs-final 95% ranges from `ratios.csv`. Explainer box at the top. c6620 vs V100: overall 4.9×.
+- **Library page:** matrix "Fastest: X, won a of b sizes, others N% as fast"; click → per-library best result + "show every size"; glossary; only notes with a `plain` field are shown.
+- **Palette:** `analysis/figures.py` SERIES (amber, blue, magenta, violet, orange, aqua) and RAMP validated on #000 with the dataviz validator.
 
 ## 7. Open items
 1. **Push** (user's decision): the rule (tested on one CPU + one GPU node) is met; nothing pushed yet (§8).
 2. **r6615 campaign** running (§5): copy back (RUNNING.md step 9), `make pack`, recompute its calibration bandwidth (`--recompute-bandwidth`; expected unchanged, Dot is max), analyse, cross-check against the 2026-11-10 test session, then `git rm` the test session and repoint `library_notes.json` evidence citing it.
-3. **S1 native CPU histogram** (verified gap): probe on c6620 (scratchpad, plain OpenMP, per-thread private bins) 25.3 Gsamples/s vs torch.histc 4.0 (1G values, 256 bins). Add as S1 lib `native`, re-run S1 on all CPUs. C4 on AMD: optionally FFTW (MKL single-threaded at 2^22 on EPYC 7402P). NOT untuned (checked): C7 searchsorted (6.5x faster than a naive OpenMP binary search), C6 (best of 3 libraries), C4 on Intel (MKL), C5 (OpenCV). An earlier note that called S1/C7/C6/C4/C5 all untuned was too broad and was corrected.
-4. Lock clocks or not (user decision). The V100 GEMM shows a 9% clock-driven difference between sessions.
-5. Intel datasheet FLOP peak after checking Intel ARK (AVX-512 FMA units). AMD c6525-100g bandwidth 61% of datasheet: check DIMM population/NPS with dmidecode.
+3. **S1 histogram (user decision 2026-11-11: label as library-level, no native kernel for now; it is on the dashboard Todo page).** Evidence for later: probe on c6620 (scratchpad, plain OpenMP, per-thread private bins) 25.3 Gsamples/s vs torch.histc 4.0 (1G values, 256 bins). Add as S1 lib `native`, re-run S1 on all CPUs. C4 on AMD: optionally FFTW (MKL single-threaded at 2^22 on EPYC 7402P). NOT untuned (checked): C7 searchsorted (6.5x faster than a naive OpenMP binary search), C6 (best of 3 libraries), C4 on Intel (MKL), C5 (OpenCV). An earlier note that called S1/C7/C6/C4/C5 all untuned was too broad and was corrected.
+4. Clock locking: not done; clocks are recorded per row (user removed it from the Todo page).
+5. Intel c6620 datasheet FLOP peak filled in from Intel ARK (2 AVX-512 FMA units: 3763 / 1882 GFLOP/s). AMD c6525-100g bandwidth 61% of datasheet: check DIMM population/NPS with dmidecode.
 6. C9 GPU SHA-256 efficiency check (Nsight Compute). B4 SpGEMM is labelled bandwidth-bound but reaches ~1% of BW on CPUs: revisit its bound class/byte model.
 7. Freeze a release: tag one commit and collect all paper campaigns from it.
 8. **Publication rules:** BabelStream results must follow its run rules; the CPU ceiling is "derived from BabelStream" (methodology §10). The GCC runtime-exception text (libgomp/libstdc++) could not be fetched (rate limit).
 9. Sweep preflight margin: 2.5× working set skips problems that likely fit (V100: 8–9 GB problems).
 10. GH200 study: keep or drop (user's call); if kept, fix the 15 defects in `studies/gh200_c2c/README.md` on a GH200.
 11. GEMM cross-check outliers; native benches per-iteration samples; SuiteSparse for B3/B4; llama.cpp rows; `torch.compile` for decode on both sides.
-12. "CPU/GPU ratio ready" tile counts only core GPUs (A100/L40S/H100), so it stays 0 with V100 data; V100 ratios are in `results/analysis/ratios.csv`. Next hardware: A100/A30/H100 (first run of GPU bf16 paths).
+12. Next hardware: A100/A30/H100 with the final scripts (first run of GPU bf16 paths); their cells then turn green automatically. Poster work comes next (user).
 
 ## 8. Git state
 - `origin/main` = `9798ed8` (pushed 2026-11-10 after the r6615 session).

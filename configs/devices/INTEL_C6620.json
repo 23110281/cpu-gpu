@@ -1,7 +1,7 @@
 {
   "device_id": "INTEL_C6620",
   "device_class": "cpu",
-  "label": "Intel Xeon Sapphire Rapids (CloudLab c6620)",
+  "label": "Intel Xeon Gold 5512U (Emerald Rapids, 28C/56T, 1 socket, AMX) — CloudLab c6620 (Utah)",
   "placements": [
     "socket0",
     "socket0-smt"
@@ -23,5 +23,12 @@
       32
     ]
   },
-  "_note": "max_mem_gb omitted: detected at sweep time (CPU MemTotal/sockets*0.8, GPU nvidia-smi*0.9). Placements resolving to the same CPU set and scaling counts >= the socket's cores are dropped automatically."
+  "_note": "max_mem_gb omitted: detected at sweep time (CPU MemTotal/sockets*0.8, GPU nvidia-smi*0.9). Placements resolving to the same CPU set and scaling counts >= the socket's cores are dropped automatically.",
+  "datasheet": {
+    "bandwidth_gbps": 307.2,
+    "derivation": {
+      "bandwidth": "8 channels x DDR5-4800 x 8 B = 307.2 GB/s (dmidecode on er110: 8x16 GB DDR5 rated 5600, configured 4800 MT/s, DIMMs A1-A8, one per channel)",
+      "compute": "peak_gflops not filled in: the datasheet figure needs the number of AVX-512 FMA units per core, which could not be verified from an official Intel page (ark.intel.com unreachable on 2026-11-11). Base clock 2.1 GHz (sysfs base_frequency). Add it after checking Intel ARK; the measured GEMM peak (calibration) does not depend on it."
+    }
+  }
 }

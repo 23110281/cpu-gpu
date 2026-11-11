@@ -7,7 +7,7 @@
  "spec": "Broadwell-DE \u00b7 8 cores \u00b7 2 \u00d7 DDR4-2133 \u00b7 CloudLab m510",
  "limits": [
   "Memory: 2 channels \u00d7 2133 MT/s \u00d7 8 B = 34.1 GB/s",
-  "Compute: 8 cores \u00d7 2.6 GHz = 666 GFLOP/s fp32 \u00b7 333 GFLOP/s fp64",
+  "Compute: 8 cores \u00d7 2.6 GHz (maximum turbo, an upper bound) \u00d7 16 fp64 FLOP/cycle (AVX2, 2 FMA units) = 333 GFLOP/s fp64; fp32 = 2\u00d7",
   "Measured by the earlier scripts: memory 31.1 GB/s (91% of theory), best SAXPY larger than the cache; compute 450 GFLOP/s fp32 (68% of theory) \u00b7 220 GFLOP/s fp64 (66% of theory), best matrix multiply"
  ],
  "overview": {
@@ -15,10 +15,7 @@
   "title": "How close each workload gets to the theoretical peak",
   "caption": "Each bar is one workload at its largest size; 100% (dashed) is the theoretical peak of the hardware."
  },
- "no_limit": [
-  "Sparse matrix \u00d7 vector (SpMV)",
-  "Sparse matrix \u00d7 matrix (SpGEMM)"
- ],
+ "no_limit": [],
  "workloads": [
   {
    "id": "B1",
@@ -160,7 +157,7 @@
    "key": "450 GFLOP/s",
    "header": {
     "peak": [
-     "Compute: 8 cores \u00d7 2.6 GHz = 666 GFLOP/s fp32 \u00b7 333 GFLOP/s fp64"
+     "Compute: 8 cores \u00d7 2.6 GHz (maximum turbo, an upper bound) \u00d7 16 fp64 FLOP/cycle (AVX2, 2 FMA units) = 333 GFLOP/s fp64; fp32 = 2\u00d7"
     ],
     "measured": [],
     "achieved": "Reached 110 GFLOP/s to 450 GFLOP/s across sizes (24\u201368% of the theoretical limit); best at size 4096, fp32.",

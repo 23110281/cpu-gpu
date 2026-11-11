@@ -7,7 +7,7 @@
  "spec": "Emerald Rapids \u00b7 28 cores \u00b7 8 \u00d7 DDR5-4800 \u00b7 CloudLab c6620",
  "limits": [
   "Memory: 8 channels x DDR5-4800 x 8 B = 307.2 GB/s",
-  "Compute: 28 cores \u00d7 3.0 GHz = 5.4 TFLOP/s fp32 \u00b7 2.7 TFLOP/s fp64",
+  "Compute: 28 cores \u00d7 3.0 GHz (the highest clock the processor reached while running matrix multiply; Intel does not publish an all-core AVX-512 clock) \u00d7 32 fp64 FLOP/cycle (2 AVX-512 FMA units) = 2.69 TFLOP/s fp64; fp32 = 2\u00d7",
   "Measured: memory 214 GB/s (70% of theory), pure-read memory test; compute 3.8 TFLOP/s fp32 (71% of theory) \u00b7 1.9 TFLOP/s fp64 (69% of theory), best matrix multiply"
  ],
  "overview": {
@@ -256,7 +256,7 @@
    "key": "3.8 TFLOP/s",
    "header": {
     "peak": [
-     "Compute: 28 cores \u00d7 3.0 GHz = 5.4 TFLOP/s fp32 \u00b7 2.7 TFLOP/s fp64"
+     "Compute: 28 cores \u00d7 3.0 GHz (the highest clock the processor reached while running matrix multiply; Intel does not publish an all-core AVX-512 clock) \u00d7 32 fp64 FLOP/cycle (2 AVX-512 FMA units) = 2.69 TFLOP/s fp64; fp32 = 2\u00d7"
     ],
     "measured": [
      "Measured compute limit: 3.8 TFLOP/s fp32 (71% of theory) \u00b7 1.9 TFLOP/s fp64 (69% of theory)"
@@ -366,7 +366,7 @@
    "key": "20,274 Mpixels/s",
    "header": {
     "peak": [
-     "Compute: 28 cores \u00d7 3.0 GHz = 5.4 TFLOP/s fp32 \u00b7 2.7 TFLOP/s fp64"
+     "Compute: 28 cores \u00d7 3.0 GHz (the highest clock the processor reached while running matrix multiply; Intel does not publish an all-core AVX-512 clock) \u00d7 32 fp64 FLOP/cycle (2 AVX-512 FMA units) = 2.69 TFLOP/s fp64; fp32 = 2\u00d7"
     ],
     "measured": [
      "Measured compute limit: 3.8 TFLOP/s fp32 (71% of theory) \u00b7 1.9 TFLOP/s fp64 (69% of theory)"
@@ -428,7 +428,7 @@
    "key": "163 GFLOP/s",
    "header": {
     "peak": [
-     "Compute: 28 cores \u00d7 3.0 GHz = 5.4 TFLOP/s fp32 \u00b7 2.7 TFLOP/s fp64"
+     "Compute: 28 cores \u00d7 3.0 GHz (the highest clock the processor reached while running matrix multiply; Intel does not publish an all-core AVX-512 clock) \u00d7 32 fp64 FLOP/cycle (2 AVX-512 FMA units) = 2.69 TFLOP/s fp64; fp32 = 2\u00d7"
     ],
     "measured": [
      "Measured compute limit: 3.8 TFLOP/s fp32 (71% of theory) \u00b7 1.9 TFLOP/s fp64 (69% of theory)"
@@ -803,7 +803,7 @@
    "header": {
     "peak": [
      "Memory: 8 channels x DDR5-4800 x 8 B = 307.2 GB/s",
-     "Compute: 28 cores \u00d7 3.0 GHz = 5.4 TFLOP/s fp32 \u00b7 2.7 TFLOP/s fp64"
+     "Compute: 28 cores \u00d7 3.0 GHz (the highest clock the processor reached while running matrix multiply; Intel does not publish an all-core AVX-512 clock) \u00d7 32 fp64 FLOP/cycle (2 AVX-512 FMA units) = 2.69 TFLOP/s fp64; fp32 = 2\u00d7"
     ],
     "measured": [
      "Measured memory limit: 214 GB/s (70% of theory)",

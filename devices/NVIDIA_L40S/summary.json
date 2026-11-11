@@ -7,7 +7,7 @@
  "spec": "Ada Lovelace \u00b7 142 SMs \u00b7 48 GB GDDR6",
  "limits": [
   "Memory: 48 GB GDDR6, 864 GB/s",
-  "Compute: 18,176 cores \u00d7 2 \u00d7 2.52 GHz boost = 91.6 TFLOP/s fp32; bf16 tensor 362",
+  "Compute: 18,176 cores \u00d7 2 \u00d7 2.52 GHz boost = 91.6 TFLOP/s fp32; bf16 tensor 362 (dense); fp64 not listed by NVIDIA, 91.6 / 64 = 1.43 at Ada's 1/64 rate (derived)",
   "Measured by the earlier scripts: memory 768 GB/s (89% of theory), best SAXPY larger than the cache; compute 49.5 TFLOP/s fp32 (54% of theory) \u00b7 1.4 TFLOP/s fp64 (99% of theory), best matrix multiply"
  ],
  "overview": {
@@ -15,10 +15,7 @@
   "title": "How close each workload gets to the theoretical peak",
   "caption": "Each bar is one workload at its largest size; 100% (dashed) is the theoretical peak of the hardware."
  },
- "no_limit": [
-  "Sparse matrix \u00d7 vector (SpMV)",
-  "Sparse matrix \u00d7 matrix (SpGEMM)"
- ],
+ "no_limit": [],
  "workloads": [
   {
    "id": "B1",
@@ -190,7 +187,7 @@
    "key": "32.5 TFLOP/s",
    "header": {
     "peak": [
-     "Compute: 18,176 cores \u00d7 2 \u00d7 2.52 GHz boost = 91.6 TFLOP/s fp32; bf16 tensor 362"
+     "Compute: 18,176 cores \u00d7 2 \u00d7 2.52 GHz boost = 91.6 TFLOP/s fp32; bf16 tensor 362 (dense); fp64 not listed by NVIDIA, 91.6 / 64 = 1.43 at Ada's 1/64 rate (derived)"
     ],
     "measured": [],
     "achieved": "Reached 1.2 TFLOP/s to 49.5 TFLOP/s across sizes (21\u201399% of the theoretical limit); best at size 4096, fp32. 16-bit (bf16): up to 251.9 TFLOP/s.",

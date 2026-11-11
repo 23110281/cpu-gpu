@@ -6,8 +6,8 @@
  "name": "NVIDIA V100",
  "spec": "Volta \u00b7 80 SMs \u00b7 16 GB HBM2 \u00b7 CloudLab c4130",
  "limits": [
-  "Memory: NVIDIA V100 SXM2 datasheet: 900 GB/s HBM2",
-  "Compute: 80 SMs \u00d7 64 fp32 cores \u00d7 2 \u00d7 1.53 GHz boost = 15.7 TFLOP/s fp32; fp64 = half",
+  "Memory: NVIDIA V100 SXM2 datasheet: 900 GB/s HBM2 (4096-bit x 1.75 Gb/s/pin = 896 GB/s)",
+  "Compute: 80 SMs \u00d7 64 fp32 cores \u00d7 2 \u00d7 1.53 GHz boost = 15.7 TFLOP/s fp32; fp64 = half (7.8)",
   "Measured: memory 845 GB/s (94% of theory), memory streaming test; compute 14.1 TFLOP/s fp32 (90% of theory) \u00b7 7.0 TFLOP/s fp64 (90% of theory), best matrix multiply"
  ],
  "overview": {
@@ -33,7 +33,7 @@
    "key": "849 GB/s",
    "header": {
     "peak": [
-     "Memory: NVIDIA V100 SXM2 datasheet: 900 GB/s HBM2"
+     "Memory: NVIDIA V100 SXM2 datasheet: 900 GB/s HBM2 (4096-bit x 1.75 Gb/s/pin = 896 GB/s)"
     ],
     "measured": [
      "Measured memory limit: 845 GB/s (94% of theory)"
@@ -84,7 +84,7 @@
    "key": "5,328 MLUPS",
    "header": {
     "peak": [
-     "Memory: NVIDIA V100 SXM2 datasheet: 900 GB/s HBM2"
+     "Memory: NVIDIA V100 SXM2 datasheet: 900 GB/s HBM2 (4096-bit x 1.75 Gb/s/pin = 896 GB/s)"
     ],
     "measured": [
      "Measured memory limit: 845 GB/s (94% of theory)"
@@ -135,7 +135,7 @@
    "key": "662 GB/s",
    "header": {
     "peak": [
-     "Memory: NVIDIA V100 SXM2 datasheet: 900 GB/s HBM2"
+     "Memory: NVIDIA V100 SXM2 datasheet: 900 GB/s HBM2 (4096-bit x 1.75 Gb/s/pin = 896 GB/s)"
     ],
     "measured": [
      "Measured memory limit: 845 GB/s (94% of theory)"
@@ -181,7 +181,7 @@
    "key": "21.6 GFLOP/s",
    "header": {
     "peak": [
-     "Memory: NVIDIA V100 SXM2 datasheet: 900 GB/s HBM2"
+     "Memory: NVIDIA V100 SXM2 datasheet: 900 GB/s HBM2 (4096-bit x 1.75 Gb/s/pin = 896 GB/s)"
     ],
     "measured": [
      "Measured memory limit: 845 GB/s (94% of theory)"
@@ -227,7 +227,7 @@
    "key": "14.0 TFLOP/s",
    "header": {
     "peak": [
-     "Compute: 80 SMs \u00d7 64 fp32 cores \u00d7 2 \u00d7 1.53 GHz boost = 15.7 TFLOP/s fp32; fp64 = half"
+     "Compute: 80 SMs \u00d7 64 fp32 cores \u00d7 2 \u00d7 1.53 GHz boost = 15.7 TFLOP/s fp32; fp64 = half (7.8)"
     ],
     "measured": [
      "Measured compute limit: 14.1 TFLOP/s fp32 (90% of theory) \u00b7 7.0 TFLOP/s fp64 (90% of theory)"
@@ -318,7 +318,7 @@
    "key": "88,086 Mpixels/s",
    "header": {
     "peak": [
-     "Compute: 80 SMs \u00d7 64 fp32 cores \u00d7 2 \u00d7 1.53 GHz boost = 15.7 TFLOP/s fp32; fp64 = half"
+     "Compute: 80 SMs \u00d7 64 fp32 cores \u00d7 2 \u00d7 1.53 GHz boost = 15.7 TFLOP/s fp32; fp64 = half (7.8)"
     ],
     "measured": [
      "Measured compute limit: 14.1 TFLOP/s fp32 (90% of theory) \u00b7 7.0 TFLOP/s fp64 (90% of theory)"
@@ -375,7 +375,7 @@
    "key": "1.7 TFLOP/s",
    "header": {
     "peak": [
-     "Compute: 80 SMs \u00d7 64 fp32 cores \u00d7 2 \u00d7 1.53 GHz boost = 15.7 TFLOP/s fp32; fp64 = half"
+     "Compute: 80 SMs \u00d7 64 fp32 cores \u00d7 2 \u00d7 1.53 GHz boost = 15.7 TFLOP/s fp32; fp64 = half (7.8)"
     ],
     "measured": [
      "Measured compute limit: 14.1 TFLOP/s fp32 (90% of theory) \u00b7 7.0 TFLOP/s fp64 (90% of theory)"
@@ -700,8 +700,8 @@
    "key": "679 tokens/s (largest model, generation)",
    "header": {
     "peak": [
-     "Memory: NVIDIA V100 SXM2 datasheet: 900 GB/s HBM2",
-     "Compute: 80 SMs \u00d7 64 fp32 cores \u00d7 2 \u00d7 1.53 GHz boost = 15.7 TFLOP/s fp32; fp64 = half"
+     "Memory: NVIDIA V100 SXM2 datasheet: 900 GB/s HBM2 (4096-bit x 1.75 Gb/s/pin = 896 GB/s)",
+     "Compute: 80 SMs \u00d7 64 fp32 cores \u00d7 2 \u00d7 1.53 GHz boost = 15.7 TFLOP/s fp32; fp64 = half (7.8)"
     ],
     "measured": [
      "Measured memory limit: 845 GB/s (94% of theory)",

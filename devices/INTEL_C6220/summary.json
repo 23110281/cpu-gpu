@@ -7,7 +7,7 @@
  "spec": "Ivy Bridge \u00b7 2 sockets \u00d7 8 cores \u00b7 8 \u00d7 DDR3-1866 \u00b7 CloudLab c6220",
  "limits": [
   "Memory: 2 sockets \u00d7 4 channels \u00d7 1866 MT/s \u00d7 8 B = 119.4 GB/s",
-  "Compute: 2 sockets \u00d7 8 cores \u00d7 3.4 GHz = 870 GFLOP/s fp32 \u00b7 435 GFLOP/s fp64",
+  "Compute: 2 sockets \u00d7 8 cores \u00d7 3.4 GHz (maximum turbo, an upper bound) \u00d7 8 fp64 FLOP/cycle (AVX, no FMA) = 435 GFLOP/s fp64; fp32 = 2\u00d7",
   "Measured by the earlier scripts: memory 54.9 GB/s (46% of theory), best SAXPY larger than the cache; compute 350 GFLOP/s fp32 (40% of theory) \u00b7 170 GFLOP/s fp64 (39% of theory), best matrix multiply"
  ],
  "overview": {
@@ -15,10 +15,7 @@
   "title": "How close each workload gets to the theoretical peak",
   "caption": "Each bar is one workload at its largest size; 100% (dashed) is the theoretical peak of the hardware."
  },
- "no_limit": [
-  "Sparse matrix \u00d7 vector (SpMV)",
-  "Sparse matrix \u00d7 matrix (SpGEMM)"
- ],
+ "no_limit": [],
  "workloads": [
   {
    "id": "B1",
@@ -159,7 +156,7 @@
    "key": "350 GFLOP/s",
    "header": {
     "peak": [
-     "Compute: 2 sockets \u00d7 8 cores \u00d7 3.4 GHz = 870 GFLOP/s fp32 \u00b7 435 GFLOP/s fp64"
+     "Compute: 2 sockets \u00d7 8 cores \u00d7 3.4 GHz (maximum turbo, an upper bound) \u00d7 8 fp64 FLOP/cycle (AVX, no FMA) = 435 GFLOP/s fp64; fp32 = 2\u00d7"
     ],
     "measured": [],
     "achieved": "Reached 100 GFLOP/s to 350 GFLOP/s across sizes (23\u201340% of the theoretical limit); best at size 2048, fp32.",

@@ -15,10 +15,7 @@
   "title": "How close each workload gets to the theoretical peak",
   "caption": "Each bar is one workload at its largest size; 100% (dashed) is the theoretical peak of the hardware."
  },
- "no_limit": [
-  "Sparse matrix \u00d7 vector (SpMV)",
-  "Sparse matrix \u00d7 matrix (SpGEMM)"
- ],
+ "no_limit": [],
  "workloads": [
   {
    "id": "B1",

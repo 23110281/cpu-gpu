@@ -7,7 +7,7 @@
  "spec": "Skylake \u00b7 2 sockets \u00d7 10 cores \u00b7 DDR4-2400 \u00b7 CloudLab c220g5",
  "limits": [
   "Memory: 2 sockets \u00d7 6 channels \u00d7 2400 MT/s \u00d7 8 B = 230.4 GB/s",
-  "Compute: 2 sockets \u00d7 10 cores \u00d7 3.0 GHz = 1.9 TFLOP/s fp32 \u00b7 960 GFLOP/s fp64",
+  "Compute: 2 sockets \u00d7 10 cores \u00d7 3.0 GHz (maximum turbo, an upper bound) \u00d7 16 fp64 FLOP/cycle (1 AVX-512 FMA unit) = 960 GFLOP/s fp64; fp32 = 2\u00d7",
   "Measured by the earlier scripts: memory 52.4 GB/s (23% of theory), best SAXPY larger than the cache; compute 860 GFLOP/s fp32 (45% of theory) \u00b7 430 GFLOP/s fp64 (45% of theory), best matrix multiply"
  ],
  "overview": {
@@ -15,10 +15,7 @@
   "title": "How close each workload gets to the theoretical peak",
   "caption": "Each bar is one workload at its largest size; 100% (dashed) is the theoretical peak of the hardware."
  },
- "no_limit": [
-  "Sparse matrix \u00d7 vector (SpMV)",
-  "Sparse matrix \u00d7 matrix (SpGEMM)"
- ],
+ "no_limit": [],
  "workloads": [
   {
    "id": "B1",
@@ -159,7 +156,7 @@
    "key": "860 GFLOP/s",
    "header": {
     "peak": [
-     "Compute: 2 sockets \u00d7 10 cores \u00d7 3.0 GHz = 1.9 TFLOP/s fp32 \u00b7 960 GFLOP/s fp64"
+     "Compute: 2 sockets \u00d7 10 cores \u00d7 3.0 GHz (maximum turbo, an upper bound) \u00d7 16 fp64 FLOP/cycle (1 AVX-512 FMA unit) = 960 GFLOP/s fp64; fp32 = 2\u00d7"
     ],
     "measured": [],
     "achieved": "Reached 200 GFLOP/s to 860 GFLOP/s across sizes (21\u201345% of the theoretical limit); best at size 8192, fp32.",

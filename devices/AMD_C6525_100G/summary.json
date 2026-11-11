@@ -7,7 +7,7 @@
  "spec": "Zen 2 \u00b7 24 cores \u00b7 8 \u00d7 DDR4-3200 \u00b7 CloudLab c6525-100g",
  "limits": [
   "Memory: 8 channels x DDR4-3200 x 8 B = 204.8 GB/s",
-  "Compute: 24 cores \u00d7 3.35 GHz = 1.3 TFLOP/s fp64 \u00b7 2.6 TFLOP/s fp32",
+  "Compute: 24 cores \u00d7 3.35 GHz (maximum boost; AMD publishes no all-core figure, so this is an upper bound) \u00d7 16 fp64 FLOP/cycle (2 \u00d7 256-bit FMA) = 1.29 TFLOP/s fp64; fp32 = 2\u00d7",
   "Measured: memory 125 GB/s (61% of theory), memory copy test, counting the extra read before each write; compute 2.0 TFLOP/s fp32 (79% of theory) \u00b7 969 GFLOP/s fp64 (75% of theory), best matrix multiply"
  ],
  "overview": {
@@ -256,7 +256,7 @@
    "key": "2.0 TFLOP/s",
    "header": {
     "peak": [
-     "Compute: 24 cores \u00d7 3.35 GHz = 1.3 TFLOP/s fp64 \u00b7 2.6 TFLOP/s fp32"
+     "Compute: 24 cores \u00d7 3.35 GHz (maximum boost; AMD publishes no all-core figure, so this is an upper bound) \u00d7 16 fp64 FLOP/cycle (2 \u00d7 256-bit FMA) = 1.29 TFLOP/s fp64; fp32 = 2\u00d7"
     ],
     "measured": [
      "Measured compute limit: 2.0 TFLOP/s fp32 (79% of theory) \u00b7 969 GFLOP/s fp64 (75% of theory)"
@@ -366,7 +366,7 @@
    "key": "9,313 Mpixels/s",
    "header": {
     "peak": [
-     "Compute: 24 cores \u00d7 3.35 GHz = 1.3 TFLOP/s fp64 \u00b7 2.6 TFLOP/s fp32"
+     "Compute: 24 cores \u00d7 3.35 GHz (maximum boost; AMD publishes no all-core figure, so this is an upper bound) \u00d7 16 fp64 FLOP/cycle (2 \u00d7 256-bit FMA) = 1.29 TFLOP/s fp64; fp32 = 2\u00d7"
     ],
     "measured": [
      "Measured compute limit: 2.0 TFLOP/s fp32 (79% of theory) \u00b7 969 GFLOP/s fp64 (75% of theory)"
@@ -428,7 +428,7 @@
    "key": "76.4 GFLOP/s",
    "header": {
     "peak": [
-     "Compute: 24 cores \u00d7 3.35 GHz = 1.3 TFLOP/s fp64 \u00b7 2.6 TFLOP/s fp32"
+     "Compute: 24 cores \u00d7 3.35 GHz (maximum boost; AMD publishes no all-core figure, so this is an upper bound) \u00d7 16 fp64 FLOP/cycle (2 \u00d7 256-bit FMA) = 1.29 TFLOP/s fp64; fp32 = 2\u00d7"
     ],
     "measured": [
      "Measured compute limit: 2.0 TFLOP/s fp32 (79% of theory) \u00b7 969 GFLOP/s fp64 (75% of theory)"
@@ -804,7 +804,7 @@
    "header": {
     "peak": [
      "Memory: 8 channels x DDR4-3200 x 8 B = 204.8 GB/s",
-     "Compute: 24 cores \u00d7 3.35 GHz = 1.3 TFLOP/s fp64 \u00b7 2.6 TFLOP/s fp32"
+     "Compute: 24 cores \u00d7 3.35 GHz (maximum boost; AMD publishes no all-core figure, so this is an upper bound) \u00d7 16 fp64 FLOP/cycle (2 \u00d7 256-bit FMA) = 1.29 TFLOP/s fp64; fp32 = 2\u00d7"
     ],
     "measured": [
      "Measured memory limit: 125 GB/s (61% of theory)",

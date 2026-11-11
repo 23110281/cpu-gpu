@@ -15,8 +15,9 @@ Libraries (config key `lib`):
            timed call). CUDA: 32x32 output tile per block, (32+K-1)^2 input tile in shared
            memory with a zero halo, 4 outputs per thread. Added because the library paths
            reached ~2% of peak on EPYC; it wins every size on EPYC 9354P and on V100.
-  The torch CPU path is tagged `aten-cpu`: which kernel torch dispatches to (oneDNN or
-  ATen's own) is not verified yet (check with ONEDNN_VERBOSE=1 on the next CPU node).
+  The torch CPU path is oneDNN: verified with ONEDNN_VERBOSE=1 on Xeon Gold 5512U (torch 2.14.1,
+  oneDNN 3.12): `convolution,jit_dw:avx512_core` plus three layout reorders (input and filter to
+  the blocked aBcd16b format, output back) on every call.
 Validation: normwise vs an fp64 convolution of the same inputs; k*k-term reductions.
 Work model: 2*k*k*C*H*W FLOPs; compulsory bytes = input + output (+ filter).
 """
@@ -196,7 +197,7 @@ class Conv2d(Workload):
                 "metric_name": "Mpixels/s", "metric_units_per_call": p["hw"] ** 2 / 1e6}
 
     def library(self, ctx):
-        return C.library_tag(ctx, "conv2d/" + ("aten-cpu" if ctx.device_class == "cpu" else "cuDNN"))
+        return C.library_tag(ctx, "conv2d/" + (("oneDNN" if torch.backends.mkldnn.is_available() else "aten-cpu") if ctx.device_class == "cpu" else "cuDNN"))
 
     def _library_for(self, p, ctx):
         if p.get("lib") == "native":

@@ -9,7 +9,9 @@ Equal work: identical shapes, seeds, precision and token inputs on both devices.
   prefill : B=1 sequence of S tokens, causal SDPA, logits for the last token
   decode  : B sequences x 1 new token attending to a KV cache of 2048 past tokens (the
             cache is pre-filled in setup); logits for all B
-Library: torch eager -- matmuls via torch's CPU BLAS (MKL on x86 wheels) / cuBLAS (GPU). Attention:
+Library: torch eager -- matmuls via torch's CPU BLAS (MKL on x86 wheels: MKL_VERBOSE on Xeon Gold
+5512U shows SGEMM for every linear, including batch-1 decode as an N=1 SGEMM, never SGEMV) /
+cuBLAS (GPU). Attention:
   prefill: F.scaled_dot_product_attention (causal, GQA via enable_gqa)
   decode : `decode_attention` -- GQA as a reshape (no K/V copies) + two batched matmuls
            (q.K^T, softmax, .V) that stream the KV cache once. SDPA's fused kernels tile over

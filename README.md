@@ -19,7 +19,7 @@ Each workload is labelled by what limits it: **B** = memory bandwidth, **C** = c
 | B4 | SpGEMM | sparse × sparse matrix product | GFLOP/s (B) | PyTorch → oneMKL sparse BLAS | PyTorch → cuSPARSE |
 | C1 | GEMM | dense matrix multiply | GFLOP/s (C) | PyTorch (oneMKL), OpenBLAS, BLIS (fastest kept) | PyTorch → cuBLAS |
 | C2 | Monte Carlo | option pricing with random paths, fp64 | paths/s (C) | native C++ (OpenMP + SIMD, glibc libmvec, Philox random numbers) | native CUDA (same Philox stream) |
-| C3 | 2-D convolution | one k×k filter over an image | Mpixels/s (C) | PyTorch `conv2d`, OpenCV `filter2D`, native C++ (fastest kept) | PyTorch → cuDNN, native CUDA (fastest kept) |
+| C3 | 2-D convolution | one k×k filter over an image | Mpixels/s (C) | PyTorch `conv2d` (→ oneDNN), OpenCV `filter2D`, native C++ (fastest kept) | PyTorch → cuDNN, native CUDA (fastest kept) |
 | C4 | FFT | 1-D and 2-D complex Fourier transforms | GFLOP/s (C) | PyTorch → oneMKL FFT (pocketfft on Arm CPUs) | PyTorch → cuFFT |
 | C5 | Bilateral filter | edge-preserving image smoothing | Mpixels/s (C) | OpenCV `bilateralFilter`, native C++ (fastest kept) | native CUDA (plus a fast-`exp` variant) |
 | C6 | Sort | stable sort of key-value pairs | Mpairs/s (C) | PyTorch sort, GNU parallel mergesort (libstdc++), oneTBB `parallel_sort` (fastest kept) | PyTorch → CUB radix sort |
@@ -28,7 +28,7 @@ Each workload is labelled by what limits it: **B** = memory bandwidth, **C** = c
 | C9 | SHA-256 | hashing many independent messages | GB/s (C) | OpenSSL (SHA-NI), plus a hardware-off variant | native CUDA |
 | S1 | Histogram | count values into bins | Msamples/s (S) | PyTorch `histc`, `bincount` (fastest kept) | PyTorch `histc`, `bincount` (atomics; fastest kept) |
 | S2 | Constraint solver | batched Gauss-Seidel with a barrier between batches | iterations/s (S) | native C++ (OpenMP barriers) | native CUDA: CUDA graph vs cooperative launch (fastest kept) |
-| A1 | Llama-3 inference | a full Llama-3 model forward pass (1B / 3B / 8B shapes), prompt + token generation | tokens/s (A) | PyTorch (oneMKL), OpenBLAS, BLIS for the linear layers (fastest kept) | PyTorch → cuBLAS; generation also replayed as a CUDA graph |
+| A1 | Llama-3 inference | a full Llama-3 model forward pass (1B / 3B / 8B shapes), prompt + token generation | tokens/s (A) | PyTorch (oneMKL SGEMM), OpenBLAS, BLIS for the linear layers (fastest kept) | PyTorch → cuBLAS; generation also replayed as a CUDA graph |
 
 How results are checked before timing:
 - bandwidth and compute workloads are compared with a float64 reference (GEMM with a randomised Freivalds check plus exactly recomputed entries);
@@ -43,7 +43,7 @@ Details per workload: [`docs/methodology.md`](docs/methodology.md) and the docst
 |---|---|---|---|
 | PyTorch | the framework that runs most workloads on both CPU and GPU, and compiles our native kernels | open (BSD-3) | all |
 | Intel oneMKL | Intel's maths library: matrix multiply, sparse maths, FFT; built into PyTorch on x86 | closed, free to use (Intel Simplified Software License) | B3, B4, C1, C4, A1 (CPU) |
-| oneDNN | Intel's neural-network kernel library, built into PyTorch | open (Apache-2.0) | possibly PyTorch's CPU `conv2d` (C3); being verified on the next CPU node |
+| oneDNN | Intel's neural-network kernel library, built into PyTorch | open (Apache-2.0) | C3 (CPU: PyTorch `conv2d` runs oneDNN's depthwise kernel) |
 | pocketfft | small FFT library PyTorch uses on CPUs without oneMKL (Arm) | open (BSD-3) | C4 on Arm CPUs |
 | OpenBLAS | open-source BLAS (matrix maths), OpenMP build | open (BSD-3) | C1, A1 (CPU); native cross-check |
 | BLIS | open-source BLAS framework (basis of AMD's AOCL) | open (BSD-3) | C1, A1 (CPU) |

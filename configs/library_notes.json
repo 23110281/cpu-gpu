@@ -47,12 +47,12 @@
       "evidence": "r6615 ctest_r6615: native wins 18/18 problems at 15-45% of measured GEMM peak; next best OpenCV at 0.04-0.71x of native. V100 c_v100_20261110: native wins 18/18 vs cuDNN (median 0.42x)."
     },
     {
-      "device": "AMD_*",
+      "device": "*",
       "workload": "C3",
       "library": "torch",
       "status": "hypothesis",
-      "date": "2026-11-10",
-      "note": "torch CPU conv2d for this shape (groups = channels, one 3/5/7 filter) stays at ~160 Mpx/s regardless of image or filter size, which points at a slow non-oneDNN fallback path rather than a compute or bandwidth limit. Confirm with the torch profiler / ONEDNN_VERBOSE.",
+      "date": "2026-11-11",
+      "note": "torch CPU conv2d for this shape (groups = channels, one 3/5/7 filter) IS oneDNN (verified: jit_dw depthwise kernel, ONEDNN_VERBOSE on Xeon Gold 5512U), but each call also reorders the whole image into oneDNN's blocked layout and back. That extra memory traffic is the likely reason it stays near ~160 Mpx/s (AMD) regardless of filter size: hypothesis; confirm by timing the reorders (ONEDNN_VERBOSE exec times).",
       "evidence": "r6615 ctest_r6615: 155-169 Mpx/s for every k at c=1, 67-83 at c=3, across 1024^2..8192^2."
     },
     {

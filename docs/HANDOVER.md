@@ -1,4 +1,4 @@
-# Handover: CPU vs GPU benchmark project (state as of 2026-11-11, after the repo cleanup)
+# Handover: CPU vs GPU benchmark project (state as of 2026-11-11 01:00 UTC: CPU campaigns running)
 
 This is for an AI coding session picking up the work. **Verify every claim here against the code, git log and data before acting on it.** If something here disagrees with the repo, the repo wins; note the discrepancy. Keep this file current: update it at every milestone and delete what is no longer true (the user's standing request).
 
@@ -94,6 +94,26 @@ Make targets: `setup test smoke calibrate sweep sweep_dry campaign analysis site
   - BabelStream was built for sm_80: it now builds for the GPU's own arch.
   - Build errors were truncated: `build_error_summary` now shows the compiler's error lines.
 
+### CPU campaigns started 2026-11-11 00:36 UTC (both Utah, reserved ~3 days; user will copy data back later)
+| | c6620 `Kushal17@er110.utah.cloudlab.us` | c6525-100g `Kushal17@amd248.utah.cloudlab.us` |
+|---|---|---|
+| CPU | Xeon Gold 5512U (Emerald Rapids), 28C/56T, 1 socket, 1 NUMA node, AMX + AVX-512 bf16 | EPYC 7402P (Zen 2), 24C/48T, 1 socket, 1 NUMA node |
+| Memory | 8× DDR5 rated 5600, configured 4800 → datasheet 307.2 GB/s | 8× DDR4-3200 → 204.8 GB/s |
+| Setup notes | governor performance (intel_pstate), RAPL readable | **no cpufreq driver at all** (firmware-controlled frequency): governor cannot be set; per-row frequency comes from APERF/MPERF |
+| Tests / smoke | 51 passed (2 GPU skips); smoke 35/35 ok incl. bf16 (AMX) | 51 passed; smoke 33 ok + 2 bf16 unsupported |
+| Calibration | 273.5 GB/s (89% of datasheet); GEMM fp32 3797 (MKL) / fp64 1852 (MKL); OpenBLAS 3479/1573, BLIS 2206/1022 | 125.0 GB/s (61%; same as the lost 11-05 campaign); GEMM fp32 2030 / fp64 969 (BLIS); MKL 1674/867, OpenBLAS 1874/892 |
+| Campaign | `c_intel_c6620_20261111T0036Z`, 3 trials × 630 jobs, ETA ~10 h | `c_amd_c6525_100g_20261111T0036Z`, 3 trials × 630 jobs, ETA ~9 h |
+| Code | `2d52043` (fresh clone from a bundle in `~/cpu-gpu`) | same |
+
+Check / resume: `ssh ... 'cd ~/cpu-gpu && bash scripts/run_campaign.sh status <DEVICE>'` (resume with `resume`). Copy back per docs/RUNNING.md step 9.
+
+**Found and fixed during the CPU drill:**
+- **OpenBLAS 0.3.20 misdetects Emerald Rapids as "Prescott"** (generic kernel): sgemm 848 vs 3381 GFLOP/s. `_blas.load` now probes the core and forces `OPENBLAS_CORETYPE=SkylakeX` only for a generic fallback; rows record `core=SkylakeX (forced; auto-detected Prescott)`. AMD detects Zen correctly (not forced). `_blas.version()` was also broken (returned the file name), so earlier OpenBLAS rows never recorded the config.
+- **Verified torch CPU backends** (both CPUs): C3 conv2d = oneDNN `jit_dw` (avx512_core / avx2) + 3 full-image reorders per call; A1 linears = oneMKL SGEMM, batch-1 decode as N=1 SGEMM (MKL on AMD reports the generic "Intel Architecture processors" path). Tags/README updated (`dbac0ac`).
+- c6620 config: label (Emerald Rapids, not Sapphire Rapids) and datasheet bandwidth; datasheet FLOP peak left out (Intel ARK unreachable to verify AVX-512 FMA units; measured 3797 fp32 ≈ 28 × 2.1 GHz × 64 suggests 2 units).
+- A1 decode on AMD after the attention fix (llama3.2-1b fp32, 1 process): B=1 OpenBLAS 17.7 tok/s = 90 GB/s (72%); B=8 BLIS 87.9 tok/s = 66 GB/s (53%; r6615 was 9–13% before the fix); torch/MKL 4.2 / 26.4 tok/s.
+- Early sweep rows: median CV 1.4%; `unstable` rows (CV > 5%) are mostly sub-3 ms calls and `socket0-smt` placements (OS jitter); one to watch: Intel C1 fp64 n=4096 CV 12% at 70 ms.
+
 ## 6. Results review (2026-11-11)
 
 **V100, per workload, at the largest size:**
@@ -146,8 +166,8 @@ V100 llama3.2-1b fp32, tokens/s:
 - Status matrix keeps "prelim" cells from `legacy/data/` and the GH200 study's cleaned data; V100 column maps the legacy `Tesla_V100-SXM2-16GB` dir via `aliases`.
 
 ## 7. Open items
-1. **Push** (user's decision): 18 local commits (§8). Pushing publishes the V100 page and the new layout. The user's rule: push after testing on one CPU and one GPU node; the GPU side is tested, the restructure was tested on the V100 (launcher, builds), a CPU node test of the new layout is still pending.
-2. **Re-run A1 on CPUs** with the decode-attention fix (72ab4db); profile batch-8 decode there. Also confirm torch's CPU backend for C3 conv / A1 linears (ONEDNN_VERBOSE=1, MKL_VERBOSE=1) and fix the tags/README.
+1. **Push** (user's decision): local commits (§8), now also tested on two CPU nodes (c6620, c6525-100g). Pushing publishes the V100 page and the new layout. The user's rule: push after testing on one CPU and one GPU node; the GPU side is tested, the restructure was tested on the V100 (launcher, builds), a CPU node test of the new layout is still pending.
+2. CPU campaigns running (§5): when done, copy back (RUNNING.md step 9), `make site`, review bounds, libraries and unstable rows; check the OpenBLAS `core=` provenance on Intel rows. Add the Intel datasheet FLOP peak after checking Intel ARK (AVX-512 FMA units).
 3. Lock clocks or not (user decision). The V100 GEMM shows a 9% clock-driven difference between sessions.
 4. C9 GPU SHA-256 efficiency check (Nsight Compute).
 5. Freeze a release: tag one commit and collect all paper campaigns from it.
@@ -165,7 +185,8 @@ V100 llama3.2-1b fp32, tokens/s:
   - V100 fixes: `0fb3d5b` `79e2eb4` `138a007` `2999f37` `3b1a3f2`; `379a063` handover.
   - Llama decode: `72ab4db` attention, `09d3e54` CUDA graph.
   - `4aa688b` dashboard device pages; `abe1ec3` V100 data; `d3af208` handover.
-  - Cleanup (2026-11-11): `3125e64` library facts, `974261c` layout restructure, `360a2f7` setup_node.sh, `90b271f` library analysis, `e234efb` run_campaign.sh + bench describe + RUNNING.md, `e90b0c8` README, `2d98edd` legacy/study READMEs, plus this handover update.
+  - Cleanup (2026-11-11): `3125e64` library facts, `974261c` layout restructure, `360a2f7` setup_node.sh, `90b271f` library analysis, `e234efb` run_campaign.sh + bench describe + RUNNING.md, `e90b0c8` README, `2d98edd` legacy/study READMEs, `8e3f4aa` handover.
+  - CPU drill (2026-11-11): `019e74a` c6620 config, `dbac0ac` verified C3/A1 backends, `2d52043` OpenBLAS core fix, plus this handover update.
 - Test unpushed code on a node with a git bundle (docs/RUNNING.md step 3).
 
 ## 9. Known pitfalls (do not rediscover them)

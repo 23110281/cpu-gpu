@@ -95,5 +95,31 @@
     "C9": "the hash rounds",
     "S1": "coordination between threads",
     "S2": "synchronization between batches"
+  },
+  "cpu_wins": {
+    "_about": "One line shown on the CPU vs GPU page for each size where the CPU is faster. A workload may give 'cache' (CPU-side data fits in the cache) and 'memory' variants.",
+    "B1": {
+      "cache": "The data fits in the CPU's large cache, which is faster than the GPU's memory.",
+      "memory": "The CPU is faster at this size."
+    },
+    "B2": {
+      "cache": "The data fits in the CPU's large cache, which is faster than the GPU's memory.",
+      "memory": "The CPU is faster at this size."
+    },
+    "B3": {
+      "cache": "The data fits in the CPU's large cache, which is faster than the GPU's memory.",
+      "memory": "The CPU is faster at this size."
+    },
+    "C4": "Too little work to keep the GPU busy; its start-up cost dominates.",
+    "C8": {
+      "cache": "The CPU has built-in AES instructions and this data fits in its cache; the GPU computes AES in software.",
+      "memory": "The CPU has built-in AES instructions; the GPU computes AES in software."
+    },
+    "C9": "The CPU has built-in SHA instructions; the GPU computes SHA-256 in software.",
+    "S1": "Many GPU threads update the same few bins and have to take turns.",
+    "S2": "Every batch needs the whole GPU to synchronize, which costs more than a barrier among the CPU's cores.",
+    "slow_fp64": "This GPU does 64-bit maths at 1/64 of its 32-bit speed.",
+    "tie": "Essentially a tie (within 5%).",
+    "default": "The CPU is faster at this size."
   }
 }

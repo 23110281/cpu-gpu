@@ -58,6 +58,9 @@ def _sz(wid: str, p: dict) -> float:
 def _label(wid: str, p: dict) -> str:
     if wid == "A1":
         return f"{p['model']}, " + (f"generation batch {p['batch']}" if p.get("phase") == "decode" else f"{p['seq']}-token prompt")
+    if wid == "C4":
+        n = int(p.get("n", 0))
+        return f"1-D, {P.F.fmt_num(n)} points" if int(p.get("dim", 1)) == 1 else f"2-D, {n} × {n}"
     keys = [P.CFG.get(wid, {}).get("x")] + [k for k in P.CFG.get(wid, {}).get("series", []) if k != "_phase"]
     parts = [P._pretty(k, p[k]) for k in keys if k and k in p and k != "_rank"]
     if wid in ("B3", "B4"):
@@ -122,8 +125,10 @@ def main():
     for f in sorted(SITE.glob("*/summary.json")):
         s = json.loads(f.read_text())
         dev = s["device"]
+        pk = (json.loads((ROOT / "configs" / "devices" / f"{dev}.json").read_text()).get("datasheet", {}) or {}).get("peak_gflops") or {}
         machines.append({"id": dev, "name": s["name"], "spec": s.get("spec", ""), "cls": s["cls"],
-                         "category": s["category"], "core": s.get("core", False)})
+                         "category": s["category"], "core": s.get("core", False),
+                         "fp64_ratio": pk["fp64"] / pk["fp32"] if pk.get("fp64") and pk.get("fp32") else None})
         data[dev] = final_points(dev) if s["category"] == "final" else legacy_points(dev)
     ratios = {}
     try:

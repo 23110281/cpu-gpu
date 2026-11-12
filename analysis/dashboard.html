@@ -144,6 +144,7 @@ const fmt = v => v == null || !isFinite(v) ? '—' : (Math.abs(v) >= 100 ? Math.
 const fmtU = (v, u) => { if (v == null || !isFinite(v)) return '—';
   if (u === 'GFLOP/s' && v >= 1000) return (v / 1000).toLocaleString('en-US', {maximumFractionDigits: 1}) + ' TFLOP/s';
   return fmt(v) + ' ' + u; };
+const ciText = (ci, r) => ci ? (r >= 1 ? `${fmt(ci[0])}–${fmt(ci[1])}` : `${fmt(1 / ci[1])}–${fmt(1 / ci[0])}`) : '';
 const times = r => r >= 1 ? `${r >= 10 ? r.toFixed(0) : r.toFixed(1)}×` : `${(1 / r) >= 10 ? (1 / r).toFixed(0) : (1 / r).toFixed(1)}×`;
 const LIB = { torch: 'PyTorch', cudagraph: 'PyTorch + CUDA graph', native: 'our own kernel', graph: 'CUDA graph launch',
   coop: 'cooperative launch', fast: 'our own kernel, fast exp', histc: 'PyTorch histc', bincount: 'PyTorch bincount',
@@ -175,9 +176,9 @@ function render() {
   route = parse();
   const moved = lastHash !== location.hash; lastHash = location.hash;
   renderNav();
-  const [v, a, b, c] = route;
+  const [v, a, b, c, d] = route;
   const m = document.getElementById('main');
-  if (v === 'compare') m.innerHTML = viewCompare(a, b, c);
+  if (v === 'compare') m.innerHTML = viewCompare(a, b, c, d);
   else if (v === 'library') m.innerHTML = viewLibrary();
   else if (v === 'todo') m.innerHTML = viewTodo();
   else if (v === 'm' && pages[a]) m.innerHTML = b ? viewWorkload(a, b) : viewMachine(a);
@@ -267,28 +268,42 @@ function viewWorkload(dev, wid) {
 const C = compareData;
 const mach = id => (C.machines || []).find(m => m.id === id);
 const wname = w => (C.workload_names || {})[w] || w;
-function pick(pts, preferDram) {
-  const pref = { fp32: 0, fp64: 1 };
-  let c = pts;
-  if (preferDram && c.some(p => p.dram)) c = c.filter(p => p.dram);
-  return [...c].sort((a, b) => (b.sz - a.sz) || ((pref[a.prec] ?? 2) - (pref[b.prec] ?? 2)))[0];
-}
 const MEM = new Set(['B1', 'B2', 'B3', 'B4']);
-function pair(cpu, gpu) {
+const PREF = { fp32: 0, fp64: 1 };
+const SIZE_MODES = [['largest', 'Largest size of each workload'], ['middle', 'Middle size of each workload'],
+                    ['smallest', 'Smallest size of each workload'], ['cpubest', 'Most CPU-friendly size of each workload']];
+// every size both machines ran for one workload, smallest first (CPU point a, GPU point b)
+function matched(cpu, gpu, w) {
+  const A = (C.data[cpu] || {})[w], B = (C.data[gpu] || {})[w];
+  if (!A || !B || A.unit !== B.unit) return [];
+  const kb = new Map(B.pts.map(p => [p.key, p]));
+  return A.pts.filter(p => kb.has(p.key)).map(a => {
+    const b = kb.get(a.key);
+    return { key: a.key, label: a.label, prec: a.prec, sz: a.sz, a, b, ratio: b.v / a.v, dram: a.dram && b.dram, ci: ciFor(cpu, gpu, w, a.key) };
+  }).sort((x, y) => (x.sz - y.sz) || ((PREF[x.prec] ?? 2) - (PREF[y.prec] ?? 2)));
+}
+// one size per workload for the "all workloads" view
+function pickAt(m, mode, w) {
+  if (mode === 'cpubest') return m.reduce((x, y) => y.ratio < x.ratio ? y : x);
+  let c = m;
+  if (mode === 'largest' && MEM.has(w) && c.some(p => p.dram)) c = c.filter(p => p.dram);
+  const bySize = [];                                     // one point per size: fp32 first, then fp64
+  for (const p of c) if (!bySize.length || bySize[bySize.length - 1].sz !== p.sz) bySize.push(p);
+  if (mode === 'smallest') return bySize[0];
+  if (mode === 'middle') return bySize[Math.floor((bySize.length - 1) / 2)];
+  return bySize[bySize.length - 1];
+}
+function pair(cpu, gpu, mode = 'largest') {
   const A = C.data[cpu] || {}, B = C.data[gpu] || {}, out = [], notComp = [];
   for (const w of C.order) {
     if (!A[w] || !B[w]) continue;
     if (A[w].unit !== B[w].unit) { notComp.push(wname(w)); continue; }
-    const ka = new Map(A[w].pts.map(p => [p.key, p])), kb = new Map(B[w].pts.map(p => [p.key, p]));
-    const common = [...ka.keys()].filter(k => kb.has(k));
+    const m = matched(cpu, gpu, w);
     let r;
-    if (common.length) {
-      const both = common.map(k => ({ ...ka.get(k), dram: ka.get(k).dram && kb.get(k).dram }));
-      const p = pick(both, MEM.has(w)); const a = ka.get(p.key), b = kb.get(p.key);
-      r = { w, a, b, ratio: b.v / a.v, ci: ciFor(cpu, gpu, w, p.key), fallback: false };
-    } else {
+    if (m.length) { const p = pickAt(m, mode, w); r = { w, a: p.a, b: p.b, ratio: p.ratio, ci: p.ci, fallback: false, sizes: m.length }; }
+    else {
       const a = bestOf(A[w].pts, MEM.has(w)), b = bestOf(B[w].pts, MEM.has(w));
-      r = { w, a, b, ratio: b.v / a.v, ci: null, fallback: true };
+      r = { w, a, b, ratio: b.v / a.v, ci: null, fallback: true, sizes: 0 };
     }
     r.unit = A[w].unit; r.earlier = mach(cpu).category === 'earlier' || mach(gpu).category === 'earlier';
     out.push(r);
@@ -301,41 +316,79 @@ function ciFor(cpu, gpu, w, key) {
   const r2 = C.ratios[`${gpu}|${cpu}|${w}|${key}`]; if (r2) return [1 / r2[2], 1 / r2[1]];
   return null;
 }
-function viewCompare(cpu, gpu, wl) {
+// one plain-English line for a size where the CPU is faster (configs/explanations.json "cpu_wins")
+function cpuReason(w, a, ratio, gpu) {
+  const R = C.cpu_wins || {};
+  if (1 / ratio < 1.05) return R.tie || 'Essentially a tie.';
+  const g = mach(gpu) || {};
+  if (w === 'C1' && a.prec === 'fp64' && g.fp64_ratio != null && g.fp64_ratio < 0.1) return R.slow_fp64 || '';
+  const t = R[w];
+  if (!t) return R.default || 'The CPU is faster at this size.';
+  if (typeof t === 'string') return t;
+  return (a.dram ? t.memory : t.cache) || t.memory || t.cache || R.default;
+}
+function cpuWins(cpu, gpu) {
+  const wins = []; let n = 0;
+  for (const w of C.order) for (const p of matched(cpu, gpu, w)) { n++; if (p.ratio < 1) wins.push({ w, ...p }); }
+  return { wins: wins.sort((x, y) => x.ratio - y.ratio), n };
+}
+function viewCompare(cpu, gpu, wl, size) {
   const cpus = (C.machines || []).filter(m => m.cls === 'cpu'), gpus = (C.machines || []).filter(m => m.cls === 'gpu');
   cpu = cpus.some(m => m.id === cpu) ? cpu : (cpus.find(m => m.id === 'INTEL_C6620') || cpus[0]).id;
   gpu = gpus.some(m => m.id === gpu) ? gpu : (gpus.find(m => m.id === 'NVIDIA_V100') || gpus[0]).id;
   const P = pair(cpu, gpu);
   wl = P.rows.some(r => r.w === wl) ? wl : 'all';
+  let sizeOpts;
+  if (wl === 'all') {
+    size = SIZE_MODES.some(s => s[0] === size) ? size : 'largest';
+    sizeOpts = SIZE_MODES.map(([v, t]) => `<option value="${v}" ${v === size ? 'selected' : ''}>${t}</option>`).join('');
+  } else {
+    const m = matched(cpu, gpu, wl);
+    size = m.some((p, i) => `s${i}` === size) ? size : 'all';
+    sizeOpts = `<option value="all">All sizes</option>` + m.map((p, i) => `<option value="s${i}" ${`s${i}` === size ? 'selected' : ''}>${esc(p.label)}</option>`).join('');
+  }
   const opt = (list, sel) => list.map(m => `<option value="${m.id}" ${m.id === sel ? 'selected' : ''}>${esc(m.name)}${m.category === 'earlier' ? ' (earlier scripts)' : ''}</option>`).join('');
-  return `<h1>CPU vs GPU</h1><p class="lead">Pick a processor, a graphics card and a workload to see how many times faster one is than the other.</p>
+  return `<h1>CPU vs GPU</h1><p class="lead">Pick a processor, a graphics card, a workload and a problem size to see how many times faster one is than the other.</p>
     <div class="box explain"><h3>How the comparison works</h3><ol>
       <li>Both machines ran the same workload on the same inputs. With the final scripts, every result was checked against a reference answer before it counted.</li>
       <li>Each machine uses its fastest available software on all of its processor cores, or on one graphics card.</li>
       <li>"N× faster" is the GPU result divided by the CPU result at the same problem size and number format. Final-script results are the middle value of three separate runs, shown with their 95% range.</li>
-      <li>"All workloads" compares each workload at the largest size both machines ran, plus an overall average (geometric mean, so every workload counts equally).</li>
+      <li>The size selector chooses which size of each workload is compared: the largest (default), the middle or the smallest size both machines ran, or the size most favourable to the CPU. The overall average is a geometric mean, so every workload counts equally.</li>
       <li>GPU time counts the computation only, not copying the data onto the card, as in the original study. Paler bars use correct results from the earlier scripts (averages, no range).</li></ol></div>
     <div class="controls">
       <label>CPU<select id="sel-cpu">${opt(cpus, cpu)}</select></label>
       <label>GPU<select id="sel-gpu">${opt(gpus, gpu)}</select></label>
       <label>Workload<select id="sel-w"><option value="all">All workloads</option>${P.rows.map(r => `<option value="${r.w}" ${r.w === wl ? 'selected' : ''}>${esc(wname(r.w))}</option>`).join('')}</select></label>
-    </div><div id="cmp" data-cpu="${cpu}" data-gpu="${gpu}" data-w="${wl}"></div>`;
+      <label>Problem size<select id="sel-s">${sizeOpts}</select></label>
+    </div><div id="cmp" data-cpu="${cpu}" data-gpu="${gpu}" data-w="${wl}" data-s="${size}"></div>`;
 }
 const tip = document.getElementById('tip');
 function showTip(e, html) { tip.innerHTML = html; tip.style.display = 'block'; tip.style.left = Math.min(e.clientX + 14, innerWidth - 360) + 'px'; tip.style.top = (e.clientY + 14) + 'px'; }
 function hideTip() { tip.style.display = 'none'; }
 function drawCompare() {
   const el = document.getElementById('cmp'); if (!el) return;
-  const cpu = el.dataset.cpu, gpu = el.dataset.gpu, wl = el.dataset.w;
-  ['sel-cpu', 'sel-gpu', 'sel-w'].forEach(id => document.getElementById(id).onchange = () =>
-    go(`compare/${document.getElementById('sel-cpu').value}/${document.getElementById('sel-gpu').value}/${id === 'sel-w' ? document.getElementById('sel-w').value : 'all'}`));
-  const P = pair(cpu, gpu), cn = mach(cpu).name, gn = mach(gpu).name;
+  const cpu = el.dataset.cpu, gpu = el.dataset.gpu, wl = el.dataset.w, size = el.dataset.s;
+  const val = id => document.getElementById(id).value;
+  document.getElementById('sel-cpu').onchange = () => go(`compare/${val('sel-cpu')}/${gpu}/${wl}/${wl === 'all' ? size : 'all'}`);
+  document.getElementById('sel-gpu').onchange = () => go(`compare/${cpu}/${val('sel-gpu')}/${wl}/${wl === 'all' ? size : 'all'}`);
+  document.getElementById('sel-w').onchange = () => go(`compare/${cpu}/${gpu}/${val('sel-w')}/${val('sel-w') === 'all' ? 'largest' : 'all'}`);
+  document.getElementById('sel-s').onchange = () => go(`compare/${cpu}/${gpu}/${wl}/${val('sel-s')}`);
+  const P = pair(cpu, gpu, wl === 'all' ? size : 'largest'), cn = mach(cpu).name, gn = mach(gpu).name;
   if (!P.rows.length) { el.innerHTML = '<p class="note">These two machines have no workload in common yet.</p>'; return; }
-  if (wl === 'all') return drawAll(el, P, cn, gn, cpu, gpu);
-  drawOne(el, P.rows.find(r => r.w === wl), cn, gn, cpu, gpu);
+  if (wl === 'all') return drawAll(el, P, cn, gn, cpu, gpu, size);
+  drawOne(el, P.rows.find(r => r.w === wl), cn, gn, cpu, gpu, size);
+}
+function winsPanel(cpu, gpu) {
+  const { wins, n } = cpuWins(cpu, gpu);
+  if (!n) return '';
+  if (!wins.length) return `<h2>Where the CPU is faster</h2><p class="note">The GPU is faster at every one of the ${n} sizes both machines ran.</p>`;
+  return `<h2>Where the CPU is faster</h2><p class="note">The CPU is faster at <b style="color:var(--accent)">${wins.length} of ${n}</b> sizes both machines ran.</p>
+    <div class="tbl-wrap"><table><thead><tr><th>Workload</th><th>Size</th><th class="num">CPU</th><th class="num">GPU</th><th class="num">CPU faster by</th><th>Why</th></tr></thead><tbody>
+    ${wins.map(p => `<tr><td><a href="#compare/${cpu}/${gpu}/${p.w}/all">${esc(wname(p.w))}</a></td><td>${esc(p.label)}</td><td class="num">${esc(fmtU(p.a.v, C.data[cpu][p.w].unit))}</td><td class="num">${esc(fmtU(p.b.v, C.data[cpu][p.w].unit))}</td><td class="num">${times(p.ratio)}</td><td style="color:var(--muted);font-size:13px">${esc(cpuReason(p.w, p.a, p.ratio, gpu))}</td></tr>`).join('')}
+    </tbody></table></div>`;
 }
 function logScale(lo, hi, a, b) { const L = Math.log10(lo), H = Math.log10(hi); return v => a + (Math.log10(v) - L) / (H - L) * (b - a); }
-function drawAll(el, P, cn, gn, cpu, gpu) {
+function drawAll(el, P, cn, gn, cpu, gpu, size) {
   const rows = P.rows, gm = Math.exp(rows.reduce((s, r) => s + Math.log(r.ratio), 0) / rows.length);
   const all = [...rows.map(r => ({ ...r, label: wname(r.w) })), { label: 'Overall (geometric mean)', ratio: gm, gm: true, earlier: rows.some(r => r.earlier) }];
   const W = 1000, rowH = 30, top = 34, left = 250, right = 120, H = top + all.length * rowH + 40;
@@ -352,31 +405,34 @@ function drawAll(el, P, cn, gn, cpu, gpu) {
     s += `<text x="${left - 12}" y="${y + 16}" text-anchor="end" ${r.gm ? 'font-weight="700"' : ''}>${esc(r.label)}</text>`;
     s += `<rect x="${Math.min(x0, x1)}" y="${y + 5}" width="${Math.max(2, Math.abs(x1 - x0))}" height="${rowH - 10}" fill="${c}" opacity="${op}" rx="2" data-i="${i}" class="bar"/>`;
     if (r.ci) s += `<line x1="${x(r.ci[0])}" x2="${x(r.ci[1])}" y1="${y + rowH / 2}" y2="${y + rowH / 2}" stroke="#f5f5f5" stroke-width="1.5"/>`;
-    s += `<text x="${gpuF ? Math.max(x1, x0) + 8 : Math.min(x1, x0) - 8}" y="${y + 19}" text-anchor="${gpuF ? 'start' : 'end'}" font-weight="600">${gpuF ? 'GPU ' : 'CPU '}${times(r.ratio)}${r.fallback ? '*' : ''}</text>`;
+    // GPU label after the bar end; CPU label on the empty side of the "equal" line (never over the names)
+    s += `<text x="${gpuF ? Math.max(x1, x0) + 8 : x0 + 8}" y="${y + 19}" text-anchor="start" font-weight="600" ${gpuF ? '' : 'fill="#3987e5"'}>${gpuF ? 'GPU ' : 'CPU '}${times(r.ratio)}${r.fallback ? '*' : ''}</text>`;
   });
   s += `<text class="muted" x="${left}" y="18">◀ CPU (${esc(cn)}) faster</text><text class="muted" x="${W - right}" y="18" text-anchor="end">GPU (${esc(gn)}) faster ▶</text></svg>`;
+  const cpuF = rows.filter(r => r.ratio < 1);
+  const reasons = cpuF.length ? `<ul class="notes" style="margin:6px 0 10px">${cpuF.map(r => `<li><b style="color:var(--cpu)">${esc(wname(r.w))}</b> (${esc(r.fallback ? 'best of each machine' : r.a.label)}): CPU ${times(r.ratio)} faster. ${esc(cpuReason(r.w, r.a, r.ratio, gpu))}</li>`).join('')}</ul>` : '';
   const notes = [];
+  if (size === 'smallest' || size === 'cpubest') notes.push('Small sizes can fit in the CPU\'s cache and are too small to keep a GPU busy: this is where CPUs can win.');
+  if (size === 'cpubest') notes.push('"Most CPU-friendly size" picks, for each workload, the size where the CPU does best: it shows where the CPU can compete, not a typical result.');
   if (rows.some(r => r.earlier)) notes.push('Paler bars use earlier-script results (averages of repeated runs, no 95% range).');
   if (rows.some(r => r.fallback)) notes.push('* Different problem sizes on the two machines: best result of each machine is compared (' + rows.filter(r => r.fallback).map(r => wname(r.w)).join(', ') + ').');
   if (P.notComp.length) notes.push('Not comparable (different units of measure): ' + P.notComp.join(', ') + '.');
-  el.innerHTML = `<div class="chart">${s}</div>` + (notes.length ? `<ul class="notes">${notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : '') +
+  el.innerHTML = `<div class="chart">${s}</div>` + reasons + (notes.length ? `<ul class="notes">${notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : '') +
     `<h2>Table</h2><div class="tbl-wrap"><table><thead><tr><th>Workload</th><th>Compared at</th><th class="num">CPU</th><th class="num">GPU</th><th class="num">Times faster</th></tr></thead><tbody>
-    ${rows.map(r => `<tr><td><a href="#compare/${cpu}/${gpu}/${r.w}">${esc(wname(r.w))}</a></td><td>${esc(r.fallback ? 'best of each machine' : r.a.label)}</td><td class="num">${esc(fmtU(r.a.v, r.unit))}</td><td class="num">${esc(fmtU(r.b.v, r.unit))}</td><td class="num">${r.ratio >= 1 ? 'GPU' : 'CPU'} ${times(r.ratio)}</td></tr>`).join('')}
-    <tr><td><b>Overall (geometric mean)</b></td><td></td><td></td><td></td><td class="num"><b>${gm >= 1 ? 'GPU' : 'CPU'} ${times(gm)}</b></td></tr></tbody></table></div>`;
+    ${rows.map(r => `<tr><td><a href="#compare/${cpu}/${gpu}/${r.w}/all">${esc(wname(r.w))}</a></td><td>${esc(r.fallback ? 'best of each machine' : r.a.label)}</td><td class="num">${esc(fmtU(r.a.v, r.unit))}</td><td class="num">${esc(fmtU(r.b.v, r.unit))}</td><td class="num">${r.ratio >= 1 ? 'GPU' : 'CPU'} ${times(r.ratio)}</td></tr>`).join('')}
+    <tr><td><b>Overall (geometric mean)</b></td><td></td><td></td><td></td><td class="num"><b>${gm >= 1 ? 'GPU' : 'CPU'} ${times(gm)}</b></td></tr></tbody></table></div>` + winsPanel(cpu, gpu);
   el.querySelectorAll('rect.bar').forEach(b => {
     const r = all[+b.dataset.i];
     b.onmousemove = e => showTip(e, r.gm ? `<b>Overall</b><br>${r.ratio >= 1 ? 'GPU' : 'CPU'} ${times(r.ratio)} faster on average` :
-      `<b>${esc(r.label)}</b><br>${esc(r.fallback ? 'best result of each machine' : 'at ' + r.a.label)}<br>CPU: ${esc(fmtU(r.a.v, r.unit))}<br>GPU: ${esc(fmtU(r.b.v, r.unit))}<br>${r.ratio >= 1 ? 'GPU' : 'CPU'} ${times(r.ratio)} faster${r.ci ? ` (95% range ${fmt(r.ci[0])}–${fmt(r.ci[1])}×)` : ''}`);
+      `<b>${esc(r.label)}</b><br>${esc(r.fallback ? 'best result of each machine' : 'at ' + r.a.label)}<br>CPU: ${esc(fmtU(r.a.v, r.unit))}<br>GPU: ${esc(fmtU(r.b.v, r.unit))}<br>${r.ratio >= 1 ? 'GPU' : 'CPU'} ${times(r.ratio)} faster${r.ci ? ` (95% range ${ciText(r.ci, r.ratio)}×)` : ''}`);
     b.onmouseleave = hideTip;
-    if (!r.gm) { b.style.cursor = 'pointer'; b.onclick = () => go(`compare/${cpu}/${gpu}/${r.w}`); }
+    if (!r.gm) { b.style.cursor = 'pointer'; b.onclick = () => go(`compare/${cpu}/${gpu}/${r.w}/all`); }
   });
 }
-function drawOne(el, r, cn, gn, cpu, gpu) {
-  const A = C.data[cpu][r.w], B = C.data[gpu][r.w];
-  const kb = new Map(B.pts.map(p => [p.key, p]));
-  let common = A.pts.filter(p => kb.has(p.key)).sort((x, y) => (x.prec > y.prec ? 1 : x.prec < y.prec ? -1 : 0) || (x.sz - y.sz));
-  const pts = common.length ? common.map(a => ({ label: a.label, a, b: kb.get(a.key), ratio: kb.get(a.key).v / a.v, ci: ciFor(cpu, gpu, r.w, a.key) }))
-                            : [{ label: 'best result of each machine', a: r.a, b: r.b, ratio: r.ratio, ci: null }];
+function drawOne(el, r, cn, gn, cpu, gpu, size) {
+  const m = matched(cpu, gpu, r.w);
+  const pts = m.length ? m : [{ label: 'best result of each machine', a: r.a, b: r.b, ratio: r.ratio, ci: null }];
+  const sel = size && size.startsWith('s') ? +size.slice(1) : -1;
   // chart 1: both machines' results per size
   const W = 1000, H = 380, L = 80, R = 20, T = 20, Bm = 120, n = pts.length;
   const vals = pts.flatMap(p => [p.a.v, p.b.v]).filter(v => v > 0);
@@ -385,11 +441,12 @@ function drawOne(el, r, cn, gn, cpu, gpu) {
   let s = `<svg viewBox="0 0 ${W} ${H}">`;
   const dec = []; for (let e = Math.floor(Math.log10(lo)); e <= Math.ceil(Math.log10(hi)); e++) dec.push(10 ** e);
   dec.filter(t => t >= lo && t <= hi).forEach(t => s += `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" stroke="#262626"/><text class="muted" x="${L - 8}" y="${y(t) + 4}" text-anchor="end">${fmt(t)}</text>`);
+  if (sel >= 0) s += `<rect x="${xs(sel) - 14}" y="${T}" width="28" height="${H - T - Bm}" fill="#FFD60A" opacity="0.12"/>`;
   s += `<text class="muted" transform="translate(16,${(H - Bm) / 2}) rotate(-90)" text-anchor="middle">${esc(r.unit)} (log scale)</text>`;
-  for (const [key, col, name] of [['a', 'var(--cpu)', cn], ['b', 'var(--gpu)', gn]]) {
+  for (const [key, col] of [['a', 'var(--cpu)'], ['b', 'var(--gpu)']]) {
     const op = mach(key === 'a' ? cpu : gpu).category === 'earlier' ? 0.55 : 1;
     if (n > 1) s += `<polyline fill="none" stroke="${col}" stroke-width="2" opacity="${op}" points="${pts.map((p, i) => `${xs(i)},${y(p[key].v)}`).join(' ')}"/>`;
-    pts.forEach((p, i) => s += `<circle cx="${xs(i)}" cy="${y(p[key].v)}" r="5" fill="${col}" opacity="${op}" stroke="#000" stroke-width="2" class="pt" data-i="${i}"/>`);
+    pts.forEach((p, i) => s += `<circle cx="${xs(i)}" cy="${y(p[key].v)}" r="${i === sel ? 7 : 5}" fill="${col}" opacity="${op}" stroke="${i === sel ? '#FFD60A' : '#000'}" stroke-width="2" class="pt" data-i="${i}"/>`);
   }
   pts.forEach((p, i) => s += `<text class="muted" transform="translate(${xs(i)},${H - Bm + 14}) rotate(35)" font-size="11">${esc(p.label)}</text>`);
   s += `</svg>`;
@@ -400,22 +457,29 @@ function drawOne(el, r, cn, gn, cpu, gpu) {
   let s2 = `<svg viewBox="0 0 ${W} ${H2}">`;
   [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200].filter(t => t >= lo2 && t <= hi2).forEach(t => s2 += `<line x1="${L}" x2="${W - R}" y1="${y2(t)}" y2="${y2(t)}" stroke="${t === 1 ? '#f5f5f5' : '#262626'}" ${t === 1 ? 'stroke-dasharray="4 3"' : ''}/><text class="muted" x="${L - 8}" y="${y2(t) + 4}" text-anchor="end">${t === 1 ? 'equal' : (t > 1 ? `GPU ${t}×` : `CPU ${fmt(1 / t)}×`)}</text>`);
   pts.forEach((p, i) => { const g = p.ratio >= 1, ya = y2(Math.max(p.ratio, 1)), yb = y2(Math.min(p.ratio, 1));
-    s2 += `<rect x="${xb(i) - bw / 2}" y="${ya}" width="${bw}" height="${Math.max(2, yb - ya)}" fill="${g ? 'var(--gpu)' : 'var(--cpu)'}" opacity="${r.earlier ? 0.55 : 1}" rx="2" class="pt2" data-i="${i}"/>`;
+    s2 += `<rect x="${xb(i) - bw / 2}" y="${ya}" width="${bw}" height="${Math.max(2, yb - ya)}" fill="${g ? 'var(--gpu)' : 'var(--cpu)'}" opacity="${r.earlier ? 0.55 : 1}" rx="2" class="pt2" data-i="${i}" ${i === sel ? 'stroke="#FFD60A" stroke-width="2"' : ''}/>`;
     if (p.ci) s2 += `<line x1="${xb(i)}" x2="${xb(i)}" y1="${y2(p.ci[1])}" y2="${y2(p.ci[0])}" stroke="#f5f5f5" stroke-width="1.5"/>`;
     s2 += `<text x="${xb(i)}" y="${(g ? ya : yb + 14) - (g ? 6 : 0)}" text-anchor="middle" font-size="11" font-weight="600">${times(p.ratio)}</text>`;
     s2 += `<text class="muted" transform="translate(${xb(i) - 4},${H2 - B2 + 14}) rotate(35)" font-size="11">${esc(p.label)}</text>`; });
   s2 += `</svg>`;
+  const cpuF = pts.filter(p => p.ratio < 1);
+  const reasons = cpuF.length ? `<ul class="notes" style="margin:6px 0 10px">${cpuF.map(p => `<li><b style="color:var(--cpu)">${esc(p.label)}</b>: CPU ${times(p.ratio)} faster. ${esc(cpuReason(r.w, p.a, p.ratio, gpu))}</li>`).join('')}</ul>` : '';
+  let verdict = '';
+  if (sel >= 0 && pts[sel]) { const p = pts[sel];
+    verdict = `<div class="box" style="margin:4px 0 16px"><b>At ${esc(p.label)}:</b> ${p.ratio >= 1 ? `the GPU is <b style="color:var(--gpu)">${times(p.ratio)}</b> faster` : `the CPU is <b style="color:var(--cpu)">${times(p.ratio)}</b> faster. ${esc(cpuReason(r.w, p.a, p.ratio, gpu))}`}
+      <span style="color:var(--muted)"> (CPU ${esc(fmtU(p.a.v, r.unit))}, GPU ${esc(fmtU(p.b.v, r.unit))})</span></div>`; }
   const notes = [];
   if (r.earlier) notes.push('Paler marks use earlier-script results (averages of repeated runs, no 95% range).');
-  if (!common.length) notes.push('The two machines ran different problem sizes, so the best result of each machine is compared.');
-  el.innerHTML = `<div class="chart"><h3>${esc(wname(r.w))}: results on both machines</h3>
+  if (!m.length) notes.push('The two machines ran different problem sizes, so the best result of each machine is compared.');
+  el.innerHTML = verdict + `<div class="chart"><h3>${esc(wname(r.w))}: results on both machines</h3>
     <div class="legend"><span><b style="color:var(--cpu)">●</b>CPU: ${esc(cn)}</span><span><b style="color:var(--gpu)">●</b>GPU: ${esc(gn)}</span></div>${s}</div>
-    <div class="chart"><h3>Times faster at each size</h3>${s2}</div>` + (notes.length ? `<ul class="notes">${notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : '') +
+    <div class="chart"><h3>Times faster at each size</h3>${s2}</div>` + reasons + (notes.length ? `<ul class="notes">${notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : '') +
     `<h2>Table</h2><div class="tbl-wrap"><table><thead><tr><th>Size</th><th class="num">CPU</th><th class="num">GPU</th><th class="num">Times faster</th></tr></thead><tbody>
-    ${pts.map(p => `<tr><td>${esc(p.label)}</td><td class="num">${esc(fmtU(p.a.v, r.unit))}</td><td class="num">${esc(fmtU(p.b.v, r.unit))}</td><td class="num">${p.ratio >= 1 ? 'GPU' : 'CPU'} ${times(p.ratio)}${p.ci ? ` <span style="color:var(--muted)">(${fmt(p.ci[0])}–${fmt(p.ci[1])})</span>` : ''}</td></tr>`).join('')}</tbody></table></div>`;
+    ${pts.map((p, i) => `<tr${i === sel ? ' style="background:var(--hover)"' : ''}><td>${esc(p.label)}</td><td class="num">${esc(fmtU(p.a.v, r.unit))}</td><td class="num">${esc(fmtU(p.b.v, r.unit))}</td><td class="num">${p.ratio >= 1 ? 'GPU' : 'CPU'} ${times(p.ratio)}${p.ci ? ` <span style="color:var(--muted)">(${ciText(p.ci, p.ratio)})</span>` : ''}</td></tr>`).join('')}</tbody></table></div>`;
   el.querySelectorAll('.pt, .pt2').forEach(c => { const p = pts[+c.dataset.i];
     c.onmousemove = e => showTip(e, `<b>${esc(p.label)}</b><br>CPU: ${esc(fmtU(p.a.v, r.unit))}<br>GPU: ${esc(fmtU(p.b.v, r.unit))}<br>${p.ratio >= 1 ? 'GPU' : 'CPU'} ${times(p.ratio)} faster`);
-    c.onmouseleave = hideTip; });
+    c.onmouseleave = hideTip;
+    if (m.length) { c.style.cursor = 'pointer'; c.onclick = () => go(`compare/${cpu}/${gpu}/${r.w}/s${c.dataset.i}`); } });
 }
 
 // ── library analysis ────────────────────────────────────────────────────────
